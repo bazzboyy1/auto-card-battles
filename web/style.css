@@ -38,10 +38,11 @@ button:disabled { opacity: 0.4; cursor: default; }
 .hidden { display: none !important; }
 
 /* ── Loading ── */
-#loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
-.loading-inner { text-align: center; }
-.loading-inner h1 { font-size: 2rem; margin-bottom: 0.5rem; color: var(--gold); }
-.loading-inner p  { color: var(--text-muted); }
+#loading { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; background: var(--bg) url('/splash.png') center/cover no-repeat; z-index: 100; }
+.loading-inner { text-align: center; background: linear-gradient(transparent, rgba(0,0,0,0.9) 25%); width: 100%; padding: 5rem 2rem 2.5rem; }
+.loading-inner h1 { font-size: 2.4rem; margin-bottom: 0.75rem; color: var(--gold); }
+.splash-pitch { color: var(--text-muted); max-width: 520px; margin: 0 auto 1.5rem; line-height: 1.6; }
+.splash-btn { font-size: 1.1rem; padding: 0.75rem 2rem; }
 
 /* ── App shell ── */
 #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }

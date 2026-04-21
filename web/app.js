@@ -41,10 +41,12 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-xp').onclick       = onBuyXP;
   qs('#btn-sell').onclick     = onToggleSell;
 
-  qs('#loading').classList.add('hidden');
-  qs('#app').classList.remove('hidden');
-
   newGame();
+
+  qs('#btn-start').onclick = () => {
+    qs('#loading').classList.add('hidden');
+    qs('#app').classList.remove('hidden');
+  };
 });
 
 // ── New game ──────────────────────────────────────────────────────────────────
