@@ -116,7 +116,19 @@ Class synergy values (final):
 - Design rationale: aggregate total is now only revealed during the judging animation (first dramatic moment); per-card scores, synergy bars, and tooltip breakdowns remain fully visible so buying decisions are unaffected. Practical opacity: players *can* add up per-card scores but won't casually, so tension is preserved without punishing information hiding.
 - Files: `web/index.html`, `web/app.js`
 
-**Next action:** Phase 12-B — Deploy build online for external playtesting.
+**Phase 12-B complete (2026-04-21):** Deployed to Netlify for external playtesting.
+- Added `netlify.toml` with `[[redirects]]` rewrite: `/ → /web/index.html` (status 200)
+- Repo is public on GitHub at `https://github.com/bazzboyy1/auto-card-battles`
+- All absolute paths (`/web/style.css`, `/src/*.js`) work correctly from Netlify root
+
+**Post-deploy playtest findings (2026-04-21):** Full analysis in `design_log/phase_13_plan.md`.
+- BUG: Animation per-card scores differ from Exhibits card-face scores — root cause: `roundsSinceBought` is incremented after `calcScore()` in `runBattle()`, but animation re-computes breakdown post-increment
+- BUG: Species + class tag ("Sporal ◌SHY") crowd onto same line — CSS layout fix needed
+- BUG: `_combine()` resets `roundsSinceBought` to 0 — Growth Serum and Acclimatisation Log lose all accumulated rounds on upgrade
+- UX: Augment/item pick in RHS panel goes unnoticed — need attention toast
+- DESIGN (keep): Growth Serum retroactive application on attach is intentional — high-impact moment, felt good
+
+**Next action:** Phase 13 — Fix the three bugs (score snapshot, combine roundsSinceBought, species/class layout) + attention toast for side-panel picks. See `design_log/phase_13_plan.md`.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
@@ -144,6 +156,7 @@ Class synergy values (final):
 - **`design_log/playtest_2_findings.md`** — Second playtest feedback + Phase 9 plan (UX fixes, economy tuning, classes as second synergy axis). Read when starting Phase 9.
 - **`design_log/playtest_3_findings.md`** — Third playtest findings + Phase 10 plan. Read when resuming after Playtest 3.
 - **`design_log/phase_11_scoring_animation.md`** — Phase 11 spec: battle scoring animation (per-card reveal, running totals, winner reveal). Read before starting Phase 11.
+- **`design_log/phase_13_plan.md`** — Phase 13 plan: post-deploy bug fixes (score snapshot, combine roundsSinceBought, species/class layout, side-panel attention toast). Read when starting Phase 13.
 
 ---
 
