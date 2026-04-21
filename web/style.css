@@ -150,6 +150,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .tt-t    { font-size: 10px; color: var(--gold); font-weight: 700; }
 .tt-b    { font-size: 10px; color: var(--text); }
 .tt-passive { font-size: 10px; color: #c8d1d9; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); line-height: 1.35; }
+.tt-flavor { font-size: 10px; color: #8a9bb0; font-style: italic; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); line-height: 1.4; }
 .tt-head.tt-bd { color: #7ee787; }
 .tt-bd-row  { display: flex; justify-content: space-between; gap: 4px; padding: 1px 2px; }
 .tt-bd-label { font-size: 9px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }

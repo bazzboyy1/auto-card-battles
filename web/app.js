@@ -751,6 +751,9 @@ function makeSynergyTooltip(card, bd) {
   if (card.passive && card.passive.description) {
     html += `<div class="tt-passive">${card.passive.description}</div>`;
   }
+  if (card.flavor) {
+    html += `<div class="tt-flavor">${card.flavor}</div>`;
+  }
   if (bd && bd.lines.length) {
     html += `<div class="tt-head tt-bd">score breakdown</div>`;
     for (const ln of bd.lines) {
