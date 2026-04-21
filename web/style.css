@@ -63,9 +63,9 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 /* ── HUD ── */
 #hud { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 12px; flex-shrink: 0; }
-#hud-left  { display: flex; align-items: center; gap: 10px; }
+#hud-left  { display: flex; align-items: center; gap: 10px; flex: 1; }
 #hud-center { display: flex; align-items: center; gap: 12px; }
-#hud-right { display: flex; align-items: center; gap: 10px; }
+#hud-right { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end; }
 
 #hud-round { font-weight: 700; font-size: 15px; }
 .phase-tag { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -254,7 +254,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .syn-tt-t { color: var(--text-muted); font-weight: 700; min-width: 16px; }
 .syn-tt-b { color: var(--text-muted); text-align: right; }
 
-#income-preview { font-size: 11px; padding: 2px 0; }
+#hud-sub { text-align: center; padding: 3px 16px 4px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 
 /* ── Leaderboard ── */
 #leaderboard { width: 180px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
@@ -380,6 +380,9 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 .aug-name {
   font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 6px;
+}
+.item-name {
+  font-size: 13px; font-weight: 700; color: #79c0ff; margin-bottom: 6px;
 }
 .aug-desc {
   font-size: 11px; color: var(--text-muted); line-height: 1.4;

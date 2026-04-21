@@ -281,6 +281,7 @@ function render() {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
     qs('#shop-section .area-label').textContent = 'Shop';
+    qs('#shop-section-desc').textContent = '';
     qs('#shop-cards').className = 'card-row';
     qs('#shop-controls').classList.remove('hidden');
     renderBoard();
@@ -442,8 +443,8 @@ function renderAugmentBadges() {
   if (!el) {
     el = document.createElement('div');
     el.id = 'augment-badges';
-    const incomeEl = qs('#income-preview');
-    incomeEl.parentNode.insertBefore(el, incomeEl.nextSibling);
+    const anchor = qs('#synergy-bar');
+    anchor.parentNode.insertBefore(el, anchor.nextSibling);
   }
 
   el.innerHTML = '';
@@ -561,6 +562,7 @@ function updateShopControls() {
 // ── Augment / item offer (rendered into shop-section bottom bar) ──────────────
 function renderAugmentOffer() {
   qs('#shop-section .area-label').textContent = 'Choose an Augment';
+  qs('#shop-section-desc').textContent = 'Pick one — applies to your entire exhibit for the rest of the run';
   qs('#shop-controls').classList.add('hidden');
   const el = qs('#shop-cards');
   el.className = 'augment-offer';
@@ -581,6 +583,7 @@ function renderAugmentOffer() {
 
 function renderItemOffer() {
   qs('#shop-section .area-label').textContent = 'Choose an Item';
+  qs('#shop-section-desc').textContent = 'Pick one to add to your inventory — attach it to a unit in the shop phase';
   qs('#shop-controls').classList.add('hidden');
   const el = qs('#shop-cards');
   el.className = 'augment-offer';
@@ -591,7 +594,7 @@ function renderItemOffer() {
     const card = document.createElement('div');
     card.className = 'augment-card';
     card.tabIndex = 0;
-    card.innerHTML = `<div class="aug-name">${item.name}</div><div class="aug-desc">${item.description}</div>`;
+    card.innerHTML = `<div class="item-name">${item.name}</div><div class="aug-desc">${item.description}</div>`;
     const pick = () => onPickItem(i);
     card.onclick = pick;
     card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
@@ -605,7 +608,7 @@ function renderItemBag() {
   if (!el) {
     el = document.createElement('div');
     el.id = 'item-bag';
-    const anchor = qs('#augment-badges') || qs('#income-preview');
+    const anchor = qs('#augment-badges') || qs('#synergy-bar');
     anchor.parentNode.insertBefore(el, anchor.nextSibling);
   }
 
