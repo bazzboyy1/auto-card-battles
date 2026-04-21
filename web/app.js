@@ -41,12 +41,17 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-reroll').onclick   = onReroll;
   qs('#btn-lock').onclick     = onLock;
   qs('#btn-plinth').onclick   = onAddPlinth;
+  qs('#btn-mute').onclick     = () => {
+    const m = Sound.toggleMute();
+    qs('#btn-mute').textContent = m ? '♪ off' : '♪ on';
+  };
   qs('#btn-plinth').addEventListener('mouseenter', () => clampTooltipH(qs('#btn-plinth'), 210));
   qs('#btn-sell').onclick     = onToggleSell;
 
   newGame();
 
   qs('#btn-start').onclick = () => {
+    Sound.play('roundStart');
     qs('#btn-start').disabled = true;
     qs('#loading').classList.add('hidden');
     showRulesModal();
@@ -78,6 +83,7 @@ function showRulesModal() {
   `;
   document.body.appendChild(overlay);
   overlay.querySelector('#rules-dismiss').onclick = () => {
+    Sound.play('roundStart');
     overlay.remove();
     qs('#app').classList.remove('hidden');
   };
@@ -102,6 +108,7 @@ function newGame() {
 // ── Round flow ────────────────────────────────────────────────────────────────
 
 function showAttentionToast(msg) {
+  Sound.play('augmentPing');
   const el = document.createElement('div');
   el.className = 'attention-toast';
   el.textContent = msg;
@@ -139,6 +146,7 @@ function finishRoundSetup() {
 }
 
 function onReady() {
+  Sound.play('roundStart');
   S.result = S.run.runBattle();
   S.result.opponentBoard = generateOpponentSnapshot(S.result.round, S.result.opponent);
   S.phase  = 'scoring';
@@ -182,6 +190,7 @@ function onContinue() {
 
 // Augment pick: user clicked card at index idx.
 function onPickAugment(idx) {
+  Sound.play('pickAugment');
   const chosenId = S.run.pickAugment(idx);
   if (!chosenId) return;
   if (chosenId === 'Shapeshifter') {
@@ -194,6 +203,7 @@ function onPickAugment(idx) {
 
 // Item pick: user chose card at index idx.
 function onPickItem(idx) {
+  Sound.play('pickItem');
   S.run.pickItem(idx);
   S.phase = 'shop';
   S.itemOffer = null;
@@ -220,6 +230,8 @@ function runCombinesWithEffect() {
 
 function animateRankUps(ids) {
   for (const id of ids) {
+    const card = S.human.board.allCards.find(c => c._id === id);
+    Sound.play(card && card.stars >= 3 ? 'combine3' : 'combine');
     const el = document.querySelector(`[data-card-id="${id}"]`);
     if (el) el.classList.add('throbbing');
   }
@@ -231,6 +243,7 @@ function onBuyShop(slotIdx) {
   if (S.human.board.isFull()) return;
   const card = S.human.shop.buy(slotIdx);
   if (!card) return;
+  Sound.play('buy');
   S.human.board.addCard(card);
   const upgraded = runCombinesWithEffect();
   render();
@@ -238,17 +251,19 @@ function onBuyShop(slotIdx) {
 }
 
 function onReroll() {
+  Sound.play('reroll');
   S.human.shop.reroll();
   render();
 }
 
 function onLock() {
   if (S.human.shop.locked) S.human.shop.unlock();
-  else S.human.shop.lock();
+  else { Sound.play('lockMarket'); S.human.shop.lock(); }
   render();
 }
 
 function onAddPlinth() {
+  Sound.play('plinth');
   const prevMax = S.human.board.maxActive;
   S.human.addPlinth();
   render();
@@ -261,6 +276,7 @@ function onAddPlinth() {
 }
 
 function onToggleSell() {
+  Sound.play('uiClick');
   S.sellMode = !S.sellMode;
   render();
 }
@@ -272,6 +288,7 @@ function onCardClick(cardId) {
       const idx = S.human.itemBag.indexOf(S.attachItem);
       if (idx !== -1 && attachItem(card, S.attachItem)) {
         S.human.itemBag.splice(idx, 1);
+        Sound.play('equipItem');
       }
     }
     S.attachItem = null;
@@ -280,11 +297,15 @@ function onCardClick(cardId) {
   }
   let upgraded = [];
   if (S.sellMode) {
+    Sound.play('sell');
     S.human.sell(cardId);
     S.human.runCombines();
   } else {
     if (!S.human.board.moveToActive(cardId)) {
+      Sound.play('cardBench');
       S.human.board.moveToBench(cardId);
+    } else {
+      Sound.play('cardActive');
     }
     upgraded = runCombinesWithEffect();
   }
@@ -733,6 +754,7 @@ function showShapeshifterModal() {
 function showGameOverModal() {
   const h       = S.human;
   const survived = h.hp > 0;
+  Sound.play(survived ? 'gameWin' : 'gameLoss');
   let html = `<h2>${survived ? '🏆 Run Complete' : 'Run Over'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
     survived ? 'You survived all 30 rounds.' : `Defeated at round ${S.run.round}.`
@@ -910,6 +932,7 @@ function makeCard(card, context, shopCost, bd) {
         pip.onclick = (ev) => {
           ev.stopPropagation();
           if (detachItem(card, capturedId)) {
+            Sound.play('unequipItem');
             S.human.itemBag.push(capturedId);
           }
           render();
@@ -1066,6 +1089,7 @@ function showScoringModal() {
     if (!winnerEl) return;
     winnerEl.classList.remove('hidden');
     const youWon = r.won;
+    Sound.play(youWon ? 'win' : 'loss');
     const damage = 2 + r.round;
     winnerEl.className = 'scoring-winner ' + (youWon ? 'win' : 'loss');
     winnerEl.textContent = youWon
@@ -1080,8 +1104,8 @@ function showScoringModal() {
     playerTotalEl, oppTotalEl, onDone
   );
 
-  qs('#scoring-skip').onclick     = skip;
-  qs('#scoring-continue').onclick = () => { qs('#modal').classList.remove('scoring'); onContinue(); };
+  qs('#scoring-skip').onclick     = () => { Sound.play('uiClick'); skip(); };
+  qs('#scoring-continue').onclick = () => { Sound.play('uiClick'); qs('#modal').classList.remove('scoring'); onContinue(); };
 }
 
 // Steps through player cards then opponent cards revealing scores with a
@@ -1121,6 +1145,7 @@ function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, o
       setTimeout(() => e.el.classList.remove('punching'), 280);
     }, delay);
     schedule(() => {
+      Sound.play('cardScore');
       e.el.querySelector('.sc-score').textContent = e.score;
       e.el.classList.add('scored');
       tickTotal(playerTotalEl, prev, next);
@@ -1139,6 +1164,7 @@ function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, o
       setTimeout(() => e.el.classList.remove('punching'), 280);
     }, delay);
     schedule(() => {
+      Sound.play('oppCardScore');
       e.el.querySelector('.sc-score').textContent = e.score;
       e.el.classList.add('scored');
       tickTotal(oppTotalEl, prev, next);
