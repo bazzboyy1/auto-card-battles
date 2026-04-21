@@ -1,0 +1,11 @@
+{
+  "name": "auto-card-battles",
+  "version": "0.1.0",
+  "description": "Auto Chess-inspired card scoring game",
+  "main": "run.js",
+  "scripts": {
+    "start": "node serve.js",
+    "play": "node run.js play",
+    "sim": "node run.js sim"
+  }
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Card Battles</title>
+  <link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+
+<div id="app" class="hidden">
+
+  <!-- ── Top HUD ── -->
+  <header id="hud">
+    <div id="hud-left">
+      <span id="hud-round">Round —</span>
+      <span id="hud-phase" class="phase-tag">Shop</span>
+    </div>
+    <div id="hud-center">
+      <span id="hud-hp" class="stat-hp">100 Rep</span>
+      <span id="hud-gold" class="stat-gold">0g</span>
+      <span id="hud-level">Lv 3</span>
+      <span id="hud-xp" class="stat-dim"></span>
+    </div>
+    <div id="hud-right">
+      <span id="hud-record" class="stat-dim">0W 0L</span>
+      <span id="hud-streak" class="stat-dim"></span>
+    </div>
+  </header>
+
+  <!-- ── Main layout ── -->
+  <div id="main">
+
+    <!-- Board + bench + score preview -->
+    <section id="board-section">
+      <div class="area-header">
+        <span class="area-label">Exhibits</span>
+        <span id="board-size-label" class="area-dim">0 / 3</span>
+      </div>
+      <div id="active-slots" class="card-row"></div>
+
+      <div class="area-header" style="margin-top:10px">
+        <span class="area-label">Holding Pen</span>
+        <span id="bench-size-label" class="area-dim">0 / 8</span>
+      </div>
+      <div id="bench-slots" class="card-row"></div>
+
+      <div id="synergy-bar"></div>
+      <div id="income-preview" class="stat-dim"></div>
+    </section>
+
+  </div>
+
+  <!-- ── Shop ── -->
+  <section id="shop-section">
+    <div class="area-header">
+      <span class="area-label">Shop</span>
+      <span id="shop-lock-tag" class="lock-tag hidden">🔒 Locked</span>
+    </div>
+    <div id="shop-cards" class="card-row"></div>
+    <div id="shop-controls">
+      <button id="btn-reroll">Re-roll (2g)</button>
+      <button id="btn-lock">Lock Shop</button>
+      <button id="btn-xp">Buy XP (4g)</button>
+      <button id="btn-sell" class="btn-secondary">Sell Mode</button>
+      <button id="btn-ready" class="btn-primary">⚔ Ready!</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── Modal overlay ── -->
+<div id="modal" class="hidden">
+  <div id="modal-box">
+    <div id="modal-content"></div>
+    <div id="modal-actions">
+      <button id="btn-continue" class="btn-primary">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Loading screen ── -->
+<div id="loading">
+  <div class="loading-inner">
+    <h1>Auto-Card Battles</h1>
+    <p>Loading…</p>
+  </div>
+</div>
+
+<script src="/web/loader.js"></script>
+<script src="/web/app.js"></script>
+</body>
+</html>
