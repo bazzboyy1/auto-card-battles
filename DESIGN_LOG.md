@@ -6,7 +6,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 11 complete (Battle Scoring Animation). 2026-04-20.
+**Phase:** Phase 12-B complete + polish pass (2026-04-21). Phase 13 (bug fixes) not yet started.
 
 **Theme direction (locked 2026-04-20):** Player is an exotic alien collector competing in a judged exhibition (not combat). Creatures are deliberately ugly/strange aliens, played completely straight for irony. Score = collection appraisal / exhibition ranking. Species = alien biology type. Class = dominant emotion. See `design_log/theme_redesign.md` for full mapping.
 
@@ -127,6 +127,15 @@ Class synergy values (final):
 - BUG: `_combine()` resets `roundsSinceBought` to 0 — Growth Serum and Acclimatisation Log lose all accumulated rounds on upgrade
 - UX: Augment/item pick in RHS panel goes unnoticed — need attention toast
 - DESIGN (keep): Growth Serum retroactive application on attach is intentional — high-impact moment, felt good
+
+**Polish pass (2026-04-21):**
+- Game renamed to **Exotic Alien Extravaganza** (`<title>` + splash h1)
+- Splash screen added: `Splash.png` full-bleed background, gradient overlay, pitch copy, "Enter Exhibition →" button; game initialises on load, reveals on button click
+- Pitch copy: *"The finest collectors in the universe display their specimens before the galaxy's most discerning judges. Build your exhibition. Protect your reputation. Try not to embarrass yourself."*
+- v0.12 version label added to HUD right (dim, small)
+- Flavor text added to all 20 cards (`flavor` field in `src/cards.js`); rendered italic + dimmed in tooltip below passive description (`web/app.js`, `web/style.css`)
+- Flavor text written in plural/sub-species register ("Sporviks continuously weep..." not "Sporvik weeps...")
+- Netlify fix: `Splash.png` was not committed and CSS path was wrong case (`/splash.png` → `/Splash.png`)
 
 **Next action:** Phase 13 — Fix the three bugs (score snapshot, combine roundsSinceBought, species/class layout) + attention toast for side-panel picks. See `design_log/phase_13_plan.md`.
 
