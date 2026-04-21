@@ -5,6 +5,7 @@ let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
 let Run, POLICIES, BASE_INCOME, INTEREST_PER;
 let ITEM_DEFS, attachItem, detachItem;
 let AUGMENT_DEFS;
+let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
@@ -33,12 +34,14 @@ document.addEventListener('acb-ready', () => {
   ({ ITEM_DEFS, attachItem, detachItem }           = window.ACB.items);
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
+  ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
   qs('#btn-reroll').onclick   = onReroll;
   qs('#btn-lock').onclick     = onLock;
   qs('#btn-plinth').onclick   = onAddPlinth;
+  qs('#btn-exhibit-info').addEventListener('mouseenter', () => clampTooltipH(qs('#btn-exhibit-info'), 210));
   qs('#btn-sell').onclick     = onToggleSell;
 
   newGame();
@@ -83,7 +86,6 @@ function startRound() {
     S.phase = 'augment';
     S.augmentOffer = augOffer;
     render();
-    showAttentionToast('Choose a Collector Upgrade →');
     return;
   }
   const itemOffer = S.run.pendingItem();
@@ -91,7 +93,6 @@ function startRound() {
     S.phase = 'item';
     S.itemOffer = itemOffer;
     render();
-    showAttentionToast('Item Pick Ready →');
     return;
   }
   finishRoundSetup();
@@ -258,25 +259,30 @@ function render() {
   updateHUD();
 
   if (S.phase === 'augment') {
-    qs('#shop-section').classList.add('hidden');
+    qs('#modal').classList.add('hidden');
+    qs('#shop-section').classList.remove('hidden');
     renderBoard();
     renderSynergyBar();
     renderAugmentBadges();
     renderItemBag();
-    showAugmentModal();
+    renderAugmentOffer();
   } else if (S.phase === 'shapeshifter') {
     qs('#shop-section').classList.add('hidden');
     showShapeshifterModal();
   } else if (S.phase === 'item') {
-    qs('#shop-section').classList.add('hidden');
+    qs('#modal').classList.add('hidden');
+    qs('#shop-section').classList.remove('hidden');
     renderBoard();
     renderSynergyBar();
     renderAugmentBadges();
     renderItemBag();
-    showItemModal();
+    renderItemOffer();
   } else if (S.phase === 'shop') {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
+    qs('#shop-section .area-label').textContent = 'Shop';
+    qs('#shop-cards').className = 'card-row';
+    qs('#shop-controls').classList.remove('hidden');
     renderBoard();
     renderShopOffers();
     renderSynergyBar();
@@ -312,7 +318,7 @@ function updateHUD() {
   hpEl.className   = 'stat-hp' + (h.hp <= 30 ? ' low' : h.hp <= 60 ? ' mid' : '');
 
   qs('#hud-gold').textContent  = h.gold + 'g';
-  qs('#hud-level').textContent = `Lv ${h.level}`;
+  qs('#hud-level').textContent = `Exhibit Lvl ${h.level}`;
 
   qs('#hud-record').textContent  = `${h.wins}W ${h.losses}L`;
   const streak = h.streak;
@@ -416,6 +422,7 @@ function renderSynergyBar() {
       }
       tt.innerHTML = ttHtml;
       badge.appendChild(tt);
+      badge.addEventListener('mouseenter', () => clampTooltipH(badge, 220));
 
       row.appendChild(badge);
     }
@@ -460,10 +467,7 @@ function renderAugmentBadges() {
     tt.className = 'aug-tooltip';
     tt.textContent = aug.description;
     badge.appendChild(tt);
-    badge.addEventListener('mouseenter', () => {
-      const rect = badge.getBoundingClientRect();
-      badge.classList.toggle('tooltip-left', rect.left + 240 > window.innerWidth - 8);
-    });
+    badge.addEventListener('mouseenter', () => clampTooltipH(badge, 240));
     row.appendChild(badge);
   }
   el.appendChild(row);
@@ -545,74 +549,53 @@ function updateShopControls() {
     plinthBtn.disabled    = true;
   } else {
     const pCost = S.human.plinthCost();
-    plinthBtn.textContent = `Add Plinth (${pCost}g)`;
+    plinthBtn.textContent = `Upgrade Exhibit (${pCost}g)`;
     plinthBtn.disabled    = S.human.gold < pCost;
   }
+  qs('#exhibit-info-tooltip').innerHTML = buildExhibitInfoTooltip(S.human.level);
   qs('#btn-sell').classList.toggle('active', S.sellMode);
   qs('#btn-sell').textContent    = S.sellMode ? 'Selling (click card)' : 'Sell Card';
   qs('#btn-ready').disabled      = false;
 }
 
-// ── Augment modal ─────────────────────────────────────────────────────────────
-function showAugmentModal() {
-  const offer = S.augmentOffer;
-  let html = `<h2>Choose an Augment — Round ${S.run.round + 1}</h2>`;
-  html += `<p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Pick one to keep for the rest of the run.</p>`;
-  html += `<div class="augment-offer">`;
-  for (let i = 0; i < offer.length; i++) {
-    const aug = AUGMENT_DEFS.find(a => a.id === offer[i]);
+// ── Augment / item offer (rendered into shop-section bottom bar) ──────────────
+function renderAugmentOffer() {
+  qs('#shop-section .area-label').textContent = 'Choose an Augment';
+  qs('#shop-controls').classList.add('hidden');
+  const el = qs('#shop-cards');
+  el.className = 'augment-offer';
+  el.innerHTML = '';
+  for (let i = 0; i < S.augmentOffer.length; i++) {
+    const aug = AUGMENT_DEFS.find(a => a.id === S.augmentOffer[i]);
     if (!aug) continue;
-    html += `
-      <div class="augment-card" data-aug-idx="${i}" tabindex="0">
-        <div class="aug-name">${aug.name}</div>
-        <div class="aug-desc">${aug.description}</div>
-      </div>`;
-  }
-  html += `</div>`;
-
-  qs('#modal-content').innerHTML = html;
-  qs('#modal-actions').classList.add('hidden');
-  qs('#modal').classList.add('side-panel');
-  qs('#modal').classList.remove('hidden');
-
-  // Wire click + keyboard handlers.
-  for (let i = 0; i < offer.length; i++) {
-    const el = qs(`[data-aug-idx="${i}"]`);
-    if (!el) continue;
+    const card = document.createElement('div');
+    card.className = 'augment-card';
+    card.tabIndex = 0;
+    card.innerHTML = `<div class="aug-name">${aug.name}</div><div class="aug-desc">${aug.description}</div>`;
     const pick = () => onPickAugment(i);
-    el.onclick = pick;
-    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
+    card.onclick = pick;
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
+    el.appendChild(card);
   }
 }
 
-// ── Item pick modal ───────────────────────────────────────────────────────────
-function showItemModal() {
-  const offer = S.itemOffer;
-  let html = `<h2>Choose an Item — Round ${S.run.round + 1}</h2>`;
-  html += `<p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Pick one to add to your inventory. Attach it to a unit during the shop phase.</p>`;
-  html += `<div class="augment-offer">`;
-  for (let i = 0; i < offer.length; i++) {
-    const item = ITEM_DEFS.find(it => it.id === offer[i]);
+function renderItemOffer() {
+  qs('#shop-section .area-label').textContent = 'Choose an Item';
+  qs('#shop-controls').classList.add('hidden');
+  const el = qs('#shop-cards');
+  el.className = 'augment-offer';
+  el.innerHTML = '';
+  for (let i = 0; i < S.itemOffer.length; i++) {
+    const item = ITEM_DEFS.find(it => it.id === S.itemOffer[i]);
     if (!item) continue;
-    html += `
-      <div class="augment-card" data-item-idx="${i}" tabindex="0">
-        <div class="aug-name">${item.name}</div>
-        <div class="aug-desc">${item.description}</div>
-      </div>`;
-  }
-  html += `</div>`;
-
-  qs('#modal-content').innerHTML = html;
-  qs('#modal-actions').classList.add('hidden');
-  qs('#modal').classList.add('side-panel');
-  qs('#modal').classList.remove('hidden');
-
-  for (let i = 0; i < offer.length; i++) {
-    const el = qs(`[data-item-idx="${i}"]`);
-    if (!el) continue;
+    const card = document.createElement('div');
+    card.className = 'augment-card';
+    card.tabIndex = 0;
+    card.innerHTML = `<div class="aug-name">${item.name}</div><div class="aug-desc">${item.description}</div>`;
     const pick = () => onPickItem(i);
-    el.onclick = pick;
-    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
+    card.onclick = pick;
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
+    el.appendChild(card);
   }
 }
 
@@ -645,6 +628,7 @@ function renderItemBag() {
     pill.className = 'item-bag-pill' + (isActive ? ' attaching' : '');
     pill.textContent = item.name;
     pill.appendChild(makeItemTooltip(item));
+    pill.addEventListener('mouseenter', () => clampTooltipH(pill, 200));
     const id = bag[i];
     pill.onclick = () => { S.attachItem = S.attachItem === id ? null : id; render(); };
     row.appendChild(pill);
@@ -702,7 +686,7 @@ function showGameOverModal() {
     <div><span class="area-label">Rounds survived</span> <span class="stat-big">${S.run.round}</span></div>
     <div><span class="area-label">Final Rep</span> <span class="stat-big">${h.hp}</span></div>
     <div><span class="area-label">Record</span> <span class="stat-big">${h.wins}W ${h.losses}L</span></div>
-    <div><span class="area-label">Level</span> <span class="stat-big">Lv ${h.level}</span></div>
+    <div><span class="area-label">Level</span> <span class="stat-big">Exhibit Lvl ${h.level}</span></div>
   </div>`;
 
   if (S.run.augments.length) {
@@ -740,6 +724,32 @@ function showGameOverModal() {
 }
 
 // ── Card element factory ──────────────────────────────────────────────────────
+function buildExhibitInfoTooltip(currentLevel) {
+  let html = '<div class="ei-head">Upgrade Exhibit</div>' +
+    '<div class="ei-subhead">Adds one display slot · improves shop odds</div>';
+  html += '<div class="ei-row ei-hdr"><span>Lvl</span><span>Com.</span><span>Unc.</span><span>Rare</span></div>';
+  for (let lvl = 3; lvl <= 9; lvl++) {
+    const w = LEVEL_WEIGHTS[lvl];
+    const cls = lvl === currentLevel ? ' ei-current' : '';
+    html += `<div class="ei-row${cls}">` +
+      `<span>${lvl}</span>` +
+      `<span>${Math.round(w[0] * 100)}%</span>` +
+      `<span>${Math.round(w[1] * 100)}%</span>` +
+      `<span>${Math.round(w[2] * 100)}%</span>` +
+      `</div>`;
+  }
+  return html;
+}
+
+function clampTooltipH(el, tipMaxW) {
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const half = tipMaxW / 2;
+  const snapRight = cx - half < 8;
+  el.classList.toggle('tooltip-right', snapRight);
+  el.classList.toggle('tooltip-left', !snapRight && cx + half > window.innerWidth - 8);
+}
+
 function bonusText(bonus, entityName) {
   if (!bonus) return '';
   const v = bonus.value;

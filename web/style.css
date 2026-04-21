@@ -245,6 +245,8 @@ button:disabled { opacity: 0.4; cursor: default; }
   white-space: nowrap;
 }
 .syn-badge:hover .syn-badge-tooltip { display: block; }
+.syn-badge.tooltip-left .syn-badge-tooltip { left: auto; right: 0; transform: none; }
+.syn-badge.tooltip-right .syn-badge-tooltip { left: 0; transform: none; }
 .syn-tt-head { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
 .syn-tt-row { display: flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
 .syn-tt-row.syn-tt-active .syn-tt-t { color: var(--gold); }
@@ -273,6 +275,38 @@ button:disabled { opacity: 0.4; cursor: default; }
 #shop-section .card-row { flex-wrap: nowrap; min-height: unset; }
 #shop-controls { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 #btn-ready { margin-left: auto; padding: 7px 22px; font-size: 14px; }
+
+/* ── Exhibit info (i) button ── */
+.btn-info {
+  position: relative;
+  width: 22px; height: 22px; padding: 0; flex-shrink: 0;
+  border-radius: 50%; font-size: 12px; line-height: 22px; text-align: center;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted);
+  cursor: pointer;
+}
+.btn-info:hover { border-color: var(--text-muted); color: var(--text); }
+.exhibit-info-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%; transform: translateX(-50%);
+  min-width: 200px;
+  background: #1c2128; border: 1px solid var(--border); border-radius: 7px;
+  padding: 8px 10px; font-size: 10px; color: #c8d1d9; line-height: 1.6;
+  z-index: 200; pointer-events: none; text-align: left;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6); white-space: nowrap;
+}
+.btn-info:hover .exhibit-info-tooltip { display: block; }
+.btn-info.tooltip-left .exhibit-info-tooltip { left: auto; right: 0; transform: none; }
+.btn-info.tooltip-right .exhibit-info-tooltip { left: 0; transform: none; }
+.ei-head { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 2px; }
+.ei-subhead { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+.ei-row { display: flex; gap: 10px; padding: 1px 0; }
+.ei-row span:first-child { width: 22px; color: var(--text-muted); }
+.ei-row span { flex: 1; }
+.ei-hdr span { color: var(--text-muted); font-weight: 700; }
+.ei-current { color: var(--gold); font-weight: 700; }
+.ei-current span:first-child { color: var(--gold); }
 
 /* ── Scout overlay ── */
 #scout-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 60; }
@@ -381,6 +415,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 .augment-badge:hover .aug-tooltip { display: block; }
 .augment-badge.tooltip-left .aug-tooltip { left: auto; right: 0; transform: none; }
+.augment-badge.tooltip-right .aug-tooltip { left: 0; transform: none; }
 
 /* ── Card tooltip viewport flip ── */
 .tooltip-below .card-tooltip { bottom: auto; top: calc(100% + 7px); }
@@ -433,6 +468,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 .item-tt-name { display: block; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
 .item-tt-axis { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
 .item-bag-pill:hover .item-tooltip { display: block; }
+.item-bag-pill.tooltip-left .item-tooltip { left: auto; right: 0; transform: none; }
+.item-bag-pill.tooltip-right .item-tooltip { left: 0; transform: none; }
 .item-pip.filled { position: relative; }
 .item-pip.filled:hover .item-tooltip { display: block; }
 .item-pip.filled .item-tooltip { left: 0; transform: none; bottom: calc(100% + 20px); }
