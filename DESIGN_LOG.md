@@ -6,7 +6,24 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 12-B complete + UX pass 2 (2026-04-21). Phase 13 (bug fixes) not yet started.
+**Phase:** Phase 12-B complete + UX pass 3 (2026-04-21). Phase 13 (bug fixes) not yet started.
+
+**UX pass 3 (2026-04-21):**
+- Game renamed: "Exotic Alien Extravaganza" → **Alien Exhibition** (title, browser tab, splash)
+- Splash image now bleeds through as subtle board background (88% dark overlay on body)
+- Splash/rules buttons renamed to "Play"; splash description updated to mention competing against other collectors' exhibitions
+- How to Play popup added between splash and game — 6-bullet summary, shown once per session
+- HUD tooltips: Rep, Gold, Exhibit Lvl now show explanatory tooltip on hover (drops below HUD bar)
+- Upgrade Exhibit button now hosts the tier odds tooltip directly; standalone ⓘ info button removed
+- New exhibit slot flashes yellow when Upgrade Exhibit is clicked
+- Ready button disabled (greyed) when Exhibit is empty; native tooltip explains why
+- "Effect" section header added above passive description in card tooltip
+- Scoring continue button appears immediately when judging resolves (removed 800ms delay)
+- Empty card slots more visible: brighter dashed border (#4d5566), opacity 0.65
+- "Hover specimens to see their abilities" hint in Specimen Market header
+- Area descriptions added: "Active specimens — score each round" / "Reserve bench — won't score"
+- "Exhibits" label renamed to "Exhibit" (singular) throughout UI and rules popup
+- Bug fix: `updateShopControls` and `updateHUD` used `textContent=` which destroyed child tooltip spans — fixed to save/re-append before overwriting
 
 **UX pass 2 (2026-04-21):**
 - Tooltip horizontal clamping: synergy badges, augment badges, item bag pills no longer overflow viewport edges
