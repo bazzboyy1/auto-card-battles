@@ -144,7 +144,15 @@ Class synergy values (final):
 - A4: `showAttentionToast()` added; called when entering `'augment'` or `'item'` phase — center-screen banner ("Choose a Collector Upgrade →" / "Item Pick Ready →") fades in/out over 1.5s.
 - Sim re-run post-A1+A2: greedy=73.7%, wide=71.8%, warrior-stack=66.5% (ordering preserved, within noise of ±3pp from 70.4%).
 
-**Next action:** Playtest 3 or ship to Netlify and collect more feedback.
+**Phase 14 complete (2026-04-21):** UX discoverability pass — four intuition fixes from post-deploy feedback.
+- "Buy XP" replaced with **Add Plinth**: XP accumulation removed; direct slot purchase at tiered cost (8/8/12/20/24/28g L3→L9); button label updates dynamically; tooltip "Larger exhibitions attract rarer specimens" explains pool-tier side-effect. `#hud-xp` span removed.
+- **Pip × badge**: filled item pips always show a small red × overlay (0.55 opacity), scales to full on hover — makes unequip affordance discoverable without changing the existing click-to-detach mechanic.
+- **Always-visible synergy bar**: all 10 synergy rows (5 species + 5 class) rendered from round 1 at 0.4 opacity when inactive; threshold tooltips accessible immediately via hover. Previously only rows with count > 0 appeared.
+- **Owned-copy counter on shop cards**: shows "You own ×N" on cards you already hold; shows pulsing gold "★ Upgrade! (you have 2)" banner when buying would trigger a combine. Teaches the 3-of-a-kind rule implicitly.
+- **Sell returns items**: `Player.sell()` now pushes all `card.items` back to `itemBag` before removing the card.
+- Files: `src/game.js`, `src/sim.js`, `src/diag.js`, `web/app.js`, `web/index.html`, `web/style.css`
+
+**Next action:** Playtest 3 or further feedback collection on Netlify.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
