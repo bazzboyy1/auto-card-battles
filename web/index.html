@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exotic Alien Extravaganza</title>
+  <title>Alien Exhibition</title>
   <link rel="stylesheet" href="/web/style.css">
 </head>
 <body>
@@ -17,9 +17,9 @@
       <span id="hud-phase" class="phase-tag">Market</span>
     </div>
     <div id="hud-center">
-      <span id="hud-hp" class="stat-hp">100 Rep</span>
-      <span id="hud-gold" class="stat-gold">0g</span>
-      <span id="hud-level">Lv 3</span>
+      <span id="hud-hp" class="stat-hp hud-stat-tip">100 Rep<span class="hud-tip">Your Reputation. Lose Rep when you lose a round — reach 0 and the run ends.</span></span>
+      <span id="hud-gold" class="stat-gold hud-stat-tip">0g<span class="hud-tip">Gold. Spend it on specimens, rerolls, and Exhibit upgrades. You earn income at the start of each round.</span></span>
+      <span id="hud-level" class="hud-stat-tip">Lv 3<span class="hud-tip">Exhibit Level. Higher levels unlock more display slots and improve shop odds for rarer specimens.</span></span>
     </div>
     <div id="hud-right">
       <span id="hud-record" class="stat-dim">0W 0L</span>
@@ -35,14 +35,16 @@
     <!-- Board + bench + score preview -->
     <section id="board-section">
       <div class="area-header">
-        <span class="area-label">Exhibits</span>
+        <span class="area-label">Exhibit</span>
         <span id="board-size-label" class="area-dim">0 / 3</span>
+        <span class="area-dim area-desc"> · Active specimens — score each round</span>
       </div>
       <div id="active-slots" class="card-row"></div>
 
       <div class="area-header" style="margin-top:10px">
         <span class="area-label">Holding Pen</span>
         <span id="bench-size-label" class="area-dim">0 / 8</span>
+        <span class="area-dim area-desc"> · Reserve bench — won't score</span>
       </div>
       <div id="bench-slots" class="card-row"></div>
 
@@ -62,8 +64,7 @@
     <div id="shop-controls">
       <button id="btn-reroll">Re-roll (2g)</button>
       <button id="btn-lock">Lock Market</button>
-      <button id="btn-plinth">Upgrade Exhibit (8g)</button>
-      <button id="btn-exhibit-info" class="btn-info">ⓘ<span id="exhibit-info-tooltip" class="exhibit-info-tooltip"></span></button>
+      <button id="btn-plinth">Upgrade Exhibit (8g)<span id="exhibit-info-tooltip" class="exhibit-info-tooltip"></span></button>
       <button id="btn-sell" class="btn-secondary">Sell Mode</button>
       <button id="btn-ready" class="btn-primary">⚔ Ready!</button>
     </div>
@@ -84,9 +85,9 @@
 <!-- ── Loading screen ── -->
 <div id="loading">
   <div class="loading-inner">
-    <h1>Exotic Alien Extravaganza</h1>
-    <p class="splash-pitch">The finest collectors in the universe display their specimens before the galaxy's most discerning judges. Build your exhibition. Protect your reputation. Try not to embarrass yourself.</p>
-    <button id="btn-start" class="btn-primary splash-btn">Enter Exhibition →</button>
+    <h1>Alien Exhibition</h1>
+    <p class="splash-pitch">The universe's finest collectors pit their exhibitions against each other before the galaxy's most discerning judges. Build your collection, outscore your rivals, and protect your reputation. Try not to embarrass yourself.</p>
+    <button id="btn-start" class="btn-primary splash-btn">Play</button>
   </div>
 </div>
 

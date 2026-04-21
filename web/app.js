@@ -41,16 +41,47 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-reroll').onclick   = onReroll;
   qs('#btn-lock').onclick     = onLock;
   qs('#btn-plinth').onclick   = onAddPlinth;
-  qs('#btn-exhibit-info').addEventListener('mouseenter', () => clampTooltipH(qs('#btn-exhibit-info'), 210));
+  qs('#btn-plinth').addEventListener('mouseenter', () => clampTooltipH(qs('#btn-plinth'), 210));
   qs('#btn-sell').onclick     = onToggleSell;
 
   newGame();
 
   qs('#btn-start').onclick = () => {
+    qs('#btn-start').disabled = true;
     qs('#loading').classList.add('hidden');
-    qs('#app').classList.remove('hidden');
+    showRulesModal();
   };
 });
+
+// ── Rules modal ───────────────────────────────────────────────────────────────
+function showRulesModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'rules-overlay';
+  overlay.innerHTML = `
+    <div id="rules-box">
+      <div id="rules-header">
+        <h2>How to Play</h2>
+        <p class="rules-subtitle">The galaxy's most discerning judges are watching. Don't embarrass yourself.</p>
+      </div>
+      <ul class="rules-list">
+        <li><strong>Buy</strong> specimens from the market · place them in your <strong>Exhibit</strong> · hit <strong>Ready</strong></li>
+        <li><strong>Outscore</strong> your opponent's exhibit to keep your Rep — lose Rep on defeat, hit 0 and it's over</li>
+        <li><strong>3 copies</strong> of the same specimen auto-combine into a higher ★ version</li>
+        <li>Match <strong class="c-species">Species</strong> or <strong class="c-class">Class</strong> across exhibits for synergy bonuses</li>
+        <li>Save gold to earn <strong>interest</strong> · upgrade your exhibit for more slots and rarer specimens</li>
+        <li>Every few rounds pick a permanent <strong class="c-aug">Augment</strong> or an <strong class="c-item">Item</strong> to attach to a specimen</li>
+      </ul>
+      <div class="rules-footer">
+        <button id="rules-dismiss" class="btn-primary">Play</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#rules-dismiss').onclick = () => {
+    overlay.remove();
+    qs('#app').classList.remove('hidden');
+  };
+}
 
 // ── New game ──────────────────────────────────────────────────────────────────
 function newGame() {
@@ -218,8 +249,15 @@ function onLock() {
 }
 
 function onAddPlinth() {
+  const prevMax = S.human.board.maxActive;
   S.human.addPlinth();
   render();
+  const activeEl = qs('#active-slots');
+  const newSlot = activeEl.children[prevMax];
+  if (newSlot) {
+    newSlot.classList.add('slot-flash');
+    newSlot.addEventListener('animationend', () => newSlot.classList.remove('slot-flash'), { once: true });
+  }
 }
 
 function onToggleSell() {
@@ -281,7 +319,7 @@ function render() {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
     qs('#shop-section .area-label').textContent = 'Specimen Market';
-    qs('#shop-section-desc').textContent = '';
+    qs('#shop-section-desc').textContent = 'Hover specimens to see their abilities';
     qs('#shop-cards').className = 'card-row';
     qs('#shop-controls').classList.remove('hidden');
     renderBoard();
@@ -314,12 +352,21 @@ function updateHUD() {
     : 'Battle';
   qs('#hud-phase').className   = 'phase-tag' + (!inPreRound ? ' battle' : '');
 
-  const hpEl = qs('#hud-hp');
+  const hpEl  = qs('#hud-hp');
+  const hpTip = hpEl.querySelector('.hud-tip');
   hpEl.textContent = h.hp + ' Rep';
-  hpEl.className   = 'stat-hp' + (h.hp <= 30 ? ' low' : h.hp <= 60 ? ' mid' : '');
+  hpEl.className   = 'stat-hp hud-stat-tip' + (h.hp <= 30 ? ' low' : h.hp <= 60 ? ' mid' : '');
+  if (hpTip) hpEl.appendChild(hpTip);
 
-  qs('#hud-gold').textContent  = h.gold + 'g';
-  qs('#hud-level').textContent = `Exhibit Lvl ${h.level}`;
+  const goldEl  = qs('#hud-gold');
+  const goldTip = goldEl.querySelector('.hud-tip');
+  goldEl.textContent = h.gold + 'g';
+  if (goldTip) goldEl.appendChild(goldTip);
+
+  const levelEl  = qs('#hud-level');
+  const levelTip = levelEl.querySelector('.hud-tip');
+  levelEl.textContent = `Exhibit Lvl ${h.level}`;
+  if (levelTip) levelEl.appendChild(levelTip);
 
   qs('#hud-record').textContent  = `${h.wins}W ${h.losses}L`;
   const streak = h.streak;
@@ -545,6 +592,7 @@ function updateShopControls() {
   qs('#btn-reroll').disabled     = S.human.gold < cost;
   qs('#btn-lock').textContent    = S.human.shop.locked ? 'Unlock Market' : 'Lock Market';
   const plinthBtn = qs('#btn-plinth');
+  const exhibitTip = qs('#exhibit-info-tooltip');
   if (S.human.level >= 9) {
     plinthBtn.textContent = 'Exhibit Maxed';
     plinthBtn.disabled    = true;
@@ -553,10 +601,15 @@ function updateShopControls() {
     plinthBtn.textContent = `Upgrade Exhibit (${pCost}g)`;
     plinthBtn.disabled    = S.human.gold < pCost;
   }
-  qs('#exhibit-info-tooltip').innerHTML = buildExhibitInfoTooltip(S.human.level);
+  if (exhibitTip) {
+    plinthBtn.appendChild(exhibitTip);
+    exhibitTip.innerHTML = buildExhibitInfoTooltip(S.human.level);
+  }
   qs('#btn-sell').classList.toggle('active', S.sellMode);
   qs('#btn-sell').textContent    = S.sellMode ? 'Selling (click card)' : 'Sell Card';
-  qs('#btn-ready').disabled      = false;
+  const hasExhibits = S.human.board.active.length > 0;
+  qs('#btn-ready').disabled  = !hasExhibits;
+  qs('#btn-ready').title     = hasExhibits ? '' : 'Place at least one specimen in your Exhibits first';
 }
 
 // ── Augment / item offer (rendered into shop-section bottom bar) ──────────────
@@ -790,7 +843,7 @@ function makeSynergyTooltip(card, bd) {
     }
   }
   if (card.passive && card.passive.description) {
-    html += `<div class="tt-passive">${card.passive.description}</div>`;
+    html += `<div class="tt-head" style="color:var(--text-muted)">Effect</div><div class="tt-passive">${card.passive.description}</div>`;
   }
   if (card.flavor) {
     html += `<div class="tt-flavor">${card.flavor}</div>`;
@@ -1018,7 +1071,7 @@ function showScoringModal() {
     winnerEl.textContent = youWon
       ? `Victory! Reputation held at ${r.hpAfter}.`
       : `Defeat \u2014 \u2212${damage} Rep \u2192 ${r.hpAfter} Rep`;
-    setTimeout(() => { const b = qs('#scoring-continue'); if (b) b.classList.remove('hidden'); }, 800);
+    const b = qs('#scoring-continue'); if (b) b.classList.remove('hidden');
   };
 
   const skip = animateScoringSequence(
