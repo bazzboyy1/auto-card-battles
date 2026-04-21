@@ -12,7 +12,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - Tooltip horizontal clamping: synergy badges, augment badges, item bag pills no longer overflow viewport edges
 - Augment/item pick offers moved from side-panel modal into the shop bottom bar; attention toasts removed
 - Button renamed: "Add Plinth" → "Upgrade Exhibit"; HUD level renamed "Lv N" → "Exhibit Lvl N"
-- Added ⓘ info button next to Upgrade Exhibit showing per-level Common/Uncommon/Rare shop odds table
+- Added ⓘ info button next to Upgrade Exhibit showing per-level T1/T2/T3 shop odds table (originally labelled Common/Uncommon/Rare; renamed to match card tier terminology)
 - Contextual descriptions added under "Choose an Augment" / "Choose an Item" headers
 - Item offer titles now blue (#79c0ff) to distinguish from augment gold
 - "Next income" label moved to centred sub-row beneath the top HUD header
@@ -162,6 +162,8 @@ Class synergy values (final):
 - **Owned-copy counter on shop cards**: shows "You own ×N" on cards you already hold; shows pulsing gold "★ Upgrade! (you have 2)" banner when buying would trigger a combine. Teaches the 3-of-a-kind rule implicitly.
 - **Sell returns items**: `Player.sell()` now pushes all `card.items` back to `itemBag` before removing the card.
 - Files: `src/game.js`, `src/sim.js`, `src/diag.js`, `web/app.js`, `web/index.html`, `web/style.css`
+
+**Polish (2026-04-21, post-UX-pass-2):** "Shop" renamed to "Specimen Market" throughout UI (section label, phase tag, lock button). T1/T2/T3 used in Upgrade Exhibit odds tooltip instead of Com./Unc./Rare.
 
 **Next action:** Playtest 3 or further feedback collection on Netlify.
 
