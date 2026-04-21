@@ -6,7 +6,18 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 12-B complete + polish pass (2026-04-21). Phase 13 (bug fixes) not yet started.
+**Phase:** Phase 12-B complete + UX pass 2 (2026-04-21). Phase 13 (bug fixes) not yet started.
+
+**UX pass 2 (2026-04-21):**
+- Tooltip horizontal clamping: synergy badges, augment badges, item bag pills no longer overflow viewport edges
+- Augment/item pick offers moved from side-panel modal into the shop bottom bar; attention toasts removed
+- Button renamed: "Add Plinth" → "Upgrade Exhibit"; HUD level renamed "Lv N" → "Exhibit Lvl N"
+- Added ⓘ info button next to Upgrade Exhibit showing per-level Common/Uncommon/Rare shop odds table
+- Contextual descriptions added under "Choose an Augment" / "Choose an Item" headers
+- Item offer titles now blue (#79c0ff) to distinguish from augment gold
+- "Next income" label moved to centred sub-row beneath the top HUD header
+- HUD left/right given flex:1 so Rep/Gold/Exhibit Lvl is truly centred
+- Version bumped to v0.15
 
 **Theme direction (locked 2026-04-20):** Player is an exotic alien collector competing in a judged exhibition (not combat). Creatures are deliberately ugly/strange aliens, played completely straight for irony. Score = collection appraisal / exhibition ranking. Species = alien biology type. Class = dominant emotion. See `design_log/theme_redesign.md` for full mapping.
 
