@@ -280,7 +280,7 @@ function render() {
   } else if (S.phase === 'shop') {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
-    qs('#shop-section .area-label').textContent = 'Shop';
+    qs('#shop-section .area-label').textContent = 'Specimen Market';
     qs('#shop-section-desc').textContent = '';
     qs('#shop-cards').className = 'card-row';
     qs('#shop-controls').classList.remove('hidden');
@@ -307,7 +307,7 @@ function updateHUD() {
   const inPreRound = ['augment', 'shapeshifter', 'item', 'shop'].includes(S.phase);
   const round = S.run.round + (inPreRound ? 1 : 0);
   qs('#hud-round').textContent = `Round ${round} / 30`;
-  qs('#hud-phase').textContent = S.phase === 'shop' ? 'Shop'
+  qs('#hud-phase').textContent = S.phase === 'shop' ? 'Market'
     : S.phase === 'augment' || S.phase === 'shapeshifter' ? 'Augment'
     : S.phase === 'item' ? 'Item Pick'
     : S.phase === 'scoring' ? 'Judging'
@@ -543,7 +543,7 @@ function updateShopControls() {
   const cost = S.human.shop.rerollCost ? S.human.shop.rerollCost() : 2;
   qs('#btn-reroll').textContent  = `Re-roll (${cost}g)`;
   qs('#btn-reroll').disabled     = S.human.gold < cost;
-  qs('#btn-lock').textContent    = S.human.shop.locked ? 'Unlock Shop' : 'Lock Shop';
+  qs('#btn-lock').textContent    = S.human.shop.locked ? 'Unlock Market' : 'Lock Market';
   const plinthBtn = qs('#btn-plinth');
   if (S.human.level >= 9) {
     plinthBtn.textContent = 'Exhibit Maxed';
@@ -730,7 +730,7 @@ function showGameOverModal() {
 function buildExhibitInfoTooltip(currentLevel) {
   let html = '<div class="ei-head">Upgrade Exhibit</div>' +
     '<div class="ei-subhead">Adds one display slot · improves shop odds</div>';
-  html += '<div class="ei-row ei-hdr"><span>Lvl</span><span>Com.</span><span>Unc.</span><span>Rare</span></div>';
+  html += '<div class="ei-row ei-hdr"><span>Lvl</span><span>T1</span><span>T2</span><span>T3</span></div>';
   for (let lvl = 3; lvl <= 9; lvl++) {
     const w = LEVEL_WEIGHTS[lvl];
     const cls = lvl === currentLevel ? ' ei-current' : '';
