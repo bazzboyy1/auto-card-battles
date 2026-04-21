@@ -299,10 +299,10 @@ function greedyCore(player, round, bias) {
   const saveGap        = hasTycoon ? 3 : 2;
   const saveForInterest = player.gold >= saveMinGold && gapToThreshold <= saveGap;
 
-  // XP investment: cap at level 7 (tier-3 unlock). Skip if saving for interest.
+  // Plinth investment: cap at level 7 (tier-3 unlock). Skip if saving for interest.
   if (!saveForInterest) {
-    while (player.gold >= 12 && player.level < 7) {
-      if (!player.buyXP()) break;
+    while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
+      if (!player.addPlinth()) break;
     }
   }
 
@@ -360,8 +360,8 @@ function widePolicy(player, round = 1) {
 
 // Random: buys random affordable cards without strategy. Kept as control baseline.
 function randomPolicy(player, _round = 1) {
-  while (player.gold >= 12 && player.level < 7) {
-    if (!player.buyXP()) break;
+  while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
+    if (!player.addPlinth()) break;
   }
 
   for (let i = 0; i < player.shop.offers.length; i++) {

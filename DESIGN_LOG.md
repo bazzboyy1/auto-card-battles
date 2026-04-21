@@ -137,7 +137,14 @@ Class synergy values (final):
 - Flavor text written in plural/sub-species register ("Sporviks continuously weep..." not "Sporvik weeps...")
 - Netlify fix: `Splash.png` was not committed and CSS path was wrong case (`/splash.png` → `/Splash.png`)
 
-**Next action:** Phase 13 — Fix the three bugs (score snapshot, combine roundsSinceBought, species/class layout) + attention toast for side-panel picks. See `design_log/phase_13_plan.md`.
+**Phase 13 complete (2026-04-21):** Post-deploy bug fixes.
+- A1: `runBattle()` now calls `calcScoreBreakdown(ctx)` before the `roundsSinceBought` tick and stores it as `scoreBreakdown` in the result entry. `showScoringModal()` uses the stored snapshot — animation scores now match card-face scores exactly.
+- A2: `_combine()` captures `Math.max(...source.roundsSinceBought)` before splicing source cards and assigns it to the upgraded card — Growth Serum and Acclimatisation Log no longer lose accumulated rounds on upgrade.
+- A3: `.card-labels` switched from `flex-wrap: wrap` row to `flex-direction: column` — species and class badges always stack vertically, no crowding even for longest names.
+- A4: `showAttentionToast()` added; called when entering `'augment'` or `'item'` phase — center-screen banner ("Choose a Collector Upgrade →" / "Item Pick Ready →") fades in/out over 1.5s.
+- Sim re-run post-A1+A2: greedy=73.7%, wide=71.8%, warrior-stack=66.5% (ordering preserved, within noise of ±3pp from 70.4%).
+
+**Next action:** Playtest 3 or ship to Netlify and collect more feedback.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)

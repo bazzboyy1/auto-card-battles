@@ -38,7 +38,7 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-continue').onclick = onContinue;
   qs('#btn-reroll').onclick   = onReroll;
   qs('#btn-lock').onclick     = onLock;
-  qs('#btn-xp').onclick       = onBuyXP;
+  qs('#btn-plinth').onclick   = onAddPlinth;
   qs('#btn-sell').onclick     = onToggleSell;
 
   newGame();
@@ -67,6 +67,14 @@ function newGame() {
 
 // ── Round flow ────────────────────────────────────────────────────────────────
 
+function showAttentionToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'attention-toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
 // Check for pending picks before income + shop. Both augment and item picks
 // happen BEFORE earnIncome so Tycoon/Midas effects apply this round.
 function startRound() {
@@ -75,6 +83,7 @@ function startRound() {
     S.phase = 'augment';
     S.augmentOffer = augOffer;
     render();
+    showAttentionToast('Choose a Collector Upgrade →');
     return;
   }
   const itemOffer = S.run.pendingItem();
@@ -82,6 +91,7 @@ function startRound() {
     S.phase = 'item';
     S.itemOffer = itemOffer;
     render();
+    showAttentionToast('Item Pick Ready →');
     return;
   }
   finishRoundSetup();
@@ -206,8 +216,8 @@ function onLock() {
   render();
 }
 
-function onBuyXP() {
-  S.human.buyXP();
+function onAddPlinth() {
+  S.human.addPlinth();
   render();
 }
 
@@ -303,8 +313,6 @@ function updateHUD() {
 
   qs('#hud-gold').textContent  = h.gold + 'g';
   qs('#hud-level').textContent = `Lv ${h.level}`;
-  const xpNeeded = h.xpToNextLevel ? h.xpToNextLevel() : 0;
-  qs('#hud-xp').textContent    = h.level < 9 ? `(${xpNeeded} XP to Lv${h.level + 1})` : '(Max level)';
 
   qs('#hud-record').textContent  = `${h.wins}W ${h.losses}L`;
   const streak = h.streak;
@@ -346,6 +354,7 @@ function renderShopOffers() {
   const shopEl = qs('#shop-cards');
   shopEl.innerHTML = '';
   const offers = S.human.shop.offers;
+  const owned = S.human.board.allCards;
   for (let i = 0; i < 5; i++) {
     const name = offers[i];
     if (!name) { shopEl.appendChild(makeEmptySlot()); continue; }
@@ -354,6 +363,17 @@ function renderShopOffers() {
     const cost = CARD_COSTS[def.tier];
     const el   = makeCard({ ...def, stars: 1, _id: -1 }, 'shop', cost);
     if (S.human.gold < cost || S.human.board.isFull()) el.classList.add('unaffordable');
+
+    // Owned-copy counter: teaches the "3-of-a-kind upgrades" rule implicitly.
+    const ownedCopies = owned.filter(c => c.name === name && c.stars === 1).length;
+    if (ownedCopies > 0) {
+      const badge = document.createElement('div');
+      const willUpgrade = ownedCopies >= 2;
+      badge.className = 'own-counter' + (willUpgrade ? ' will-upgrade' : '');
+      badge.textContent = willUpgrade ? `★ Upgrade! (you have ${ownedCopies})` : `You own ×${ownedCopies}`;
+      el.appendChild(badge);
+    }
+
     el.onclick = () => onBuyShop(i);
     shopEl.appendChild(el);
   }
@@ -368,14 +388,17 @@ function renderSynergyBar() {
     const isClass = rowClass === 'syn-row-class';
     const row = document.createElement('div');
     row.className = `syn-row ${rowClass}`;
-    let any = false;
-    for (const [key, count] of Object.entries(counts)) {
+    for (const key of Object.keys(synMap)) {
       const syn = synMap[key];
-      if (!syn) continue;
+      const count = counts[key] || 0;
       const bonus = syn.getBonus(count);
       const nextT = syn.thresholds.find(t => t > count);
       const badge = document.createElement('span');
-      badge.className = 'syn-badge' + (bonus ? ' active' : '') + (isClass ? ' class-syn' : '');
+      const inactive = count === 0;
+      badge.className = 'syn-badge'
+        + (bonus ? ' active' : '')
+        + (isClass ? ' class-syn' : '')
+        + (inactive ? ' inactive' : '');
       const glyph = isClass ? (CLASS_GLYPHS[key] || '') : '';
       let text = `${glyph}${key} ${count}`;
       if (bonus) text += ' ✓';
@@ -395,18 +418,15 @@ function renderSynergyBar() {
       badge.appendChild(tt);
 
       row.appendChild(badge);
-      any = true;
     }
-    return any ? row : null;
+    return row;
   }
 
   const { counts: specCounts } = effectiveSpeciesCounts(S.human.board, { augments: S.run.augments, player: S.human });
-  const specRow = makeBadges(specCounts, SYNERGIES, 'syn-row-species');
-  if (specRow) bar.appendChild(specRow);
+  bar.appendChild(makeBadges(specCounts, SYNERGIES, 'syn-row-species'));
 
   const { counts: clsCounts } = effectiveClassCounts(S.human.board);
-  const clsRow = makeBadges(clsCounts, CLASS_SYNERGIES, 'syn-row-class');
-  if (clsRow) bar.appendChild(clsRow);
+  bar.appendChild(makeBadges(clsCounts, CLASS_SYNERGIES, 'syn-row-class'));
 }
 
 // Augment badge panel — inserted after income-preview; shows picked augments.
@@ -519,7 +539,15 @@ function updateShopControls() {
   qs('#btn-reroll').textContent  = `Re-roll (${cost}g)`;
   qs('#btn-reroll').disabled     = S.human.gold < cost;
   qs('#btn-lock').textContent    = S.human.shop.locked ? 'Unlock Shop' : 'Lock Shop';
-  qs('#btn-xp').disabled         = S.human.gold < 4 || S.human.level >= 9;
+  const plinthBtn = qs('#btn-plinth');
+  if (S.human.level >= 9) {
+    plinthBtn.textContent = 'Exhibit Maxed';
+    plinthBtn.disabled    = true;
+  } else {
+    const pCost = S.human.plinthCost();
+    plinthBtn.textContent = `Add Plinth (${pCost}g)`;
+    plinthBtn.disabled    = S.human.gold < pCost;
+  }
   qs('#btn-sell').classList.toggle('active', S.sellMode);
   qs('#btn-sell').textContent    = S.sellMode ? 'Selling (click card)' : 'Sell Card';
   qs('#btn-ready').disabled      = false;
@@ -916,9 +944,9 @@ function makeScoringCard(card) {
 function showScoringModal() {
   const r = S.result;
 
-  // Per-card breakdown without player arg (avoids RNG side-effects post-battle).
-  // Scores proportionally adjusted so running total sums to r.playerScore.
-  const breakdown = S.human.board.calcScoreBreakdown({ round: r.round, augments: S.run.augments });
+  // Use the snapshot captured in runBattle() before roundsSinceBought was ticked,
+  // so animation scores match the card-face scores shown during the shop phase.
+  const breakdown = r.scoreBreakdown;
   const playerWeights = breakdown.perCard.map(e => Math.max(1, e.final));
   const playerEntries = allocateByWeight(breakdown.perCard.map(e => e.card), playerWeights, r.playerScore);
   const opponentEntries = calcOpponentPerCardScores(r.opponentBoard, r.opponentScore);

@@ -35,10 +35,11 @@ function diagGame(seed = 1, policyName = 'greedy') {
     orig();
   };
 
-  const origBuyXP = p.buyXP.bind(p);
-  p.buyXP = function () {
-    const result = origBuyXP();
-    if (result) stats.goldSpentXP += 4;
+  const origAddPlinth = p.addPlinth.bind(p);
+  p.addPlinth = function () {
+    const before = p.gold;
+    const result = origAddPlinth();
+    if (result) stats.goldSpentXP += (before - p.gold);
     return result;
   };
 

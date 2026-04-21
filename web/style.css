@@ -37,6 +37,20 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .hidden { display: none !important; }
 
+.attention-toast {
+  position: fixed; top: 38%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(20,20,30,0.95); border: 1px solid var(--primary);
+  color: #fff; font-size: 15px; font-weight: 600; padding: 14px 28px;
+  border-radius: 8px; pointer-events: none; z-index: 9999;
+  animation: toast-fade 2.5s ease forwards;
+}
+@keyframes toast-fade {
+  0%   { opacity: 0; transform: translate(-50%, -60%); }
+  20%  { opacity: 1; transform: translate(-50%, -50%); }
+  70%  { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%); }
+}
+
 /* ── Loading ── */
 #loading { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; background: var(--bg) url('/Splash.png') center/cover no-repeat; z-index: 100; }
 .loading-inner { text-align: center; background: linear-gradient(transparent, rgba(0,0,0,0.9) 25%); width: 100%; padding: 5rem 2rem 2.5rem; }
@@ -110,12 +124,32 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .card-stars  { font-size: 10px; letter-spacing: -1px; color: var(--gold); min-height: 12px; }
 .card-name   { font-size: 11px; font-weight: 700; line-height: 1.2; flex: 1; }
-.card-labels { display: flex; gap: 3px; flex-wrap: wrap; min-height: 26px; align-content: flex-start; }
+.card-labels { display: flex; flex-direction: column; gap: 2px; min-height: 26px; }
 .card-species { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8; }
 .card-class   { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.65; background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 3px; gap: 2px; }
 .card-score  { font-size: 14px; font-weight: 800; text-align: right; }
 .card-tier   { font-size: 9px; opacity: 0.6; text-align: right; }
 .card-cost  { position: absolute; top: 4px; right: 4px; font-size: 11px; font-weight: 700; color: var(--gold); background: rgba(0,0,0,0.5); border-radius: 3px; padding: 0 3px; }
+
+/* Shop card owned-copy counter — teaches 3-of-a-kind upgrade rule */
+.own-counter {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  font-size: 10px; font-weight: 600; text-align: center;
+  padding: 2px 3px;
+  background: rgba(0,0,0,0.75);
+  color: #c9d1d9;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.own-counter.will-upgrade {
+  background: linear-gradient(180deg, #b08800 0%, #8a6a00 100%);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.4);
+  animation: upgrade-pulse 1.4s ease-in-out infinite;
+}
+@keyframes upgrade-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,185,30,0.6); }
+  50%      { box-shadow: 0 0 10px 2px rgba(240,185,30,0.9); }
+}
 .card-sell-val { font-size: 9px; color: var(--hp-low); text-align: center; margin-top: 2px; }
 .card.unaffordable { opacity: 0.45; }
 .card.synergy-active { box-shadow: 0 0 0 2px rgba(255,200,50,0.6); }
@@ -193,6 +227,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 /* Class synergy badges — blue tint to distinguish from species badges */
 .syn-badge.class-syn { border-color: #1f3a5c; background: #0d1f2d; color: #6b9bc8; }
 .syn-badge.class-syn.active { color: #79c0ff; border-color: #388bfd; background: #0d2542; }
+.syn-badge.inactive { opacity: 0.4; }
+.syn-badge.inactive:hover { opacity: 1; }
 
 /* Syn-badge hover tooltip */
 .syn-badge { position: relative; cursor: default; }
@@ -366,6 +402,20 @@ button:disabled { opacity: 0.4; cursor: default; }
 /* ── Item pip detach ── */
 .item-pip.detachable { cursor: pointer; }
 .item-pip.detachable:hover { background: var(--danger); border-color: var(--danger); }
+.item-pip.detachable::after {
+  content: "×";
+  position: absolute;
+  top: -5px; right: -5px;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: #d73a49; color: #fff;
+  font-size: 10px; line-height: 11px; text-align: center; font-weight: bold;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  opacity: 0.55;
+  transition: opacity 0.12s, transform 0.12s;
+  pointer-events: none;
+}
+.item-pip.detachable:hover::after { opacity: 1; transform: scale(1.15); }
 
 /* ── Item tooltip (shared: bag pills + equipped pips) ── */
 .item-tooltip {

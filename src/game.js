@@ -14,14 +14,13 @@ const STARTING_SLOTS = 3;
 const BASE_INCOME  = 5;
 const MAX_INTEREST = 5;
 const INTEREST_PER = 5;
-const BUY_XP_COST  = 4;
 const MAX_LEVEL    = 9;
 const ROUND_CAP    = 30;
 const MAX_BOARD    = 10; // Overflow cap
 
-// Cumulative XP needed to reach level index. Curve reused from before;
-// per spec the meaningful edge is now L3 → L4 = 6 XP.
-const LEVEL_XP = [0, 0, 2, 6, 12, 20, 32, 50, 74, 100];
+// Gold cost to add a plinth (go from level L → L+1). Preserves the effective
+// cost of the old XP curve (LEVEL_XP + 4g/click) so economy pacing is unchanged.
+const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20, 7: 24, 8: 28 };
 
 class Player {
   constructor(id, name, rng) {
@@ -29,7 +28,6 @@ class Player {
     this.name      = name;
     this.hp        = STARTING_HP;
     this.gold      = STARTING_GOLD;
-    this.xp        = LEVEL_XP[STARTING_LEVEL];
     this.level     = STARTING_LEVEL;
     this.streak    = 0;
     this.wins      = 0;
@@ -76,21 +74,18 @@ class Player {
     return 0;
   }
 
-  buyXP() {
+  addPlinth() {
     if (this.level >= MAX_LEVEL) return false;
-    if (this.gold < BUY_XP_COST) return false;
-    this.gold -= BUY_XP_COST;
-    this.xp += 4;
-    while (this.level < MAX_LEVEL && this.xp >= LEVEL_XP[this.level + 1]) {
-      this.level++;
-      this.board.maxActive = this.level;
-    }
+    const cost = PLINTH_COST[this.level];
+    if (this.gold < cost) return false;
+    this.gold -= cost;
+    this.level++;
+    this.board.maxActive = this.level;
     return true;
   }
 
-  xpToNextLevel() {
-    if (this.level >= MAX_LEVEL) return 0;
-    return LEVEL_XP[this.level + 1] - this.xp;
+  plinthCost() {
+    return this.level >= MAX_LEVEL ? 0 : PLINTH_COST[this.level];
   }
 
   applyResult(won, round) {
@@ -133,17 +128,20 @@ class Player {
     const transferred = [];
     let removed = 0;
     let shapeshifterSpecies = null;
+    let maxRounds = 0;
     for (const src of [this.board.active, this.board.bench]) {
       for (let i = src.length - 1; i >= 0 && removed < 3; i--) {
         if (src[i].name === name && src[i].stars === stars) {
           const [c] = src.splice(i, 1);
           if (c.items) for (const e of c.items) transferred.push(e.id);
           if (c.shapeshifterSpecies) shapeshifterSpecies = c.shapeshifterSpecies;
+          if ((c.roundsSinceBought || 0) > maxRounds) maxRounds = c.roundsSinceBought || 0;
           removed++;
         }
       }
     }
     const upgraded = createCard(name, stars + 1);
+    upgraded.roundsSinceBought = maxRounds;
     if (shapeshifterSpecies) upgraded.shapeshifterSpecies = shapeshifterSpecies;
     this.board.addCard(upgraded);
     for (const itemId of transferred.slice(0, 3)) attachItem(upgraded, itemId);
@@ -152,6 +150,7 @@ class Player {
   sell(id) {
     const card = this.board.removeById(id);
     if (!card) return 0;
+    for (const item of (card.items || [])) this.itemBag.push(item.id);
     let value = Math.round(CARD_COSTS[card.tier] * Math.pow(3, card.stars - 1));
     if (card.passive && typeof card.passive.eval === 'function') {
       const r = card.passive.eval(card, {
@@ -271,10 +270,11 @@ class Run {
       player:   this.player,
       augments: this.augments,
     };
-    const opp           = generateOpponent(this.round, this.rng);
-    const playerScore   = this.player.board.calcScore(ctx);
-    const opponentScore = opp.calcScore();
-    const playerWon     = playerScore >= opponentScore;
+    const opp              = generateOpponent(this.round, this.rng);
+    const scoreBreakdown   = this.player.board.calcScoreBreakdown(ctx);
+    const playerScore      = scoreBreakdown.total;
+    const opponentScore    = opp.calcScore();
+    const playerWon        = playerScore >= opponentScore;
     this.player.applyResult(playerWon, this.round);
 
     // Post-battle passive upkeep:
@@ -306,6 +306,7 @@ class Run {
       opponentScore,
       won: playerWon,
       hpAfter: this.player.hp,
+      scoreBreakdown,
     };
     this.opponentHistory.push(entry);
     return entry;
@@ -324,5 +325,5 @@ class Run {
 module.exports = {
   Player, Run,
   STARTING_HP, STARTING_GOLD, STARTING_LEVEL, STARTING_SLOTS,
-  MAX_LEVEL, LEVEL_XP, BUY_XP_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP,
+  MAX_LEVEL, PLINTH_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP,
 };
