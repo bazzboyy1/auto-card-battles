@@ -33,15 +33,15 @@
   }
 
   try {
-    const utils     = await req('/src/utils.js');
-    const cards     = await req('/src/cards.js');
-    const augments  = await req('/src/augments.js');
-    const items     = await req('/src/items.js');
-    const board     = await req('/src/board.js');
-    const shop      = await req('/src/shop.js');
-    const opponents = await req('/src/opponents.js');
-    const game      = await req('/src/game.js');
-    const sim       = await req('/src/sim.js');
+    const utils     = await req('../src/utils.js');
+    const cards     = await req('../src/cards.js');
+    const augments  = await req('../src/augments.js');
+    const items     = await req('../src/items.js');
+    const board     = await req('../src/board.js');
+    const shop      = await req('../src/shop.js');
+    const opponents = await req('../src/opponents.js');
+    const game      = await req('../src/game.js');
+    const sim       = await req('../src/sim.js');
 
     window.ACB = { utils, cards, augments, items, board, shop, opponents, game, sim };
     document.dispatchEvent(new CustomEvent('acb-ready'));
