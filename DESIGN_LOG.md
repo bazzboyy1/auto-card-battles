@@ -6,7 +6,14 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 12-B complete + UX pass 3 (2026-04-21). Phase 13 (bug fixes) not yet started.
+**Phase:** GitHub Pages deployment complete (2026-04-22). Phase 13 bugs cleared. Ready for Playtest 3 or next design pass.
+
+**GitHub Pages deployment (2026-04-22):**
+- Deployed to https://bazzboyy1.github.io/auto-card-battles/ (alongside existing Netlify deploy)
+- Root `index.html` redirect added (`meta refresh → web/index.html`) — Pages can't deploy from a subfolder
+- Fixed all absolute paths that broke under Pages subdirectory: `web/index.html` asset hrefs, `web/loader.js` src paths, `web/style.css` Splash.png references (all changed from `/…` to relative `../…` or `./…`)
+- Bug fix: skip() in judging panel showed wrong totals — stale `requestAnimationFrame` callback fired after skip() set the correct value and overwrote it; fixed by tracking rAF handles in `rafs[]` and calling `rafs.forEach(cancelAnimationFrame)` in skip()
+- Augment tooltip descriptions cleaned: "Axis N" parentheticals removed from four augment descriptions (Conditioning Protocol, Rapid Development, Early Bloomer, Market Savant)
 
 **UX pass 3 (2026-04-21):**
 - Game renamed: "Exotic Alien Extravaganza" → **Alien Exhibition** (title, browser tab, splash)
@@ -182,7 +189,7 @@ Class synergy values (final):
 
 **Polish (2026-04-21, post-UX-pass-2):** "Shop" renamed to "Specimen Market" throughout UI (section label, phase tag, lock button). T1/T2/T3 used in Upgrade Exhibit odds tooltip instead of Com./Unc./Rare.
 
-**Next action:** Playtest 3 or further feedback collection on Netlify.
+**Next action:** Playtest 3 — collect feedback from https://bazzboyy1.github.io/auto-card-battles/ or Netlify.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
