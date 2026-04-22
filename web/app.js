@@ -1111,7 +1111,7 @@ function showScoringModal() {
 // Steps through player cards then opponent cards revealing scores with a
 // CSS punch animation. Returns a skip() fn that snaps straight to final state.
 function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, oppTotalEl, onDone) {
-  const timeouts = [];
+  const timeouts = [], rafs = [];
   let done = false;
 
   function schedule(fn, delay) {
@@ -1125,7 +1125,7 @@ function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, o
       if (done) { el.textContent = to; return; }
       const t = Math.min(1, (now - start) / duration);
       el.textContent = Math.round(from + (to - from) * t);
-      if (t < 1) requestAnimationFrame(frame);
+      if (t < 1) rafs.push(requestAnimationFrame(frame));
     })(performance.now());
   }
 
@@ -1178,6 +1178,7 @@ function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, o
   return function skip() {
     done = true;
     timeouts.forEach(clearTimeout);
+    rafs.forEach(cancelAnimationFrame);
     for (const e of playerEntries) {
       e.el.querySelector('.sc-score').textContent = e.score;
       e.el.classList.add('scored');
