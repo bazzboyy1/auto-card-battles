@@ -31,7 +31,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'IronWill', name: 'Conditioning Protocol',
-    description: 'Conditional (Axis 2) passives doubled. Caps Stimulant Pod — one doubling total.',
+    description: 'Conditional passives doubled. Caps Stimulant Pod — one doubling total.',
     axis: 2,
   },
   {
@@ -41,7 +41,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'ExponentialGrowth', name: 'Rapid Development',
-    description: 'Multiplicative (Axis 4) passives add +0.25 to their multiplier',
+    description: 'Multiplicative passives add +0.25 to their multiplier',
     axis: 4,
   },
   {
@@ -51,12 +51,12 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'EarlyBird', name: 'Early Bloomer',
-    description: 'Round-timing (Axis 6) passives activate 3 rounds earlier. Caps Bloom Stimulant (+3 total, not +5).',
+    description: 'Round-timing passives activate 3 rounds earlier. Caps Bloom Stimulant (+3 total, not +5).',
     axis: 6,
   },
   {
     id: 'MidasTouch', name: 'Market Savant',
-    description: 'Meta-effect (Axis 7) passives doubled; reroll cost −1g',
+    description: 'Meta-effect passives doubled; reroll cost −1g',
     axis: 7,
   },
   {
