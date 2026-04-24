@@ -1,6 +1,7 @@
 'use strict';
 
 const { runGame, batchSim } = require('./src/sim');
+const { sweep, sweepBuilds, analysePolicy, topSeeds, formatSweep } = require('./src/balance');
 const { pad } = require('./src/utils');
 
 const rawArgs = process.argv.slice(2);
@@ -99,11 +100,39 @@ if (cmd === 'play') {
   if (at100 > 0) console.log(`  100    HP: ${pad(at100, 3)} runs  (${(at100 / n * 100).toFixed(1)}%)`);
   console.log();
 
+} else if (cmd === 'balance') {
+  // node run.js balance [n] [seed]  — sweep all policies + targeted builds
+  const n    = parseInt(args[1]) || 300;
+  const seed = parseInt(args[2]) || 1;
+  console.log(`\n=== Balance sweep — n=${n}/policy  seedStart=${seed} ===\n`);
+
+  const policyAnalyses = sweep(n, null, seed);
+  const buildAnalyses  = sweepBuilds(n, seed);
+
+  console.log('── Policies (no forced grants/picks) ──');
+  console.log(formatSweep(policyAnalyses));
+  console.log();
+  console.log('── Targeted builds (forced grants + augment picks) ──');
+  console.log(formatSweep(buildAnalyses));
+  console.log();
+
+  // Show top-3 peak seeds per analysis to help trace dominant builds.
+  for (const a of [...policyAnalyses, ...buildAnalyses]) {
+    const top = topSeeds(a, 3);
+    console.log(`${a.policy}: top 3 peak seeds  →  ` +
+      top.map(t => `${t.seed}:${t.peakScore}`).join('  '));
+  }
+  console.log();
+
 } else {
   console.log('Usage:');
-  console.log('  node run.js play [seed] [policy] [--grant "Card:Item,..."] [--pick "R:AugId,..."]');
-  console.log('  node run.js sim  [n] [policy] [seed]');
-  console.log('  policies: greedy | random | warrior-stack | demon-arc | wide');
+  console.log('  node run.js play    [seed] [policy] [--grant "Card:Item,..."] [--pick "R:AugId,..."]');
+  console.log('  node run.js sim     [n] [policy] [seed]');
+  console.log('  node run.js balance [n] [seed]           — sweep all policies + targeted builds');
+  console.log('  policies: greedy | random | wide');
+  console.log('            plasmic-stack | sporal-stack | chitinous-stack | crystalline-stack | abyssal-stack');
+  console.log('            shy-stack | livid-stack | giddy-stack | sullen-stack | pompous-stack');
+  console.log('            abyssal-sporal');
   console.log('');
   console.log('--pick format: "3:IronWill,7:Overflow,12:Shapeshifter:Viper:Warrior"');
   console.log('  Shapeshifter: append :CardName:Species for sub-pick');

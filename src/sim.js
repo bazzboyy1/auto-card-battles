@@ -243,11 +243,17 @@ function scoreBuyCandidate(def, player, round, bias) {
   if (augments.includes('HeroicResolve')) score += 3;         // every unit gains +25 base; quantity matters
   if (augments.includes('HiveMind'))      score += sameSpecies * 5; // bench synergy amplifies species matching
 
-  // Strategy bias: plasmic-stack → Plasmic species + Axis-2; abyssal-arc → Abyssal + Axis-4.
-  // wide → bonus for new species, penalty for over-stacking one species.
+  // Strategy bias:
+  //   species     — single-species stacking
+  //   axis        — prefer passives of a given axis (combines with species)
+  //   cls         — single-class stacking (spans 3–4 species naturally)
+  //   mixSpecies  — two-or-more-species commit (prefers any listed species)
+  //   wide        — bonus for new species, penalty for over-stacking one species
   if (bias) {
     if (bias.species && def.species === bias.species)                        score += 20;
     if (bias.axis    && def.passive && def.passive.axis === bias.axis)       score += 15;
+    if (bias.cls     && def.class   === bias.cls)                            score += 20;
+    if (bias.mixSpecies && bias.mixSpecies.includes(def.species))            score += 18;
     if (bias.wide) {
       const uniqueSpecies = new Set(player.board.allCards.map(c => c.species));
       if (!uniqueSpecies.has(def.species)) score += 18;
@@ -340,23 +346,33 @@ function greedyPolicy(player, round = 1) {
   greedyCore(player, round, null);
 }
 
-// Plasmic Stack: prioritises Plasmic species and Axis-2 conditional passives.
-// IronWill / HeroicResolve are preferred at augment picks via _augmentBias.
-function warriorStackPolicy(player, round = 1) {
-  greedyCore(player, round, { species: 'Plasmic', axis: 2 });
-}
-
-// Abyssal Arc: prioritises Abyssal species and Axis-4 multiplicative passives.
-// ExponentialGrowth / EarlyBird / Overflow are preferred at augment picks.
-function demonArcPolicy(player, round = 1) {
-  greedyCore(player, round, { species: 'Abyssal', axis: 4 });
-}
-
 // Wide: prefers cards that add new species over copies of existing ones.
 // Benefits from Varietal and Cross-Training augments.
 function widePolicy(player, round = 1) {
   greedyCore(player, round, { wide: true });
 }
+
+// Species-commitment policies: prioritise one species without axis bias so the
+// heuristic picks whichever axis the species's heroes actually use. Used by the
+// balance harness to measure per-species ceilings.
+function plasmicStackPolicy(player, round = 1)     { greedyCore(player, round, { species: 'Plasmic' }); }
+function sporalStackPolicy(player, round = 1)      { greedyCore(player, round, { species: 'Sporal' }); }
+function chitinousStackPolicy(player, round = 1)   { greedyCore(player, round, { species: 'Chitinous' }); }
+function crystallineStackPolicy(player, round = 1) { greedyCore(player, round, { species: 'Crystalline' }); }
+function abyssalStackPolicy(player, round = 1)     { greedyCore(player, round, { species: 'Abyssal' }); }
+
+// Class-commitment policies: prioritise one class (Shy/Livid/Giddy/Sullen/Pompous).
+// Since each class spans 3–4 species, class-stacks are naturally multi-species —
+// they measure class synergy ceilings independent of species synergies.
+function shyStackPolicy(player, round = 1)     { greedyCore(player, round, { cls: 'Shy' }); }
+function lividStackPolicy(player, round = 1)   { greedyCore(player, round, { cls: 'Livid' }); }
+function giddyStackPolicy(player, round = 1)   { greedyCore(player, round, { cls: 'Giddy' }); }
+function sullenStackPolicy(player, round = 1)  { greedyCore(player, round, { cls: 'Sullen' }); }
+function pompousStackPolicy(player, round = 1) { greedyCore(player, round, { cls: 'Pompous' }); }
+
+// Two-species mix: test whether multiplicative species stacks compound into
+// a dominant build not caught by single-species commits.
+function abyssalSporalMixPolicy(player, round = 1) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }); }
 
 // Random: buys random affordable cards without strategy. Kept as control baseline.
 function randomPolicy(player, _round = 1) {
@@ -380,11 +396,20 @@ function randomPolicy(player, _round = 1) {
 }
 
 const POLICIES = {
-  greedy:          greedyPolicy,
-  random:          randomPolicy,
-  'warrior-stack': warriorStackPolicy,
-  'demon-arc':     demonArcPolicy,
-  wide:            widePolicy,
+  greedy:              greedyPolicy,
+  random:              randomPolicy,
+  wide:                widePolicy,
+  'plasmic-stack':     plasmicStackPolicy,
+  'sporal-stack':      sporalStackPolicy,
+  'chitinous-stack':   chitinousStackPolicy,
+  'crystalline-stack': crystallineStackPolicy,
+  'abyssal-stack':     abyssalStackPolicy,
+  'shy-stack':         shyStackPolicy,
+  'livid-stack':       lividStackPolicy,
+  'giddy-stack':       giddyStackPolicy,
+  'sullen-stack':      sullenStackPolicy,
+  'pompous-stack':     pompousStackPolicy,
+  'abyssal-sporal':    abyssalSporalMixPolicy,
 };
 
 // ── Game Runner ───────────────────────────────────────────────────────────────
@@ -407,10 +432,6 @@ function runGame(seed, policyName = 'greedy', opts = {}) {
   const policy = POLICIES[policyName] || POLICIES.greedy;
   const pending = opts.grants ? opts.grants.slice() : null;
   const picks   = opts.picks  || {};
-
-  // Wire strategy-specific augment bias so scoreAugment can read it.
-  if (policyName === 'warrior-stack') run.player._augmentBias = ['IronWill', 'HeroicResolve'];
-  if (policyName === 'demon-arc')     run.player._augmentBias = ['ExponentialGrowth', 'EarlyBird', 'Overflow'];
 
   while (!run.isOver()) {
     // Augment + item picks happen BEFORE earnIncome so Midas/Tycoon apply this round.
