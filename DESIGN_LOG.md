@@ -6,7 +6,19 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 15 complete (2026-04-24). Playtest 3 feedback addressed. Ranking meta shipped.
+**Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
+
+**Phase 16 changes (2026-04-25):**
+- C1: Blinxorp cap +400 (was uncapped; saturates at R16). `blinxorp-max` p50 7372→5624 (−24%), survival 59.2%→48.0%.
+- C3: Abyssal-2 synergy mult ×1.60→×1.40 (4-count still ×1.90). `abyssal-stack` survival 31.4%→23.2%.
+- C4: Livid-4 class mult ×1.28→×1.20, Livid-2 ×1.12→×1.10. `livid-stack` p50 3563→3263.
+- C5-A: Plasmic-4 flat 48→58, Plasmic-2 flat 26→32. `plasmic-stack` p50 +40 (ceiling unchanged — hybrid splash runs lost Abyssal kicker, pure-Plasmic commits slightly stronger).
+- C6: Giddy-3 flat 14→22, Giddy-2 flat 6→10. Marginal movement — class synergies are half-weight by calibration rule.
+- C2 (Growth Serum × Accl. Program compounding): investigated, found non-issue. TimeDilation's +5/round is added as a separate pipeline stage (board.js line 239), not routed through card.passive.eval, so Growth Serum's wrapPassive does not double it. No fix needed.
+- Infrastructure: `src/balance.js` (Monte Carlo harness), 10 species/class policies + `abyssal-sporal` mix in `src/sim.js`, `balance` command in `run.js` (committed in 6894096 before balance-pass changes).
+- Version bumped to v0.18.
+- Guardrail note: strict targets (blinxorp-max p50≤5000, surv≤40%) were not fully hit on C1 alone — original plan assumed C1+C2 both landing. 48% survival remains the gap; blinxorp/next-best ratio closed from 2.03×→1.68× which is the headline movement. Accepted pending playtest.
+
 
 **GitHub Pages deployment (2026-04-22):**
 - Deployed to https://bazzboyy1.github.io/auto-card-battles/ (alongside existing Netlify deploy)
@@ -198,7 +210,7 @@ Class synergy values (final):
 - Run-complete modal shows RP change, promotion/demotion message, progress bar
 - Version bumped to v0.17
 
-**Next action:** Commit and deploy. Then evaluate whether to pursue Balatro-style endless mode (independently suggested by two Playtest 3 testers) or another playtest pass.
+**Next action:** User playtesting v0.18 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)

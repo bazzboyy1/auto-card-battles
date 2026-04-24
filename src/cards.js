@@ -186,9 +186,9 @@ const CARD_DEFS = [
     name: 'Blinxorp', species: 'Abyssal', class: 'Livid', tier: 2, baseScore: 82,
     flavor: 'Blinxorps take a while to fully emerge from their transport containers. By round ten, most of the exhibition staff have filed formal complaints.',
     passive: {
-      description: '+25 per round since bought',
+      description: '+25 per round since bought (max +400)',
       axis: 3,
-      eval(card) { return { flat: 25 * (card.roundsSinceBought || 0) }; },
+      eval(card) { return { flat: Math.min(400, 25 * (card.roundsSinceBought || 0)) }; },
     },
   },
 
@@ -250,8 +250,8 @@ const SYNERGIES = {
   Plasmic: {
     thresholds: [2, 4],
     getBonus(count) {
-      if (count >= 4) return { target: 'species', type: 'flat', value: 48 };
-      if (count >= 2) return { target: 'species', type: 'flat', value: 26 };
+      if (count >= 4) return { target: 'species', type: 'flat', value: 58 };
+      if (count >= 2) return { target: 'species', type: 'flat', value: 32 };
       return null;
     },
   },
@@ -284,7 +284,7 @@ const SYNERGIES = {
     thresholds: [2, 4],
     getBonus(count) {
       if (count >= 4) return { target: 'species', type: 'mult', value: 1.90 };
-      if (count >= 2) return { target: 'species', type: 'mult', value: 1.60 };
+      if (count >= 2) return { target: 'species', type: 'mult', value: 1.40 };
       return null;
     },
   },
@@ -308,16 +308,16 @@ const CLASS_SYNERGIES = {
   Livid: {
     thresholds: [2, 4],
     getBonus(count) {
-      if (count >= 4) return { target: 'class', type: 'mult', value: 1.28 };
-      if (count >= 2) return { target: 'class', type: 'mult', value: 1.12 };
+      if (count >= 4) return { target: 'class', type: 'mult', value: 1.20 };
+      if (count >= 2) return { target: 'class', type: 'mult', value: 1.10 };
       return null;
     },
   },
   Giddy: {
     thresholds: [2, 3],
     getBonus(count) {
-      if (count >= 3) return { target: 'class', type: 'flat', value: 14 };
-      if (count >= 2) return { target: 'class', type: 'flat', value: 6 };
+      if (count >= 3) return { target: 'class', type: 'flat', value: 22 };
+      if (count >= 2) return { target: 'class', type: 'flat', value: 10 };
       return null;
     },
   },
