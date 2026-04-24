@@ -1,4 +1,66 @@
-# Playtest 3 — Findings & Phase 10 Plan
+# Playtest 3 — Findings & Phase 15 Plan
+
+**Date:** 2026-04-24
+**Context:** External playtesting (5 testers: Damo, Elric, James, Jen, Kai, Will) via GitHub Pages / Netlify after all UX passes (Phase 10–14), scoring animation (Phase 11), and ranking-meta prep.
+
+---
+
+## Findings
+
+**Build performance:** All 4 testers who finished completed all 30 rounds. Nobody lost a run. Difficulty is too easy — opponents plateau while player scores compound multiplicatively.
+
+| Tester | Record | Final Rep | Level |
+|--------|--------|-----------|-------|
+| Jen | 30W 0L | 100 | Lvl 6 |
+| Will | 29W 1L | 94 | Lvl 7 |
+| Elric | 27W 3L | 77 | Lvl 7 |
+| James | 26W 4L | 62 | Lvl 8 |
+
+**Score gap at R30:** Players hitting 7,000–9,000; opponents capping ~3,840. ~2× gap.
+
+| # | Finding | Kind | Priority |
+|---|---------|------|----------|
+| F1 | Game universally too easy — all finishers won, 2 with near-perfect records | Balance | High |
+| F2 | Rep never goes up on wins — winning feels like doing nothing | UX/Feel | High |
+| F3 | Tier (T1/T2/T3) vs Stars confusion — players didn't understand the difference | UX | High |
+| F4 | Tooltip overload on mobile — James skipped all tooltips, wall of text | UX | High |
+| F5 | "Upgrade Exhibit" button location unintuitive — Will suggested inline with slots | UX | Medium |
+| F6 | Species vs Class distinction unclear — James couldn't tell what they each did | UX | Medium |
+| F7 | Passives feel ignorable — Will and James both didn't engage with them | Design | Medium |
+| F8 | No pivot pressure / strategic monotony — still showing despite Phase 9 class axis | Design | Medium |
+| F9 | Card names too similar / hard to distinguish (dyslexia concern from Kai) | UX | Low |
+| F10 | "Balatro endless mode" independently suggested by Will and Kai | Design | Deferred |
+
+---
+
+## Design decisions
+
+**F2 — Rep gain on win: rejected.**
+Adding +rep for wins would inflate the 100-point scale and make the metric less meaningful. The tension already exists (you can lose rep); wins should feel like "holding your position" in a competitive exhibition.
+
+**F4/F5 — Mobile tooltip / Upgrade Exhibit placement: deferred.**
+Mobile tooltip condensing is a meaningful effort for limited playtest signal. Upgrade Exhibit inline placement doesn't fit the mechanic (it upgrades the shop pool, not just adds a slot visually).
+
+**F10 — Endless mode:** Deferred. Worth investigating after ranking meta ships — if ranked players consistently win, the endless concept becomes the structural fix.
+
+---
+
+## Phase 15 Plan
+
+| # | Item | Addresses | Effort |
+|---|------|-----------|--------|
+| A1 | Raise opponent curve ~40% from R5 onward | F1 | Low |
+| A3 | Add `title` tooltip on card-tier div clarifying T1/T2/T3 vs ★ | F3 | Low |
+| R1 | New `src/ranking.js` — 5 tiers, placement (3 runs), RP system, localStorage | Meta | Medium |
+| R2 | Wire rank into `Run.rankMult` → `generateOpponent` | Meta | Low |
+| R3 | HUD rank display (Calibration N/3 or Tier + RP bar) | Meta | Low |
+| R4 | Run-complete rank section (RP change, promotion/demotion messaging) | Meta | Low |
+
+**Rank tiers:** Enthusiast (1.0×) → Collector (1.2×) → Curator (1.45×) → Connoisseur (1.75×) → Luminary (2.1×)
+**Placement:** 3 runs at base difficulty, rank assigned from avg final Rep.
+**RP per run:** Win = 30 + round(finalRep × 0.7); Loss = −40. Promote at 200 RP, demote below 0 (land at 100).
+
+# Pre-Playtest 3 plan (Phase 10) — kept for reference
 
 **Date:** 2026-04-20
 **Context:** Third playtest pass after Phase 9 (class synergy axis, economy tightening, diversity augments) and full theme rename (alien scientific names, species/class/item/augment rename).

@@ -190,6 +190,7 @@ class Run {
     this.itemOffers      = {};
     this._itemsPicked    = new Set();
     this.opponentHistory  = [];
+    this.rankMult         = 1.0;
   }
 
   // Returns the 3-id offer for the upcoming round if a pick is pending,
@@ -270,7 +271,7 @@ class Run {
       player:   this.player,
       augments: this.augments,
     };
-    const opp              = generateOpponent(this.round, this.rng);
+    const opp              = generateOpponent(this.round, this.rng, this.rankMult);
     const scoreBreakdown   = this.player.board.calcScoreBreakdown(ctx);
     const playerScore      = scoreBreakdown.total;
     const opponentScore    = opp.calcScore();

@@ -11,21 +11,22 @@ const OPPONENT_NAMES = [
   'Ashbringer', 'The Owl', 'Gravewalker', 'Kestrel',
 ];
 
-// Expected greedy-AI score at round N. Retuned for Phase 6 (augments).
-// Three augments (rounds 3/7/12) significantly boost mid-to-late scores.
-// Curve scales ~1.1× at r10, ~1.2× at r15, ~1.3× at r20, ~1.5× at r30
-// vs the Phase-5 baseline, targeting a 45–70% per-battle win rate. ±20% noise.
-function expectedScoreAtRound(round) {
-  if (round <= 1)  return 165;
-  if (round <= 5)  return 165 + 80  * (round - 1);    // 165 → 485  (unchanged)
-  if (round <= 10) return 485 + 230 * (round - 5);    // 485 → 1635 (×1.10 @ r10)
-  if (round <= 15) return 1635 + 173 * (round - 10);  // 1635 → 2500 (×1.20 @ r15)
-  if (round <= 20) return 2500 + 100 * (round - 15);  // 2500 → 3000 (×1.30 @ r20)
-  return 3000 + 84 * (round - 20);                    // 3000 → 3840 @ r30 (×1.50)
+// Expected score at round N. Retuned post-Playtest 3: mid/late curve raised ~40%
+// to close the gap between skilled players and opponents. rankMult applies an
+// additional multiplier per ranking tier (1.0 = Enthusiast, up to 2.1 = Luminary).
+function expectedScoreAtRound(round, rankMult = 1.0) {
+  let base;
+  if (round <= 1)  base = 165;
+  else if (round <= 5)  base = 165 + 80  * (round - 1);   // 165 → 485
+  else if (round <= 10) base = 485 + 340 * (round - 5);   // 485 → 2185 (+34% vs pre-PT3)
+  else if (round <= 15) base = 2185 + 260 * (round - 10); // 2185 → 3485 (+39%)
+  else if (round <= 20) base = 3485 + 150 * (round - 15); // 3485 → 4235 (+41%)
+  else                  base = 4235 + 130 * (round - 20); // 4235 → 5535 (+44%)
+  return Math.round(base * rankMult);
 }
 
-function generateOpponent(round, rng) {
-  const base  = expectedScoreAtRound(round);
+function generateOpponent(round, rng, rankMult = 1.0) {
+  const base  = expectedScoreAtRound(round, rankMult);
   const noise = 1 + (rng() * 0.4 - 0.2); // ±20% uniform
   const score = Math.max(0, Math.round(base * noise));
   const name  = OPPONENT_NAMES[Math.floor(rng() * OPPONENT_NAMES.length)];

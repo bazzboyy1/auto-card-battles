@@ -6,7 +6,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** GitHub Pages deployment complete (2026-04-22). Phase 13 bugs cleared. Ready for Playtest 3 or next design pass.
+**Phase:** Phase 15 complete (2026-04-24). Playtest 3 feedback addressed. Ranking meta shipped.
 
 **GitHub Pages deployment (2026-04-22):**
 - Deployed to https://bazzboyy1.github.io/auto-card-battles/ (alongside existing Netlify deploy)
@@ -189,7 +189,16 @@ Class synergy values (final):
 
 **Polish (2026-04-21, post-UX-pass-2):** "Shop" renamed to "Specimen Market" throughout UI (section label, phase tag, lock button). T1/T2/T3 used in Upgrade Exhibit odds tooltip instead of Com./Unc./Rare.
 
-**Next action:** Playtest 3 — collect feedback from https://bazzboyy1.github.io/auto-card-battles/ or Netlify.
+**Phase 15 complete (2026-04-24):**
+- A1: Opponent curve raised ~40% from R5 onward (R30 cap 3840→5535); accepts `rankMult` param
+- A3: `title` tooltip on card-tier div clarifies T1/T2/T3 = pool rarity vs ★ = combine level
+- R1–R4: `src/ranking.js` — 5 tiers (Enthusiast→Luminary), 3-run placement, RP system (win=30+rep×0.7, loss=−40, promote@200, demote<0 land@100), localStorage persistence under key `alien-exhibition-meta`
+- `Run.rankMult` wired into `generateOpponent` — opponent difficulty scales with rank
+- HUD shows "Calibration N/3" during placement, then tier name + RP/200 bar
+- Run-complete modal shows RP change, promotion/demotion message, progress bar
+- Version bumped to v0.17
+
+**Next action:** Commit and deploy. Then evaluate whether to pursue Balatro-style endless mode (independently suggested by two Playtest 3 testers) or another playtest pass.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)

@@ -7,6 +7,8 @@ let ITEM_DEFS, attachItem, detachItem;
 let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
+let RANKING;
+let meta = null; // persistent rank state across runs
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
 const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Pompous: '▲' };
@@ -35,6 +37,8 @@ document.addEventListener('acb-ready', () => {
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
+  RANKING = window.ACB.ranking;
+  meta    = RANKING.loadMeta();
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
@@ -93,6 +97,7 @@ function showRulesModal() {
 function newGame() {
   const rng  = mulberry32(Date.now() | 0);
   S.run      = new Run(rng);
+  S.run.rankMult = RANKING ? RANKING.getRankMult(meta) : 1.0;
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
@@ -395,6 +400,17 @@ function updateHUD() {
   if (streak > 1)      { sEl.textContent = `🔥 ${streak} win streak`; sEl.style.color = '#3fb950'; }
   else if (streak < -1){ sEl.textContent = `❄ ${Math.abs(streak)} loss streak`; sEl.style.color = '#f85149'; }
   else                  { sEl.textContent = ''; }
+
+  const rankEl = qs('#hud-rank');
+  if (rankEl && RANKING && meta) {
+    if (!meta.placementDone) {
+      const done = meta.placementRuns || 0;
+      rankEl.innerHTML = `<span class="rank-calibration-hud">Calibration ${done}/${RANKING.PLACEMENT_RUNS}</span>`;
+    } else if (meta.tier) {
+      const pct = Math.min(100, Math.round((meta.rp / RANKING.PROMOTE_AT) * 100));
+      rankEl.innerHTML = `<span class="rank-name">${meta.tier}</span><span class="rank-rp-text">${meta.rp}/${RANKING.PROMOTE_AT} RP</span><div class="rank-bar"><div class="rank-bar-fill" style="width:${pct}%"></div></div>`;
+    }
+  }
 }
 
 function renderBoard() {
@@ -752,7 +768,7 @@ function showShapeshifterModal() {
 }
 
 function showGameOverModal() {
-  const h       = S.human;
+  const h        = S.human;
   const survived = h.hp > 0;
   Sound.play(survived ? 'gameWin' : 'gameLoss');
   let html = `<h2>${survived ? '🏆 Run Complete' : 'Run Over'}</h2>`;
@@ -766,6 +782,36 @@ function showGameOverModal() {
     <div><span class="area-label">Record</span> <span class="stat-big">${h.wins}W ${h.losses}L</span></div>
     <div><span class="area-label">Level</span> <span class="stat-big">Exhibit Lvl ${h.level}</span></div>
   </div>`;
+
+  if (RANKING && meta) {
+    const wasPlaced = meta.placementDone;
+    const rankRes   = RANKING.recordRun(meta, survived, h.hp, `${h.wins}W ${h.losses}L`);
+    html += `<div class="rank-result"><div class="rank-result-header">Ranking</div>`;
+    if (!wasPlaced) {
+      if (meta.placementDone) {
+        html += `<div class="rank-calibration-msg">Calibration complete</div>`;
+        html += `<div class="rank-result-row"><span class="rank-result-tier">${meta.tier}</span></div>`;
+        html += `<div class="rank-promoted">Rank assigned: ${meta.tier}!</div>`;
+      } else {
+        const done = meta.placementRuns;
+        html += `<div class="rank-calibration-msg">Calibration run ${done}/${RANKING.PLACEMENT_RUNS} complete — ${RANKING.PLACEMENT_RUNS - done} more to rank</div>`;
+      }
+    } else {
+      const sign    = rankRes.rpChange >= 0 ? `+${rankRes.rpChange}` : `${rankRes.rpChange}`;
+      const signCls = rankRes.rpChange >= 0 ? 'positive' : 'negative';
+      html += `<div class="rank-result-row"><span class="rank-result-tier">${meta.tier}</span><span class="rank-rp-change ${signCls}">${sign} RP</span></div>`;
+      if (rankRes.promoted) {
+        html += `<div class="rank-promoted">↑ Promoted to ${meta.tier}!</div>`;
+      } else if (rankRes.demoted) {
+        html += `<div class="rank-demoted">↓ Dropped to ${meta.tier}</div>`;
+      } else {
+        const pct = Math.min(100, Math.round((meta.rp / RANKING.PROMOTE_AT) * 100));
+        html += `<div class="rank-rp-label">${meta.rp} / ${RANKING.PROMOTE_AT} RP</div>`;
+        html += `<div class="rank-bar-outer"><div class="rank-bar-fill" style="width:${pct}%"></div></div>`;
+      }
+    }
+    html += `</div>`;
+  }
 
   if (S.run.augments.length) {
     html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Augments</div>`;
@@ -909,7 +955,7 @@ function makeCard(card, context, shopCost, bd) {
       ${card.class ? `<span class="card-class">${CLASS_GLYPHS[card.class] || ''}${card.class}</span>` : ''}
     </div>
     <div class="card-score">${dispScore}${bd && bd.final !== baseScore ? `<span class="card-base-score">(${baseScore})</span>` : ''}</div>
-    <div class="card-tier">T${card.tier}</div>
+    <div class="card-tier" title="Pool rarity — T1/T2/T3 affects shop odds after upgrading your Exhibit. Stars ★ = combine level (1–3).">T${card.tier}</div>
     ${shopCost != null ? `<div class="card-cost">${shopCost}g</div>` : ''}
     ${context !== 'shop' && S.sellMode ? `<div class="card-sell-val">sell ${sellVal}g</div>` : ''}
   `;

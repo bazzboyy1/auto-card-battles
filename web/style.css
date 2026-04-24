@@ -648,3 +648,35 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 .scoring-winner.win  { background: #0d2018; color: var(--hp-high); border: 1px solid var(--primary); }
 .scoring-winner.loss { background: #2a0d0d; color: var(--hp-low);  border: 1px solid var(--danger); }
+
+/* ── Rank HUD display ── */
+#hud-rank {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  min-width: 70px;
+}
+.rank-calibration-hud { font-size: 10px; color: var(--text-muted); }
+#hud-rank .rank-name  { font-size: 11px; font-weight: 600; color: var(--gold); line-height: 1; }
+#hud-rank .rank-rp-text { font-size: 9px; color: var(--text-muted); line-height: 1; }
+#hud-rank .rank-bar   { width: 56px; height: 3px; background: var(--border); border-radius: 2px; }
+#hud-rank .rank-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.4s; }
+
+/* ── Rank result block (run-complete modal) ── */
+.rank-result {
+  margin-top: 14px; padding: 10px 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px;
+}
+.rank-result-header {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px;
+}
+.rank-result-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.rank-result-tier { font-size: 15px; font-weight: 700; color: var(--gold); }
+.rank-rp-change   { font-size: 12px; font-weight: 600; }
+.rank-rp-change.positive { color: var(--hp-high); }
+.rank-rp-change.negative { color: var(--hp-low); }
+.rank-rp-label    { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+.rank-bar-outer   { height: 5px; background: var(--border); border-radius: 3px; }
+.rank-bar-fill    { height: 100%; background: var(--gold); border-radius: 3px; }
+.rank-promoted    { font-size: 13px; font-weight: 700; color: var(--hp-high); text-align: center; padding: 4px 0; }
+.rank-demoted     { font-size: 12px; font-weight: 600; color: var(--hp-low); text-align: center; padding: 4px 0; }
+.rank-calibration-msg { font-size: 12px; color: var(--text-muted); padding: 2px 0; }
