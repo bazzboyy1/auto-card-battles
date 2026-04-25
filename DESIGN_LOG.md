@@ -211,7 +211,18 @@ Class synergy values (final):
 - Run-complete modal shows RP change, promotion/demotion message, progress bar
 - Version bumped to v0.17
 
-**Next action:** User playtesting v0.18 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
+**Phase 17 complete (2026-04-25):** Planning-phase bonus animations (v0.19).
+- Score delta floaters (`+N`/`-N`) appear on board cards whenever a score changes during the shop phase: buy (synergy activates), sell (synergy breaks), bench↔active moves, item attach/detach, augment pick.
+- Green (`#7ee787`) for gains, red (`#f85149`) for losses. Floats upward over 750ms and self-removes.
+- Card glow flash (green/red ring) accompanies each delta — affected units are visually obvious at a glance.
+- Synergy badge gold pulse (`syn-pulse`) fires when a species or class tier threshold is newly crossed.
+- Augment badge green pulse (`augment-badge-pulse`) + staggered card sweep (`card-bonus-flash`, 60ms between cards) when an augment is picked — badge lights first, then cards catch the glow left-to-right, creating a clear source→target association.
+- `data-synergy-key` added to all synergy badges; `data-aug-id` added to augment badges so animations can target them post-render.
+- Economy/structural augments (Overflow, Tycoon, Shapeshifter) excluded from card sweep — no misleading "your scores changed" signal.
+- New helpers: `captureScores()`, `captureSynergyTiers()`, `floatDelta()`, `animatePlanningDeltas()`, `animateSynergyChanges()`, `flashAugmentEffect()`.
+- Files: `web/app.js`, `web/style.css`, `web/index.html`.
+
+**Next action:** User playtesting v0.19 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
