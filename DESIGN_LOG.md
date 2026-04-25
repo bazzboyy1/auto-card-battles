@@ -8,6 +8,8 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 
+**Local dev fix (2026-04-25):** `serve.js` was rewriting `/` → serves `web/index.html` content while leaving the URL at `/`, so relative paths like `style.css` resolved against root and 404'd (broken since the GitHub Pages path-relativization). Fixed by serving root `index.html` (the meta-refresh page) at `/` — browser then navigates to `/web/index.html` and relative paths resolve. Local dev now matches GitHub Pages flow exactly.
+
 **Phase 16 changes (2026-04-25):**
 - C1: Blinxorp cap +400 (was uncapped; saturates at R16). `blinxorp-max` p50 7372→5624 (−24%), survival 59.2%→48.0%.
 - C3: Abyssal-2 synergy mult ×1.60→×1.40 (4-count still ×1.90). `abyssal-stack` survival 31.4%→23.2%.
@@ -21,7 +23,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 
 **GitHub Pages deployment (2026-04-22):**
-- Deployed to https://bazzboyy1.github.io/auto-card-battles/ (alongside existing Netlify deploy)
+- Deployed to https://bazzboyy1.github.io/auto-card-battles/
 - Root `index.html` redirect added (`meta refresh → web/index.html`) — Pages can't deploy from a subfolder
 - Fixed all absolute paths that broke under Pages subdirectory: `web/index.html` asset hrefs, `web/loader.js` src paths, `web/style.css` Splash.png references (all changed from `/…` to relative `../…` or `./…`)
 - Bug fix: skip() in judging panel showed wrong totals — stale `requestAnimationFrame` callback fired after skip() set the correct value and overwrote it; fixed by tracking rAF handles in `rafs[]` and calling `rafs.forEach(cancelAnimationFrame)` in skip()
@@ -163,10 +165,9 @@ Class synergy values (final):
 - Design rationale: aggregate total is now only revealed during the judging animation (first dramatic moment); per-card scores, synergy bars, and tooltip breakdowns remain fully visible so buying decisions are unaffected. Practical opacity: players *can* add up per-card scores but won't casually, so tension is preserved without punishing information hiding.
 - Files: `web/index.html`, `web/app.js`
 
-**Phase 12-B complete (2026-04-21):** Deployed to Netlify for external playtesting.
-- Added `netlify.toml` with `[[redirects]]` rewrite: `/ → /web/index.html` (status 200)
+**Phase 12-B complete (2026-04-21):** Repo made public for external playtesting.
 - Repo is public on GitHub at `https://github.com/bazzboyy1/auto-card-battles`
-- All absolute paths (`/web/style.css`, `/src/*.js`) work correctly from Netlify root
+- (Historical note: an earlier draft of this entry referenced Netlify; we never actually deployed there. `netlify.toml` is leftover and unused — safe to delete.)
 
 **Post-deploy playtest findings (2026-04-21):** Full analysis in `design_log/phase_13_plan.md`.
 - BUG: Animation per-card scores differ from Exhibits card-face scores — root cause: `roundsSinceBought` is incremented after `calcScore()` in `runBattle()`, but animation re-computes breakdown post-increment
@@ -182,7 +183,7 @@ Class synergy values (final):
 - v0.12 version label added to HUD right (dim, small)
 - Flavor text added to all 20 cards (`flavor` field in `src/cards.js`); rendered italic + dimmed in tooltip below passive description (`web/app.js`, `web/style.css`)
 - Flavor text written in plural/sub-species register ("Sporviks continuously weep..." not "Sporvik weeps...")
-- Netlify fix: `Splash.png` was not committed and CSS path was wrong case (`/splash.png` → `/Splash.png`)
+- Deploy fix: `Splash.png` was not committed and CSS path was wrong case (`/splash.png` → `/Splash.png`)
 
 **Phase 13 complete (2026-04-21):** Post-deploy bug fixes.
 - A1: `runBattle()` now calls `calcScoreBreakdown(ctx)` before the `roundsSinceBought` tick and stores it as `scoreBreakdown` in the result entry. `showScoringModal()` uses the stored snapshot — animation scores now match card-face scores exactly.
