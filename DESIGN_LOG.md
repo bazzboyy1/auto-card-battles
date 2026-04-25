@@ -222,7 +222,16 @@ Class synergy values (final):
 - New helpers: `captureScores()`, `captureSynergyTiers()`, `floatDelta()`, `animatePlanningDeltas()`, `animateSynergyChanges()`, `flashAugmentEffect()`.
 - Files: `web/app.js`, `web/style.css`, `web/index.html`.
 
-**Next action:** User playtesting v0.19 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
+**Phase 18 complete (2026-04-25):** Flat + ×mult display on card face (v0.20).
+- Active board cards now show additive flat and multiplicative factor separately (e.g. `76 ×1.02`) instead of the combined final score.
+- Mult value styled orange (`#ffa657`) — same colour as mult lines in the existing tooltip breakdown, so the visual language is consistent.
+- Cards with no active mult (≤ 1.001) show plain flat only — no ×1.0 clutter.
+- Bench and shop cards unchanged: plain base score (no breakdown object passed).
+- No changes to `src/board.js` — derived from existing `bd.lines` in `makeCard()` via sum of `add` entries / product of `mult` entries.
+- Judging animation unchanged — still shows final allocated per-card scores.
+- Files: `web/app.js`, `web/style.css`, `web/index.html`.
+
+**Next action:** User playtesting v0.20 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
