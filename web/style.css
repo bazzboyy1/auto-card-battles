@@ -192,6 +192,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 .card-species { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8; }
 .card-class   { font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.65; background: rgba(255,255,255,0.12); border-radius: 3px; padding: 0 3px; gap: 2px; }
 .card-score  { font-size: 14px; font-weight: 800; text-align: right; }
+.card-mult   { color: #ffa657; font-size: 0.82em; margin-left: 3px; }
 .card-tier   { font-size: 9px; opacity: 0.6; text-align: right; }
 .card-cost  { position: absolute; top: 4px; right: 4px; font-size: 11px; font-weight: 700; color: var(--gold); background: rgba(0,0,0,0.5); border-radius: 3px; padding: 0 3px; }
 

@@ -1060,8 +1060,19 @@ function makeCard(card, context, shopCost, bd) {
 
   const stars    = '★'.repeat(card.stars) + '☆'.repeat(3 - card.stars);
   const baseScore = Math.round(card.baseScore * STAR_MULT[card.stars]);
-  const dispScore = bd ? bd.final : baseScore;
   const sellVal  = card.tier ? Math.round(CARD_COSTS[card.tier] * Math.pow(3, card.stars - 1)) : 0;
+
+  let scoreHTML;
+  if (bd) {
+    const flatTotal = Math.round(bd.lines.reduce((s, l) => l.add != null ? s + l.add : s, 0));
+    const multTotal = bd.lines.reduce((p, l) => l.mult != null ? p * l.mult : p, 1.0);
+    const multStr = multTotal > 1.001
+      ? `<span class="card-mult">×${+multTotal.toFixed(2)}</span>`
+      : '';
+    scoreHTML = `${flatTotal}${multStr}`;
+  } else {
+    scoreHTML = baseScore;
+  }
 
   el.innerHTML = `
     <div class="card-stars">${stars}</div>
@@ -1071,7 +1082,7 @@ function makeCard(card, context, shopCost, bd) {
       ${card.shapeshifterSpecies ? `<span class="card-species" style="color:#9dcc50">+${card.shapeshifterSpecies}</span>` : ''}
       ${card.class ? `<span class="card-class">${CLASS_GLYPHS[card.class] || ''}${card.class}</span>` : ''}
     </div>
-    <div class="card-score">${dispScore}${bd && bd.final !== baseScore ? `<span class="card-base-score">(${baseScore})</span>` : ''}</div>
+    <div class="card-score">${scoreHTML}</div>
     <div class="card-tier" title="Pool rarity — T1/T2/T3 affects shop odds after upgrading your Exhibit. Stars ★ = combine level (1–3).">T${card.tier}</div>
     ${shopCost != null ? `<div class="card-cost">${shopCost}g</div>` : ''}
     ${context !== 'shop' && S.sellMode ? `<div class="card-sell-val">sell ${sellVal}g</div>` : ''}
