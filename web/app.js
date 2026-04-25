@@ -196,6 +196,8 @@ function onContinue() {
 // Augment pick: user clicked card at index idx.
 function onPickAugment(idx) {
   Sound.play('pickAugment');
+  const scoresBefore = captureScores();
+  const tiersBefore  = captureSynergyTiers();
   const chosenId = S.run.pickAugment(idx);
   if (!chosenId) return;
   if (chosenId === 'Shapeshifter') {
@@ -204,6 +206,11 @@ function onPickAugment(idx) {
     return;
   }
   finishRoundSetup();
+  requestAnimationFrame(() => {
+    flashAugmentEffect(chosenId);
+    animatePlanningDeltas(scoresBefore);
+    animateSynergyChanges(tiersBefore);
+  });
 }
 
 // Item pick: user chose card at index idx.
@@ -242,10 +249,103 @@ function animateRankUps(ids) {
   }
 }
 
+// ── Planning-phase bonus animations ──────────────────────────────────────────
+
+// Augments that have a scoring effect on active cards (excludes pure economy/structural).
+const AUGMENT_AFFECTS_CARDS = new Set([
+  'HeroicResolve', 'IronWill', 'TimeDilation', 'ExponentialGrowth',
+  'EarlyBird', 'MidasTouch', 'HiveMind', 'Varietal', 'CrossTraining',
+]);
+
+function captureScores() {
+  const bd = S.human.board.calcScoreBreakdown({ round: S.run.round + 1, augments: S.run.augments });
+  const map = new Map();
+  for (const e of bd.perCard) map.set(e.card._id, e.final);
+  return map;
+}
+
+function captureSynergyTiers() {
+  const { counts: sc } = effectiveSpeciesCounts(S.human.board, { augments: S.run.augments, player: S.human });
+  const { counts: cc } = effectiveClassCounts(S.human.board);
+  const tiers = {};
+  for (const key of Object.keys(SYNERGIES)) {
+    tiers['s_' + key] = SYNERGIES[key].thresholds.filter(t => (sc[key] || 0) >= t).length;
+  }
+  for (const key of Object.keys(CLASS_SYNERGIES)) {
+    tiers['c_' + key] = CLASS_SYNERGIES[key].thresholds.filter(t => (cc[key] || 0) >= t).length;
+  }
+  return tiers;
+}
+
+function floatDelta(cardEl, delta) {
+  const d = document.createElement('div');
+  d.className = 'plan-delta ' + (delta > 0 ? 'plan-delta-pos' : 'plan-delta-neg');
+  d.textContent = (delta > 0 ? '+' : '') + Math.round(delta);
+  cardEl.appendChild(d);
+  d.addEventListener('animationend', () => d.remove(), { once: true });
+}
+
+function animatePlanningDeltas(before) {
+  if (!before || !before.size) return;
+  const bd = S.human.board.calcScoreBreakdown({ round: S.run.round + 1, augments: S.run.augments });
+  for (const e of bd.perCard) {
+    const prev = before.get(e.card._id);
+    if (prev === undefined) continue;
+    const delta = e.final - prev;
+    if (Math.abs(delta) < 1) continue;
+    const el = document.querySelector(`[data-card-id="${e.card._id}"]`);
+    if (!el) continue;
+    floatDelta(el, delta);
+    const flashClass = delta > 0 ? 'card-bonus-flash' : 'card-loss-flash';
+    el.classList.add(flashClass);
+    setTimeout(() => el.classList.remove(flashClass), 700);
+  }
+}
+
+function animateSynergyChanges(tiersBefore) {
+  if (!tiersBefore) return;
+  const { counts: sc } = effectiveSpeciesCounts(S.human.board, { augments: S.run.augments, player: S.human });
+  const { counts: cc } = effectiveClassCounts(S.human.board);
+  const check = (key, count, syn, prefix) => {
+    const after  = syn.thresholds.filter(t => count >= t).length;
+    const before = tiersBefore[prefix + key] || 0;
+    if (after > before) {
+      const badge = document.querySelector(`.syn-badge[data-synergy-key="${key}"]`);
+      if (badge) {
+        badge.classList.add('syn-pulse');
+        setTimeout(() => badge.classList.remove('syn-pulse'), 700);
+      }
+    }
+  };
+  for (const key of Object.keys(SYNERGIES)) check(key, sc[key] || 0, SYNERGIES[key], 's_');
+  for (const key of Object.keys(CLASS_SYNERGIES)) check(key, cc[key] || 0, CLASS_SYNERGIES[key], 'c_');
+}
+
+// Pulses the augment badge then sweeps a green flash across all active cards.
+function flashAugmentEffect(augId) {
+  const badgeEl = document.querySelector(`.augment-badge[data-aug-id="${augId}"]`);
+  if (badgeEl) {
+    badgeEl.classList.add('augment-badge-pulse');
+    setTimeout(() => badgeEl.classList.remove('augment-badge-pulse'), 900);
+  }
+  if (!AUGMENT_AFFECTS_CARDS.has(augId)) return;
+  const cardEls = document.querySelectorAll('#active-slots .card');
+  let delay = 80;
+  for (const el of cardEls) {
+    setTimeout(() => {
+      el.classList.add('card-bonus-flash');
+      setTimeout(() => el.classList.remove('card-bonus-flash'), 700);
+    }, delay);
+    delay += 60;
+  }
+}
+
 // ── Human shop actions ────────────────────────────────────────────────────────
 function onBuyShop(slotIdx) {
   if (S.sellMode) return;
   if (S.human.board.isFull()) return;
+  const scoresBefore = captureScores();
+  const tiersBefore  = captureSynergyTiers();
   const card = S.human.shop.buy(slotIdx);
   if (!card) return;
   Sound.play('buy');
@@ -253,6 +353,10 @@ function onBuyShop(slotIdx) {
   const upgraded = runCombinesWithEffect();
   render();
   animateRankUps(upgraded);
+  requestAnimationFrame(() => {
+    animatePlanningDeltas(scoresBefore);
+    animateSynergyChanges(tiersBefore);
+  });
 }
 
 function onReroll() {
@@ -290,16 +394,23 @@ function onCardClick(cardId) {
   if (S.attachItem) {
     const card = S.human.board.allCards.find(c => c._id === cardId);
     if (card && (card.items || []).length < 3) {
+      const scoresBefore = captureScores();
       const idx = S.human.itemBag.indexOf(S.attachItem);
       if (idx !== -1 && attachItem(card, S.attachItem)) {
         S.human.itemBag.splice(idx, 1);
         Sound.play('equipItem');
       }
+      S.attachItem = null;
+      render();
+      requestAnimationFrame(() => animatePlanningDeltas(scoresBefore));
+      return;
     }
     S.attachItem = null;
     render();
     return;
   }
+  const scoresBefore = captureScores();
+  const tiersBefore  = captureSynergyTiers();
   let upgraded = [];
   if (S.sellMode) {
     Sound.play('sell');
@@ -316,6 +427,10 @@ function onCardClick(cardId) {
   }
   render();
   animateRankUps(upgraded);
+  requestAnimationFrame(() => {
+    animatePlanningDeltas(scoresBefore);
+    animateSynergyChanges(tiersBefore);
+  });
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -490,6 +605,7 @@ function renderSynergyBar() {
         + (bonus ? ' active' : '')
         + (isClass ? ' class-syn' : '')
         + (inactive ? ' inactive' : '');
+      badge.dataset.synergyKey = key;
       const glyph = isClass ? (CLASS_GLYPHS[key] || '') : '';
       let text = `${glyph}${key} ${count}`;
       if (bonus) text += ' ✓';
@@ -547,6 +663,7 @@ function renderAugmentBadges() {
     if (!aug) continue;
     const badge = document.createElement('span');
     badge.className = 'augment-badge';
+    badge.dataset.augId = id;
     badge.textContent = aug.name;
     const tt = document.createElement('span');
     tt.className = 'aug-tooltip';
@@ -977,11 +1094,13 @@ function makeCard(card, context, shopCost, bd) {
         if (itemDef) pip.appendChild(makeItemTooltip(itemDef));
         pip.onclick = (ev) => {
           ev.stopPropagation();
+          const scoresBefore = captureScores();
           if (detachItem(card, capturedId)) {
             Sound.play('unequipItem');
             S.human.itemBag.push(capturedId);
           }
           render();
+          requestAnimationFrame(() => animatePlanningDeltas(scoresBefore));
         };
       }
       pipRow.appendChild(pip);

@@ -638,6 +638,59 @@ button:disabled { opacity: 0.4; cursor: default; }
   animation: score-delta 600ms ease-out forwards;
 }
 
+/* ── Planning-phase bonus animations ── */
+
+/* Score delta floater: appears on a card in the shop/planning phase */
+@keyframes plan-delta-float {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-32px); }
+}
+.plan-delta {
+  position: absolute;
+  top: 28%; left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px; font-weight: 800;
+  pointer-events: none; z-index: 20; white-space: nowrap;
+  animation: plan-delta-float 750ms ease-out forwards;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+.plan-delta-pos { color: #7ee787; }
+.plan-delta-neg { color: #f85149; }
+
+/* Card glow flash for score gains */
+@keyframes card-bonus-flash {
+  0%   { box-shadow: 0 0 0 0px rgba(126,231,135,0.0); }
+  25%  { box-shadow: 0 0 0 5px rgba(126,231,135,0.75); }
+  100% { box-shadow: 0 0 0 0px rgba(126,231,135,0.0); }
+}
+.card.card-bonus-flash { animation: card-bonus-flash 650ms ease-out forwards; }
+
+/* Card glow flash for score losses */
+@keyframes card-loss-flash {
+  0%   { box-shadow: 0 0 0 0px rgba(248,81,73,0.0); }
+  25%  { box-shadow: 0 0 0 5px rgba(248,81,73,0.75); }
+  100% { box-shadow: 0 0 0 0px rgba(248,81,73,0.0); }
+}
+.card.card-loss-flash { animation: card-loss-flash 650ms ease-out forwards; }
+
+/* Augment badge glow when freshly picked */
+@keyframes augment-badge-pulse {
+  0%   { box-shadow: 0 0 0 0px rgba(157,204,80,0.0); border-color: #4a6020; }
+  25%  { box-shadow: 0 0 0 6px rgba(157,204,80,0.75); border-color: #9dcc50; }
+  70%  { box-shadow: 0 0 0 3px rgba(157,204,80,0.3); border-color: #7aad30; }
+  100% { box-shadow: 0 0 0 0px rgba(157,204,80,0.0); border-color: #4a6020; }
+}
+.augment-badge.augment-badge-pulse { animation: augment-badge-pulse 850ms ease-out forwards; }
+
+/* Synergy badge glow when a new tier activates */
+@keyframes syn-pulse {
+  0%   { box-shadow: 0 0 0 0px rgba(227,179,65,0.0); }
+  30%  { box-shadow: 0 0 0 5px rgba(227,179,65,0.85); }
+  100% { box-shadow: 0 0 0 0px rgba(227,179,65,0.0); }
+}
+.syn-badge.syn-pulse { animation: syn-pulse 650ms ease-out forwards; }
+
 .scoring-winner {
   text-align: center;
   margin-top: 16px;
