@@ -90,30 +90,30 @@ const CURATOR_SELECTIONS = {
 // preferredTarget = base × 0.85 (rounded). Applied when board meets current judge's condition.
 // The Assembly (isNeutral) never grants the reduction — preferredTarget is unused for them.
 const ROUND_TARGETS = [
-  { target: 150,  preferredTarget: 128,  isCritique: false },
-  { target: 220,  preferredTarget: 187,  isCritique: false },
-  { target: 310,  preferredTarget: 264,  isCritique: false },
-  { target: 410,  preferredTarget: 349,  isCritique: false },
-  { target: 520,  preferredTarget: 442,  isCritique: false },
-  { target: 650,  preferredTarget: 553,  isCritique: false },
-  { target: 800,  preferredTarget: 680,  isCritique: false },
+  { target: 100,  preferredTarget:  85,  isCritique: false }, // R1
+  { target: 135,  preferredTarget: 115,  isCritique: false }, // R2
+  { target: 200,  preferredTarget: 170,  isCritique: false }, // R3
+  { target: 400,  preferredTarget: 340,  isCritique: false }, // R4
+  { target: 510,  preferredTarget: 434,  isCritique: false }, // R5
+  { target: 640,  preferredTarget: 544,  isCritique: false }, // R6
+  { target: 800,  preferredTarget: 680,  isCritique: false }, // R7
   { target: 1000, preferredTarget: 850,  isCritique: true  }, // R8  — Critique 1
-  { target: 1100, preferredTarget: 935,  isCritique: false },
-  { target: 1280, preferredTarget: 1088, isCritique: false },
-  { target: 1480, preferredTarget: 1258, isCritique: false },
-  { target: 1700, preferredTarget: 1445, isCritique: false },
-  { target: 1950, preferredTarget: 1658, isCritique: false },
-  { target: 2250, preferredTarget: 1913, isCritique: false },
-  { target: 2600, preferredTarget: 2210, isCritique: false },
-  { target: 3100, preferredTarget: 2635, isCritique: true  }, // R16 — Critique 2
-  { target: 3400, preferredTarget: 2890, isCritique: false },
-  { target: 3750, preferredTarget: 3188, isCritique: false },
-  { target: 4150, preferredTarget: 3528, isCritique: false },
-  { target: 4600, preferredTarget: 3910, isCritique: false },
-  { target: 5050, preferredTarget: 4293, isCritique: false },
-  { target: 5500, preferredTarget: 4675, isCritique: false },
-  { target: 5950, preferredTarget: 5058, isCritique: false },
-  { target: 7000, preferredTarget: 5950, isCritique: true  }, // R24 — Grand Finale
+  { target: 1100, preferredTarget: 935,  isCritique: false }, // R9
+  { target: 1280, preferredTarget: 1088, isCritique: false }, // R10
+  { target: 1480, preferredTarget: 1258, isCritique: false }, // R11
+  { target: 1700, preferredTarget: 1445, isCritique: false }, // R12
+  { target: 1950, preferredTarget: 1658, isCritique: false }, // R13
+  { target: 2250, preferredTarget: 1913, isCritique: false }, // R14
+  { target: 2600, preferredTarget: 2210, isCritique: false }, // R15
+  { target: 2800, preferredTarget: 2380, isCritique: true  }, // R16 — Critique 2
+  { target: 3000, preferredTarget: 2550, isCritique: false }, // R17
+  { target: 3100, preferredTarget: 2635, isCritique: false }, // R18
+  { target: 3450, preferredTarget: 2933, isCritique: false }, // R19
+  { target: 3700, preferredTarget: 3145, isCritique: false }, // R20
+  { target: 3700, preferredTarget: 3145, isCritique: false }, // R21
+  { target: 3700, preferredTarget: 3145, isCritique: false }, // R22
+  { target: 3900, preferredTarget: 3315, isCritique: false }, // R23
+  { target: 4600, preferredTarget: 3910, isCritique: true  }, // R24 — Grand Finale
 ];
 
 class Player {

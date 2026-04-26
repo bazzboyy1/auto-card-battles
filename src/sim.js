@@ -428,7 +428,7 @@ function applyGrants(player, pending) {
 // opts.picks   — { [round]: { augmentId, cardName?, species? } } forced augment picks
 function runGame(seed, policyName = 'greedy', opts = {}) {
   const rng    = mulberry32(seed);
-  const run    = new Run(rng);
+  const run    = new Run(rng, opts.diffMult || 1.0);
   const policy = POLICIES[policyName] || POLICIES.greedy;
   const pending = opts.grants ? opts.grants.slice() : null;
   const picks   = opts.picks  || {};

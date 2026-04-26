@@ -54,9 +54,11 @@ if (cmd === 'play') {
 
   const r = runGame(seed, policy, { ...(grants ? { grants } : {}), picks });
 
+  const hist   = r.battleHistory || [];
+  const livesEnd = hist.length ? hist[hist.length - 1].livesAfter : 3;
   const status = r.survived ? 'SURVIVED' : 'eliminated';
   console.log(`Rounds survived: ${r.roundsSurvived}`);
-  console.log(`Final HP:        ${r.hp}  (${status})`);
+  console.log(`Lives remaining: ${livesEnd}  (${status})`);
   console.log(`Record:          ${r.wins}W ${r.losses}L`);
   console.log(`Final level:     ${r.level}`);
   if (r.augments.length) {
@@ -64,12 +66,13 @@ if (cmd === 'play') {
   }
   console.log();
 
-  console.log('Opponent history:');
-  console.log(`${'Rnd'.padStart(3)}  ${'You'.padStart(6)}  ${'Opp'.padStart(6)}  ${'Name'.padEnd(16)} ${'W/L'.padStart(3)} ${'HP'.padStart(4)}`);
-  console.log('─'.repeat(50));
-  for (const h of r.opponentHistory) {
+  console.log('Battle history:');
+  console.log(`${'Rnd'.padStart(3)}  ${'Score'.padStart(6)}  ${'Target'.padStart(7)}  ${'W/L'.padStart(3)}  ${'Lives'.padStart(5)}  ${'Judge'.padEnd(14)}`);
+  console.log('─'.repeat(55));
+  for (const h of hist) {
+    const pref = h.qualified ? `✓` : ' ';
     console.log(
-      `${String(h.round).padStart(3)}  ${String(h.playerScore).padStart(6)}  ${String(h.opponentScore).padStart(6)}  ${h.opponent.padEnd(16)} ${(h.won ? 'W' : 'L').padStart(3)} ${String(h.hpAfter).padStart(4)}`
+      `${String(h.round).padStart(3)}  ${String(h.playerScore).padStart(6)}  ${String(h.target).padStart(7)}  ${(h.passed ? 'W' : 'L').padStart(3)}  ${String(h.livesAfter).padStart(5)}  ${pref}${(h.judgeId || '').padEnd(13)}`
     );
   }
   console.log();
@@ -82,22 +85,22 @@ if (cmd === 'play') {
 
   const r = batchSim(n, policy, seed);
   console.log(`Avg rounds survived: ${r.avgRoundsSurvived.toFixed(1)}`);
-  console.log(`Per-battle winrate:  ${(r.winRate * 100).toFixed(1)}%`);
-  console.log(`Avg final HP:        ${r.avgFinalHp.toFixed(1)}`);
+  console.log(`Per-round pass rate: ${(r.winRate * 100).toFixed(1)}%`);
   const survivors = r.results.filter(x => x.survived).length;
-  console.log(`Run survival rate:   ${(survivors / n * 100).toFixed(1)}%  (${survivors}/${n})\n`);
+  console.log(`Run survival rate:   ${(survivors / n * 100).toFixed(1)}%  (${survivors}/${n})`);
+  const livesLost = r.results.map(x => {
+    const h = x.battleHistory || [];
+    return 3 - (h.length ? h[h.length - 1].livesAfter : 3);
+  });
+  const avgLost = livesLost.reduce((s, v) => s + v, 0) / n;
+  console.log(`Avg lives lost:      ${avgLost.toFixed(2)}\n`);
 
-  // HP distribution (final)
-  const buckets = [0, 10, 25, 50, 75, 100];
-  console.log('Final HP distribution:');
-  for (let i = 0; i < buckets.length - 1; i++) {
-    const lo = buckets[i], hi = buckets[i + 1];
-    const count = r.results.filter(x => x.hp >= lo && x.hp < hi).length;
-    const pct = (count / n * 100).toFixed(1);
-    console.log(`  ${String(lo).padStart(3)}–${String(hi - 1).padStart(3)} HP: ${pad(count, 3)} runs  (${pct}%)`);
+  // Lives remaining distribution (final)
+  console.log('Lives remaining at run end:');
+  for (let lives = 3; lives >= 0; lives--) {
+    const count = livesLost.filter(v => 3 - v === lives).length;
+    console.log(`  ${lives} lives: ${pad(count, 3)} runs  (${(count / n * 100).toFixed(1)}%)`);
   }
-  const at100 = r.results.filter(x => x.hp === 100).length;
-  if (at100 > 0) console.log(`  100    HP: ${pad(at100, 3)} runs  (${(at100 / n * 100).toFixed(1)}%)`);
   console.log();
 
 } else if (cmd === 'balance') {
