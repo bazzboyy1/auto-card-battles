@@ -349,6 +349,39 @@ button:disabled { opacity: 0.4; cursor: default; }
   100% { transform: scale(1); }
 }
 
+/* ── Archetype display ── */
+#archetype-display {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 4px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  font-size: 11px; flex-shrink: 0;
+}
+#archetype-display.hidden { display: none !important; }
+.archetype-label {
+  color: var(--text-muted); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; white-space: nowrap;
+}
+.archetype-primary {
+  font-weight: 700; font-size: 12px; color: #a78bfa;
+  background: rgba(167,139,250,0.12); padding: 1px 8px;
+  border-radius: 10px; border: 1px solid rgba(167,139,250,0.35);
+  white-space: nowrap;
+}
+.archetype-primary.archetype-new {
+  animation: archetype-appear 0.5s ease;
+}
+.archetype-secondary {
+  font-size: 10px; color: #7c6db5;
+  background: rgba(167,139,250,0.06); padding: 1px 6px;
+  border-radius: 8px; border: 1px solid rgba(167,139,250,0.18);
+  white-space: nowrap;
+}
+@keyframes archetype-appear {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Chapter reveal overlay */
 .chapter-reveal {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;

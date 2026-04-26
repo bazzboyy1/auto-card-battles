@@ -14,16 +14,17 @@ const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Po
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
-  run:          null,
-  human:        null,
+  run:            null,
+  human:          null,
   // phases: 'augment' | 'shapeshifter' | 'item' | 'shop' | 'scoring' | 'over'
-  phase:        'shop',
-  result:       null,
-  sellMode:     false,
-  augmentOffer: null,  // current 3-id augment offer being displayed
-  itemOffer:    null,  // current 3-id item offer being displayed
-  curatorOffer: null,  // curator's selection after a critique round
-  attachItem:   null,  // itemId currently in attach mode
+  phase:          'shop',
+  result:         null,
+  sellMode:       false,
+  augmentOffer:   null,  // current 3-id augment offer being displayed
+  itemOffer:      null,  // current 3-id item offer being displayed
+  curatorOffer:   null,  // curator's selection after a critique round
+  attachItem:     null,  // itemId currently in attach mode
+  archetypeOrder: [],    // ordered archetype names; most recently triggered first
 };
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -98,11 +99,12 @@ function newGame() {
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
-  S.phase        = 'shop';
-  S.sellMode     = false;
-  S.itemOffer    = null;
-  S.curatorOffer = null;
-  S.attachItem   = null;
+  S.phase          = 'shop';
+  S.sellMode       = false;
+  S.itemOffer      = null;
+  S.curatorOffer   = null;
+  S.attachItem     = null;
+  S.archetypeOrder = [];
   // Re-wire continue button (game-over handler overrides it).
   qs('#btn-continue').onclick = onContinue;
   startRound();
@@ -177,6 +179,67 @@ function renderJudgePanel() {
     ${statusHtml}
   `;
   panel.classList.remove('hidden');
+}
+
+// ── Archetype detection ───────────────────────────────────────────────────────
+
+function detectArchetypes() {
+  const board  = S.human.board;
+  const active = board.active;
+  if (!active.length) return [];
+
+  const { counts: sc } = effectiveSpeciesCounts(board, { augments: S.run.augments, player: S.human });
+  const { counts: cc } = effectiveClassCounts(board);
+
+  const found = [];
+
+  if ((sc['Plasmic']     || 0) >= 4) found.push('Plasma Cascade');
+  if ((sc['Abyssal']     || 0) >= 4) found.push('Void Assembly');
+
+  const hasSprangus = active.some(c => c.name === 'Sprangus');
+  const otherSporal = active.filter(c => c.species === 'Sporal' && c.name !== 'Sprangus').length;
+  if (hasSprangus && otherSporal >= 2) found.push('Spore Engine');
+
+  if ((sc['Crystalline'] || 0) >= 4) found.push('Crystal Lattice');
+  if ((sc['Chitinous']   || 0) >= 3) found.push('Chitin Wall');
+
+  const activeClassSyns = Object.keys(CLASS_SYNERGIES).filter(
+    cls => (cc[cls] || 0) >= CLASS_SYNERGIES[cls].thresholds[0]
+  );
+  if (activeClassSyns.length >= 3) found.push('Emotional Spectrum');
+
+  const patientCount = active.filter(c => (c.roundsSinceBought || 0) >= 10).length;
+  if (patientCount >= 3) found.push('Patient Collection');
+
+  const stars3Count = active.filter(c => c.stars === 3).length;
+  if (stars3Count >= 2) found.push('Star Collector');
+
+  return found;
+}
+
+function updateArchetypeDisplay() {
+  const current = new Set(detectArchetypes());
+
+  // Newly active archetypes prepend so they appear most prominently.
+  const retained    = S.archetypeOrder.filter(a => current.has(a));
+  const newlyActive = [...current].filter(a => !S.archetypeOrder.includes(a));
+  S.archetypeOrder  = [...newlyActive, ...retained];
+
+  const el = qs('#archetype-display');
+  if (!el) return;
+
+  if (!S.archetypeOrder.length) {
+    el.classList.add('hidden');
+    return;
+  }
+
+  const [primary, ...others] = S.archetypeOrder;
+  el.innerHTML = `
+    <span class="archetype-label">Build</span>
+    <span class="archetype-primary${newlyActive.includes(primary) ? ' archetype-new' : ''}">${primary}</span>
+    ${others.map(a => `<span class="archetype-secondary">${a}</span>`).join('')}
+  `;
+  el.classList.remove('hidden');
 }
 
 // Check for pending picks before income + shop. Both augment and item picks
@@ -624,6 +687,7 @@ function renderBoard() {
     else      benchEl.appendChild(makeEmptySlot());
   }
 
+  updateArchetypeDisplay();
 }
 
 function renderShopOffers() {
