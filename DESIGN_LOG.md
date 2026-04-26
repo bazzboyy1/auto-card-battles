@@ -283,7 +283,13 @@ Class synergy values (final):
 - The Assembly neutral text changed from "No bonus" to "All equally scored · Target: N"
 - Shapeshifter filtered from Assembly's augment-pick pool to avoid nested sub-picks
 
-**Next action:** Phase 19-D — Build archetypes. Archetype detection + HUD badge. Full plan in `design_log/phase_19_plan.md`.
+**Phase 19-D complete (2026-04-26):** Build archetypes shipped (v0.24).
+- `detectArchetypes()` in `web/app.js`: checks live board each render; 8 archetypes — Plasma Cascade (4+ Plasmic), Void Assembly (4+ Abyssal), Spore Engine (Sprangus + 2+ other Sporal), Crystal Lattice (4+ Crystalline), Chitin Wall (3+ Chitinous), Emotional Spectrum (3+ class synergies active), Patient Collection (3+ cards held 10+ rounds), Star Collector (2+ 3★ active)
+- `updateArchetypeDisplay()`: tracks `S.archetypeOrder` — newly active archetypes prepend so most-recently-triggered shows prominently; stale ones drop off
+- `#archetype-display` strip below judge panel: primary archetype in purple pill badge + `archetype-appear` pop animation when first triggered; secondary archetypes in smaller dimmer pills beside it; hidden when no archetypes active
+- Reset on `newGame()`; called from `renderBoard()` so updates on every board change
+
+**Next action:** Phase 19-E — Meta-progression. Exhibition Rating display + difficulty tiers. Full plan in `design_log/phase_19_plan.md`.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
