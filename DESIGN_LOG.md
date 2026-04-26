@@ -231,7 +231,33 @@ Class synergy values (final):
 - Judging animation unchanged — still shows final allocated per-card scores.
 - Files: `web/app.js`, `web/style.css`, `web/index.html`.
 
-**Next action:** User playtesting v0.20 live deploy. Evaluate afterwards: Phase 16.1 (re-verify ranking-tier opponent curves post-rebalance) or Balatro-style endless mode (independently suggested by two Playtest 3 testers).
+**Item & augment audit (2026-04-25):**
+- Full audit of all 20 items and 12 augments — every effect verified in the node engine.
+- **Fixed (v0.20.1):** Squorble card face showed flat (135) in rounds 1–9 instead of flat + penalty mult (135 ×0.50). Phase 18 display condition `multTotal > 1.001` never fired for mults < 1. Fixed to `Math.abs(multTotal - 1) > 0.001` in `web/app.js makeCard()`.
+- **Known issue — Growth Serum breaks Blinxorp/Scrithnab cap:** Blinxorp's "max +400" cap is inside its eval; `wrapPassive` doubles the result *after* the cap, so Growth Serum yields effective max +800. This silently undoes the Phase 16 balance fix. Fix requires deciding whether to clamp the doubled result or restructure the cap out of the eval. **Deferred.**
+- **Known edge cases (not bugs, no action yet):**
+  - Prestige Display (+25 base) is skipped on Sprangus because `baseOverride: 0` bypasses the Stage 0 item/augment path.
+  - Acclimatisation Log bypasses Sprangus's "scores 0" design (Stage 1 adds +20/round after the baseOverride, giving Sprangus real score).
+  - Market Savant is economy-only (doubles Sporvik tickGold, Sharzak sellBonus, -1g reroll) — no effect visible in score breakdown tooltip; players may think it's broken.
+  - Spear of Shojin species contribution invisible in synergy bar (preview skips player RNG — documented).
+  - Items on wrong-axis cards (e.g. Growth Serum on axis-2 card) silently do nothing.
+
+**Phase 19-A complete (2026-04-26):** Core swap shipped (v0.21).
+- Removed `src/opponents.js` dependency from game.js, sim.js, loader.js
+- `ROUND_CAP` 30 → 24; `STARTING_LIVES = 3` added to Run
+- `ROUND_TARGETS[24]` array in game.js: each entry `{ target, isCritique }` — critiques at R8/R16/R24
+- `Run.runBattle()` now compares playerScore vs target; decrements `run.lives` on miss; tracks `run.peakScore`
+- `Player.applyResult(passed)` simplified: no HP damage, still tracks streak/wins/losses (streak drives income bonus)
+- `Run.isOver()` → `lives === 0 || round >= 24`
+- `src/ranking.js` replaced: Exhibition Rating = (round × 100) + (lives × 200) + (peak/10); localStorage key `alien-exhibition-best`; `recordRun()` returns `{ rating, best, isNewBest }`
+- HUD: HP span replaced with 3 seal diamonds (`◆` filled / `◇` empty via CSS); `#hud-rank` removed
+- Scoring modal: two-column opponent → single player column + "Judge's Target" number on right; result shows "Target met / Target missed · Seal lost · N seals remain"
+- Run-end modal: Exhibition Rating block + Round History table; no RP/placement text
+- `src/sim.js`: `battleHistory` replaces `opponentHistory`; `survived = round >= 24`; `livesRemaining` in result
+- `src/balance.js`: updated to use `battleHistory`
+- Browser-verified: lives decrement correctly, scoring modal shows target, run-end shows rating and history
+
+**Next action:** Phase 19-B — Judges + chapters. Add chapter boundary detection (R1–8/9–16/17–24), randomly assign Head Judge per chapter from pool of 6, preference check against board, target reduction when qualifying, HUD judge display. Full plan in `design_log/phase_19_plan.md`.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
@@ -260,6 +286,7 @@ Class synergy values (final):
 - **`design_log/playtest_3_findings.md`** — Third playtest findings + Phase 10 plan. Read when resuming after Playtest 3.
 - **`design_log/phase_11_scoring_animation.md`** — Phase 11 spec: battle scoring animation (per-card reveal, running totals, winner reveal). Read before starting Phase 11.
 - **`design_log/phase_13_plan.md`** — Phase 13 plan: post-deploy bug fixes (score snapshot, combine roundsSinceBought, species/class layout, side-panel attention toast). Read when starting Phase 13.
+- **`design_log/phase_19_plan.md`** — Phase 19 plan: The Exhibition Arc. Full structural redesign — removes fake opponents + RP system, replaces with escalating score targets, lives system, head judges per chapter, build archetypes, Exhibition Rating meta-progression. Read when starting Phase 19.
 
 ---
 

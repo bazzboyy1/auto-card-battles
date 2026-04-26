@@ -4,35 +4,58 @@ const { Board } = require('./board');
 const { Shop }  = require('./shop');
 const { CARD_COSTS, CARD_DEFS, createCard } = require('./cards');
 const { attachItem, ITEM_DEFS } = require('./items');
-const { generateOpponent } = require('./opponents');
 const { AUGMENT_DEFS, pickN } = require('./augments');
 
-const STARTING_HP    = 100;
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
 const STARTING_SLOTS = 3;
-const BASE_INCOME  = 5;
-const MAX_INTEREST = 5;
-const INTEREST_PER = 5;
-const MAX_LEVEL    = 9;
-const ROUND_CAP    = 30;
-const MAX_BOARD    = 10; // Overflow cap
+const BASE_INCOME    = 5;
+const MAX_INTEREST   = 5;
+const INTEREST_PER   = 5;
+const MAX_LEVEL      = 9;
+const ROUND_CAP      = 24;
+const MAX_BOARD      = 10;
+const STARTING_LIVES = 3;
 
-// Gold cost to add a plinth (go from level L → L+1). Preserves the effective
-// cost of the old XP curve (LEVEL_XP + 4g/click) so economy pacing is unchanged.
 const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20, 7: 24, 8: 28 };
+
+// Score target and critique flag for each of the 24 rounds.
+const ROUND_TARGETS = [
+  { target: 150,  isCritique: false },
+  { target: 220,  isCritique: false },
+  { target: 310,  isCritique: false },
+  { target: 410,  isCritique: false },
+  { target: 520,  isCritique: false },
+  { target: 650,  isCritique: false },
+  { target: 800,  isCritique: false },
+  { target: 1000, isCritique: true  }, // R8  — Critique 1
+  { target: 1100, isCritique: false },
+  { target: 1280, isCritique: false },
+  { target: 1480, isCritique: false },
+  { target: 1700, isCritique: false },
+  { target: 1950, isCritique: false },
+  { target: 2250, isCritique: false },
+  { target: 2600, isCritique: false },
+  { target: 3100, isCritique: true  }, // R16 — Critique 2
+  { target: 3400, isCritique: false },
+  { target: 3750, isCritique: false },
+  { target: 4150, isCritique: false },
+  { target: 4600, isCritique: false },
+  { target: 5050, isCritique: false },
+  { target: 5500, isCritique: false },
+  { target: 5950, isCritique: false },
+  { target: 7000, isCritique: true  }, // R24 — Grand Finale
+];
 
 class Player {
   constructor(id, name, rng) {
     this.id        = id;
     this.name      = name;
-    this.hp        = STARTING_HP;
     this.gold      = STARTING_GOLD;
     this.level     = STARTING_LEVEL;
     this.streak    = 0;
     this.wins      = 0;
     this.losses    = 0;
-    this.eliminated = false;
     this.isHuman   = false;
     this.rng       = rng;
     this.board     = new Board(STARTING_SLOTS);
@@ -41,8 +64,6 @@ class Player {
     this.augments  = [];
     this.itemBag   = [];
   }
-
-  get isAlive() { return !this.eliminated && this.hp > 0; }
 
   // Tycoon doubles the interest component only (not base or streak).
   earnIncome() {
@@ -88,18 +109,13 @@ class Player {
     return this.level >= MAX_LEVEL ? 0 : PLINTH_COST[this.level];
   }
 
-  applyResult(won, round) {
-    if (won) {
+  applyResult(passed) {
+    if (passed) {
       this.wins++;
       this.streak = this.streak > 0 ? this.streak + 1 : 1;
     } else {
       this.losses++;
       this.streak = this.streak < 0 ? this.streak - 1 : -1;
-      this.hp -= (2 + round);
-      if (this.hp <= 0) {
-        this.hp = 0;
-        this.eliminated = true;
-      }
     }
   }
 
@@ -167,8 +183,7 @@ class Player {
   }
 }
 
-// Single-player roguelike run. 30 rounds vs fake opponents; player dies if
-// HP hits 0 before round cap.
+// Single-player roguelike run. 24 rounds; player is eliminated when lives hit 0.
 //
 // Augment pick flow:
 //   run.augmentPickRounds = [3, 7, 12]
@@ -186,11 +201,12 @@ class Run {
     this.augmentPickRounds = [3, 7, 12];
     this.augmentOffers    = {};          // { [round]: [id, id, id] }
     this._augmentsPicked  = new Set();   // rounds where pick was completed
-    this.itemPickRounds  = [5, 10, 15];
-    this.itemOffers      = {};
-    this._itemsPicked    = new Set();
-    this.opponentHistory  = [];
-    this.rankMult         = 1.0;
+    this.itemPickRounds   = [5, 10, 15];
+    this.itemOffers       = {};
+    this._itemsPicked     = new Set();
+    this.lives            = STARTING_LIVES;
+    this.peakScore        = 0;
+    this.battleHistory    = [];
   }
 
   // Returns the 3-id offer for the upcoming round if a pick is pending,
@@ -271,16 +287,18 @@ class Run {
       player:   this.player,
       augments: this.augments,
     };
-    const opp              = generateOpponent(this.round, this.rng, this.rankMult);
-    const scoreBreakdown   = this.player.board.calcScoreBreakdown(ctx);
-    const playerScore      = scoreBreakdown.total;
-    const opponentScore    = opp.calcScore();
-    const playerWon        = playerScore >= opponentScore;
-    this.player.applyResult(playerWon, this.round);
+    const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
+    const playerScore    = scoreBreakdown.total;
+    const { target, isCritique } = ROUND_TARGETS[this.round - 1];
+    const passed = playerScore >= target;
+
+    if (playerScore > this.peakScore) this.peakScore = playerScore;
+    if (!passed) this.lives = Math.max(0, this.lives - 1);
+    this.player.applyResult(passed);
 
     // Post-battle passive upkeep:
     // - Tick roundsSinceBought on each active card (bench does not tick).
-    // - Collect tickGold from Axis-7 passives (Ogre Magi) + Hextech Gunblade.
+    // - Collect tickGold from Axis-7 passives + Hextech Gunblade.
     // - MidasTouch doubles all Axis-7 gold income.
     const midasMult = this.augments.includes('MidasTouch') ? 2 : 1;
     for (const card of this.player.board.active) {
@@ -302,29 +320,28 @@ class Run {
 
     const entry = {
       round: this.round,
-      opponent: opp.name,
+      target,
+      isCritique,
       playerScore,
-      opponentScore,
-      won: playerWon,
-      hpAfter: this.player.hp,
+      passed,
+      livesAfter: this.lives,
       scoreBreakdown,
     };
-    this.opponentHistory.push(entry);
+    this.battleHistory.push(entry);
     return entry;
   }
 
   isOver() {
-    return this.player.hp <= 0 || this.round >= ROUND_CAP;
+    return this.lives === 0 || this.round >= ROUND_CAP;
   }
 
-  // Final score = HP; tiebreak implicit on rounds survived (caller handles).
   finalScore() {
-    return { hp: this.player.hp, roundsSurvived: this.round };
+    return { round: this.round, livesRemaining: this.lives, peakScore: this.peakScore };
   }
 }
 
 module.exports = {
   Player, Run,
-  STARTING_HP, STARTING_GOLD, STARTING_LEVEL, STARTING_SLOTS,
-  MAX_LEVEL, PLINTH_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP,
+  STARTING_GOLD, STARTING_LEVEL, STARTING_SLOTS, STARTING_LIVES,
+  MAX_LEVEL, PLINTH_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP, ROUND_TARGETS,
 };

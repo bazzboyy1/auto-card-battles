@@ -455,13 +455,13 @@ function runGame(seed, policyName = 'greedy', opts = {}) {
     seed,
     rounds:          run.round,
     roundsSurvived:  run.round,
-    hp:              p.hp,
-    survived:        p.hp > 0,
+    livesRemaining:  run.lives,
+    survived:        run.round >= ROUND_CAP,
     wins:            p.wins,
     losses:          p.losses,
     level:           p.level,
     augments:        run.augments.slice(),
-    opponentHistory: run.opponentHistory,
+    battleHistory:   run.battleHistory,
   };
 }
 
@@ -472,10 +472,9 @@ function batchSim(n, policyName = 'greedy', seedStart = 1) {
   const totalRounds = results.reduce((s, r) => s + r.rounds, 0);
   const totalWins   = results.reduce((s, r) => s + r.wins,   0);
   const avgRoundsSurvived = totalRounds / n;
-  const avgFinalHp        = results.reduce((s, r) => s + r.hp, 0) / n;
   const winRate = totalRounds > 0 ? totalWins / totalRounds : 0;
 
-  return { n, avgRoundsSurvived, winRate, avgFinalHp, results };
+  return { n, avgRoundsSurvived, winRate, results };
 }
 
 module.exports = { runGame, batchSim, POLICIES, ROUND_CAP };

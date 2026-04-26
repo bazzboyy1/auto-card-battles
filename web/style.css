@@ -110,9 +110,11 @@ button:disabled { opacity: 0.4; cursor: default; }
 .phase-tag { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .phase-tag.battle { background: #2d1b00; border-color: var(--gold); color: var(--gold); }
 
-.stat-hp   { font-weight: 700; color: var(--hp-high); }
-.stat-hp.mid  { color: var(--hp-mid); }
-.stat-hp.low  { color: var(--hp-low); }
+/* ── Lives seals ── */
+#hud-lives { display: inline-flex; align-items: center; gap: 5px; }
+.life-seal        { font-size: 18px; line-height: 1; transition: opacity 0.3s, color 0.3s; }
+.life-seal.filled { color: var(--gold); }
+.life-seal.empty  { color: var(--border); opacity: 0.45; }
 .stat-gold { color: var(--gold); font-weight: 600; }
 .stat-dim  { color: var(--text-muted); font-size: 12px; }
 
@@ -703,34 +705,42 @@ button:disabled { opacity: 0.4; cursor: default; }
 .scoring-winner.win  { background: #0d2018; color: var(--hp-high); border: 1px solid var(--primary); }
 .scoring-winner.loss { background: #2a0d0d; color: var(--hp-low);  border: 1px solid var(--danger); }
 
-/* ── Rank HUD display ── */
-#hud-rank {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-  min-width: 70px;
+/* ── Scoring modal — target column ── */
+.scoring-col-target {
+  justify-content: center; align-items: center; text-align: center;
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
 }
-.rank-calibration-hud { font-size: 10px; color: var(--text-muted); }
-#hud-rank .rank-name  { font-size: 11px; font-weight: 600; color: var(--gold); line-height: 1; }
-#hud-rank .rank-rp-text { font-size: 9px; color: var(--text-muted); line-height: 1; }
-#hud-rank .rank-bar   { width: 56px; height: 3px; background: var(--border); border-radius: 2px; }
-#hud-rank .rank-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.4s; }
+.scoring-target-number {
+  font-size: 42px; font-weight: 700; color: var(--text-muted);
+  line-height: 1; margin: 12px 0 6px;
+}
+.scoring-target-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-muted); margin-bottom: 4px;
+}
 
-/* ── Rank result block (run-complete modal) ── */
-.rank-result {
-  margin-top: 14px; padding: 10px 12px;
+/* ── Exhibition Rating (run-complete modal) ── */
+.rating-block {
+  margin-top: 14px; padding: 12px 14px;
   background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px;
+  text-align: center;
 }
-.rank-result-header {
+.rating-label {
   font-size: 10px; font-weight: 600; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px;
 }
-.rank-result-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.rank-result-tier { font-size: 15px; font-weight: 700; color: var(--gold); }
-.rank-rp-change   { font-size: 12px; font-weight: 600; }
-.rank-rp-change.positive { color: var(--hp-high); }
-.rank-rp-change.negative { color: var(--hp-low); }
-.rank-rp-label    { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
-.rank-bar-outer   { height: 5px; background: var(--border); border-radius: 3px; }
-.rank-bar-fill    { height: 100%; background: var(--gold); border-radius: 3px; }
-.rank-promoted    { font-size: 13px; font-weight: 700; color: var(--hp-high); text-align: center; padding: 4px 0; }
-.rank-demoted     { font-size: 12px; font-weight: 600; color: var(--hp-low); text-align: center; padding: 4px 0; }
-.rank-calibration-msg { font-size: 12px; color: var(--text-muted); padding: 2px 0; }
+.rating-value { font-size: 28px; font-weight: 700; color: var(--gold); line-height: 1.1; }
+.rating-best  { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.rating-new-best { font-size: 13px; font-weight: 700; color: var(--hp-high); margin-top: 4px; }
+
+/* ── Run history (run-complete modal) ── */
+.battle-history { margin-top: 8px; max-height: 160px; overflow-y: auto; font-size: 11px; }
+.bh-row {
+  display: grid; grid-template-columns: 32px 16px 1fr 1fr; gap: 4px;
+  align-items: center; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.bh-pass { color: var(--hp-high); }
+.bh-fail { color: var(--hp-low); }
+.bh-score { color: var(--text); }
+.bh-target { color: var(--text-muted); }

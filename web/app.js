@@ -8,7 +8,6 @@ let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
-let meta = null; // persistent rank state across runs
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
 const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Pompous: '▲' };
@@ -38,7 +37,6 @@ document.addEventListener('acb-ready', () => {
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
   RANKING = window.ACB.ranking;
-  meta    = RANKING.loadMeta();
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
@@ -97,7 +95,6 @@ function showRulesModal() {
 function newGame() {
   const rng  = mulberry32(Date.now() | 0);
   S.run      = new Run(rng);
-  S.run.rankMult = RANKING ? RANKING.getRankMult(meta) : 1.0;
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
@@ -153,35 +150,8 @@ function finishRoundSetup() {
 function onReady() {
   Sound.play('roundStart');
   S.result = S.run.runBattle();
-  S.result.opponentBoard = generateOpponentSnapshot(S.result.round, S.result.opponent);
   S.phase  = 'scoring';
   render();
-}
-
-// Cosmetic opponent board snapshot — decorative only, uses a separate RNG
-// seeded from round + name so it's stable across re-renders of the same result.
-function generateOpponentSnapshot(round, opponentName) {
-  const SPECIES = ['Plasmic', 'Sporal', 'Chitinous', 'Crystalline', 'Abyssal'];
-  let seed = round * 2654435761;
-  for (let i = 0; i < opponentName.length; i++) seed ^= opponentName.charCodeAt(i) * 1000003;
-  const rng = mulberry32(seed | 0);
-
-  const dominant = SPECIES[Math.floor(rng() * SPECIES.length)];
-  const secondary = SPECIES[Math.floor(rng() * SPECIES.length)];
-  const size = Math.min(6, 3 + Math.floor(round / 7));
-  const avgStars = round <= 5 ? 1 : round <= 12 ? 1.5 : round <= 20 ? 2 : 2.5;
-
-  const domPool = CARD_DEFS.filter(d => d.species === dominant);
-  const secPool = CARD_DEFS.filter(d => d.species === secondary && d.species !== dominant);
-  const cards = [];
-  for (let i = 0; i < size; i++) {
-    const useSecondary = secPool.length && i >= Math.ceil(size * 0.6) && rng() > 0.4;
-    const pool = useSecondary ? secPool : domPool;
-    const def = pool[Math.floor(rng() * pool.length)];
-    const stars = Math.min(3, Math.max(1, Math.round(avgStars + (rng() - 0.5))));
-    cards.push({ name: def.name, species: def.species, tier: def.tier, baseScore: def.baseScore, stars, _id: -(round * 100 + i + 1), items: [] });
-  }
-  return { cards, dominantSpecies: dominant };
 }
 
 function onContinue() {
@@ -485,7 +455,7 @@ function updateHUD() {
   // During pre-round phases show the upcoming round number.
   const inPreRound = ['augment', 'shapeshifter', 'item', 'shop'].includes(S.phase);
   const round = S.run.round + (inPreRound ? 1 : 0);
-  qs('#hud-round').textContent = `Round ${round} / 30`;
+  qs('#hud-round').textContent = `Round ${round} / 24`;
   qs('#hud-phase').textContent = S.phase === 'shop' ? 'Market'
     : S.phase === 'augment' || S.phase === 'shapeshifter' ? 'Augment'
     : S.phase === 'item' ? 'Item Pick'
@@ -493,11 +463,18 @@ function updateHUD() {
     : 'Battle';
   qs('#hud-phase').className   = 'phase-tag' + (!inPreRound ? ' battle' : '');
 
-  const hpEl  = qs('#hud-hp');
-  const hpTip = hpEl.querySelector('.hud-tip');
-  hpEl.textContent = h.hp + ' Rep';
-  hpEl.className   = 'stat-hp hud-stat-tip' + (h.hp <= 30 ? ' low' : h.hp <= 60 ? ' mid' : '');
-  if (hpTip) hpEl.appendChild(hpTip);
+  const livesEl = qs('#hud-lives');
+  if (livesEl) {
+    const tip = livesEl.querySelector('.hud-tip');
+    livesEl.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const seal = document.createElement('span');
+      seal.className = 'life-seal ' + (i < S.run.lives ? 'filled' : 'empty');
+      seal.textContent = '◆';
+      livesEl.appendChild(seal);
+    }
+    if (tip) livesEl.appendChild(tip);
+  }
 
   const goldEl  = qs('#hud-gold');
   const goldTip = goldEl.querySelector('.hud-tip');
@@ -516,16 +493,6 @@ function updateHUD() {
   else if (streak < -1){ sEl.textContent = `❄ ${Math.abs(streak)} loss streak`; sEl.style.color = '#f85149'; }
   else                  { sEl.textContent = ''; }
 
-  const rankEl = qs('#hud-rank');
-  if (rankEl && RANKING && meta) {
-    if (!meta.placementDone) {
-      const done = meta.placementRuns || 0;
-      rankEl.innerHTML = `<span class="rank-calibration-hud">Calibration ${done}/${RANKING.PLACEMENT_RUNS}</span>`;
-    } else if (meta.tier) {
-      const pct = Math.min(100, Math.round((meta.rp / RANKING.PROMOTE_AT) * 100));
-      rankEl.innerHTML = `<span class="rank-name">${meta.tier}</span><span class="rank-rp-text">${meta.rp}/${RANKING.PROMOTE_AT} RP</span><div class="rank-bar"><div class="rank-bar-fill" style="width:${pct}%"></div></div>`;
-    }
-  }
 }
 
 function renderBoard() {
@@ -885,72 +852,59 @@ function showShapeshifterModal() {
 }
 
 function showGameOverModal() {
+  const run      = S.run;
   const h        = S.human;
-  const survived = h.hp > 0;
+  const survived = run.round >= 24;
   Sound.play(survived ? 'gameWin' : 'gameLoss');
-  let html = `<h2>${survived ? '🏆 Run Complete' : 'Run Over'}</h2>`;
+
+  const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
+
+  let html = `<h2>${survived ? 'Run Complete' : 'Run Over'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
-    survived ? 'You survived all 30 rounds.' : `Defeated at round ${S.run.round}.`
+    survived ? 'You completed all 24 rounds.' : `Eliminated after round ${run.round}.`
   }</p>`;
 
   html += `<div class="final-stats">
-    <div><span class="area-label">Rounds survived</span> <span class="stat-big">${S.run.round}</span></div>
-    <div><span class="area-label">Final Rep</span> <span class="stat-big">${h.hp}</span></div>
-    <div><span class="area-label">Record</span> <span class="stat-big">${h.wins}W ${h.losses}L</span></div>
-    <div><span class="area-label">Level</span> <span class="stat-big">Exhibit Lvl ${h.level}</span></div>
+    <div><span class="area-label">Rounds completed</span> <span class="stat-big">${run.round} / 24</span></div>
+    <div><span class="area-label">Seals remaining</span> <span class="stat-big">${run.lives} / 3</span></div>
+    <div><span class="area-label">Peak score</span> <span class="stat-big">${run.peakScore}</span></div>
+    <div><span class="area-label">Exhibit Level</span> <span class="stat-big">Lvl ${h.level}</span></div>
   </div>`;
 
-  if (RANKING && meta) {
-    const wasPlaced = meta.placementDone;
-    const rankRes   = RANKING.recordRun(meta, survived, h.hp, `${h.wins}W ${h.losses}L`);
-    html += `<div class="rank-result"><div class="rank-result-header">Ranking</div>`;
-    if (!wasPlaced) {
-      if (meta.placementDone) {
-        html += `<div class="rank-calibration-msg">Calibration complete</div>`;
-        html += `<div class="rank-result-row"><span class="rank-result-tier">${meta.tier}</span></div>`;
-        html += `<div class="rank-promoted">Rank assigned: ${meta.tier}!</div>`;
-      } else {
-        const done = meta.placementRuns;
-        html += `<div class="rank-calibration-msg">Calibration run ${done}/${RANKING.PLACEMENT_RUNS} complete — ${RANKING.PLACEMENT_RUNS - done} more to rank</div>`;
-      }
+  if (ratingRes) {
+    html += `<div class="rating-block">`;
+    html += `<div class="rating-label">Exhibition Rating</div>`;
+    html += `<div class="rating-value">${ratingRes.rating}</div>`;
+    if (ratingRes.isNewBest) {
+      html += `<div class="rating-new-best">New personal best!</div>`;
     } else {
-      const sign    = rankRes.rpChange >= 0 ? `+${rankRes.rpChange}` : `${rankRes.rpChange}`;
-      const signCls = rankRes.rpChange >= 0 ? 'positive' : 'negative';
-      html += `<div class="rank-result-row"><span class="rank-result-tier">${meta.tier}</span><span class="rank-rp-change ${signCls}">${sign} RP</span></div>`;
-      if (rankRes.promoted) {
-        html += `<div class="rank-promoted">↑ Promoted to ${meta.tier}!</div>`;
-      } else if (rankRes.demoted) {
-        html += `<div class="rank-demoted">↓ Dropped to ${meta.tier}</div>`;
-      } else {
-        const pct = Math.min(100, Math.round((meta.rp / RANKING.PROMOTE_AT) * 100));
-        html += `<div class="rank-rp-label">${meta.rp} / ${RANKING.PROMOTE_AT} RP</div>`;
-        html += `<div class="rank-bar-outer"><div class="rank-bar-fill" style="width:${pct}%"></div></div>`;
-      }
+      html += `<div class="rating-best">Best: ${ratingRes.best}</div>`;
     }
     html += `</div>`;
   }
 
-  if (S.run.augments.length) {
+  if (run.augments.length) {
     html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Augments</div>`;
     html += `<div style="display:flex;flex-wrap:wrap;gap:5px">`;
-    for (const id of S.run.augments) {
+    for (const id of run.augments) {
       const aug = AUGMENT_DEFS.find(a => a.id === id);
       if (aug) html += `<span class="augment-badge" title="${aug.description}">${aug.name}</span>`;
     }
     html += `</div>`;
   }
 
-  if (S.run.opponentHistory.length) {
-    html += `<div class="area-label" style="margin-top:14px;margin-bottom:4px">Opponents</div>`;
-    html += `<div class="opp-history">`;
-    for (const hist of S.run.opponentHistory) {
-      const mark = hist.won ? '✓' : '✗';
-      const cls  = hist.won ? 'winner' : 'loser';
-      html += `<div class="history-row">
-        <span class="history-rnd">R${hist.round}</span>
-        <span class="${cls}">${mark}</span>
-        <span class="history-name">${hist.opponent}</span>
-        <span class="history-scores">${hist.playerScore} vs ${hist.opponentScore}</span>
+  if (run.battleHistory.length) {
+    html += `<div class="area-label" style="margin-top:14px;margin-bottom:4px">Round History</div>`;
+    html += `<div class="battle-history">`;
+    for (const e of run.battleHistory) {
+      const passCls = e.passed ? 'bh-pass' : 'bh-fail';
+      const mark    = e.passed ? '✓' : '✗';
+      const critique = e.isCritique ? ' ★' : '';
+      html += `<div class="bh-row">
+        <span class="stat-dim">R${e.round}${critique}</span>
+        <span class="${passCls}">${mark}</span>
+        <span class="bh-score">${e.playerScore}</span>
+        <span class="bh-target">/ ${e.target}</span>
       </div>`;
     }
     html += `</div>`;
@@ -1066,7 +1020,7 @@ function makeCard(card, context, shopCost, bd) {
   if (bd) {
     const flatTotal = Math.round(bd.lines.reduce((s, l) => l.add != null ? s + l.add : s, 0));
     const multTotal = bd.lines.reduce((p, l) => l.mult != null ? p * l.mult : p, 1.0);
-    const multStr = multTotal > 1.001
+    const multStr = Math.abs(multTotal - 1) > 0.001
       ? `<span class="card-mult">×${+multTotal.toFixed(2)}</span>`
       : '';
     scoreHTML = `${flatTotal}${multStr}`;
@@ -1170,13 +1124,6 @@ function allocateByWeight(items, weights, total) {
   return items.map((c, i) => ({ card: c, score: floored[i] }));
 }
 
-// Returns [{card, score}] for opponent's cosmetic board where scores
-// are fabricated proportionally from totalScore (real opponent curve value).
-function calcOpponentPerCardScores(oppBoard, totalScore) {
-  const cards = oppBoard.cards;
-  const weights = cards.map(c => c.baseScore * (STAR_MULT[c.stars] || 1));
-  return allocateByWeight(cards, weights, totalScore);
-}
 
 function makeItemTooltip(item) {
   const tt = document.createElement('span');
@@ -1214,11 +1161,12 @@ function showScoringModal() {
   const breakdown = r.scoreBreakdown;
   const playerWeights = breakdown.perCard.map(e => Math.max(1, e.final));
   const playerEntries = allocateByWeight(breakdown.perCard.map(e => e.card), playerWeights, r.playerScore);
-  const opponentEntries = calcOpponentPerCardScores(r.opponentBoard, r.opponentScore);
+
+  const heading = r.isCritique ? `Round ${r.round} — Critique Session` : `Round ${r.round} — Judging`;
 
   qs('#modal-content').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <h2 style="margin:0">Round ${r.round} — Judging</h2>
+      <h2 style="margin:0">${heading}</h2>
       <button id="scoring-skip" class="btn-secondary" style="font-size:11px;padding:4px 10px">Skip</button>
     </div>
     <div class="scoring-columns">
@@ -1227,10 +1175,9 @@ function showScoringModal() {
         <div class="scoring-cards" id="scoring-player-cards"></div>
         <div class="scoring-total"><span class="scoring-total-label">Total </span><span id="scoring-player-total">0</span></div>
       </div>
-      <div class="scoring-col">
-        <div class="scoring-col-label">${r.opponent}'s Exhibition</div>
-        <div class="scoring-cards" id="scoring-opp-cards"></div>
-        <div class="scoring-total"><span class="scoring-total-label">Total </span><span id="scoring-opp-total">0</span></div>
+      <div class="scoring-col scoring-col-target">
+        <div class="scoring-target-label">Judge's Target</div>
+        <div class="scoring-target-number">${r.target}</div>
       </div>
     </div>
     <div id="scoring-winner" class="hidden"></div>
@@ -1250,34 +1197,30 @@ function showScoringModal() {
     return el;
   });
 
-  const oppCardsEl = qs('#scoring-opp-cards');
-  const oppCardEls = opponentEntries.map(e => {
-    const el = makeScoringCard(e.card);
-    oppCardsEl.appendChild(el);
-    return el;
-  });
-
   const playerTotalEl = qs('#scoring-player-total');
-  const oppTotalEl    = qs('#scoring-opp-total');
 
   const onDone = () => {
     const winnerEl = qs('#scoring-winner');
     if (!winnerEl) return;
     winnerEl.classList.remove('hidden');
-    const youWon = r.won;
-    Sound.play(youWon ? 'win' : 'loss');
-    const damage = 2 + r.round;
-    winnerEl.className = 'scoring-winner ' + (youWon ? 'win' : 'loss');
-    winnerEl.textContent = youWon
-      ? `Victory! Reputation held at ${r.hpAfter}.`
-      : `Defeat \u2014 \u2212${damage} Rep \u2192 ${r.hpAfter} Rep`;
+    const passed = r.passed;
+    Sound.play(passed ? 'win' : 'loss');
+    winnerEl.className = 'scoring-winner ' + (passed ? 'win' : 'loss');
+    if (passed) {
+      winnerEl.textContent = `Target met! ${r.playerScore} \u2265 ${r.target}`;
+    } else {
+      const sealsLeft = r.livesAfter;
+      const sealText  = sealsLeft === 0 ? 'No seals left \u2014 run over' : `${sealsLeft} seal${sealsLeft === 1 ? '' : 's'} remain`;
+      winnerEl.textContent = `Target missed \u2014 ${r.playerScore} / ${r.target} \u00b7 Seal lost \u00b7 ${sealText}`;
+    }
+    updateHUD();
     const b = qs('#scoring-continue'); if (b) b.classList.remove('hidden');
   };
 
   const skip = animateScoringSequence(
     playerEntries.map((e, i) => ({ ...e, el: playerCardEls[i] })),
-    opponentEntries.map((e, i) => ({ ...e, el: oppCardEls[i] })),
-    playerTotalEl, oppTotalEl, onDone
+    [],
+    playerTotalEl, null, onDone
   );
 
   qs('#scoring-skip').onclick     = () => { Sound.play('uiClick'); skip(); };
@@ -1364,7 +1307,7 @@ function animateScoringSequence(playerEntries, opponentEntries, playerTotalEl, o
       e.el.classList.add('scored');
     }
     playerTotalEl.textContent = playerSum;
-    oppTotalEl.textContent    = oppSum;
+    if (oppTotalEl) oppTotalEl.textContent = oppSum;
     onDone();
   };
 }

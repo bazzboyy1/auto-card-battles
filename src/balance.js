@@ -26,7 +26,7 @@ function dist(sorted) {
 // Extract score summary per seed: final-round score, peak score across the run,
 // and survival flag. Games that die early have very few rounds.
 function summariseRun(result) {
-  const hist = result.opponentHistory || [];
+  const hist = result.battleHistory || [];
   let peak = 0, final = 0;
   for (const h of hist) {
     if (h.playerScore > peak) peak = h.playerScore;
