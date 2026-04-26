@@ -101,12 +101,18 @@ function pickShapeshifterAI(run) {
   if (best) run.applyShapeshifter(best.name, best.species);
 }
 
-// Pick the first offered item and immediately attach it to the highest-EV unit
-// with a free item slot. Item stays in the bag if no unit has room.
-function resolveItemPick(run) {
+// Pick an item and immediately attach it to the highest-EV unit with a free slot.
+// forceItemId injects a specific item into the offer (used by the exploit sweep).
+function resolveItemPick(run, forceItemId) {
   const offer = run.pendingItem();
   if (!offer) return;
-  const itemId = run.pickItem(0);
+  let idx = 0;
+  if (forceItemId) {
+    const fi = offer.indexOf(forceItemId);
+    if (fi !== -1) { idx = fi; }
+    else { offer[0] = forceItemId; idx = 0; }
+  }
+  const itemId = run.pickItem(idx);
   if (!itemId) return;
   const all = run.player.board.allCards;
   const target = all
@@ -440,7 +446,7 @@ function runGame(seed, policyName = 'greedy', opts = {}) {
       resolveAugmentPick(run, picks[nextRound] || null);
     }
     if (run.pendingItem()) {
-      resolveItemPick(run);
+      resolveItemPick(run, opts.forceItem || null);
     }
 
     run.player.earnIncome();

@@ -18,7 +18,15 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - sim.js: runGame() accepts opts.diffMult (passed to Run constructor).
 - run.js: play/sim commands updated to use battleHistory (opponentHistory was removed Phase 19-A). sim shows lives distribution.
 
-**Next action:** Phase 20 (TBD) or playtest 3. Review livid-stack dominance (71% vs greedy 55%); assess whether crystalline-stack (39.6%) and giddy-stack (36.0%) constitute dead paths requiring Phase 20 balance fixes. Full plan TBD — spawn phase_20_plan.md when ready.
+**Phase 20-A complete (2026-04-26):** Exploit sweep shipped (v0.27).
+- `sweepAugments(n, seed)` in `src/balance.js`: force-picks each augment at R3, AI picks R7+R12. Reports survival delta vs greedy baseline. Flags anything >8pp above baseline.
+- `sweepItems(n, seed)`: force-picks each item at every item round (R5/R10/R15 = 3 copies spread across board). Reports survival delta. Same flag threshold.
+- `resolveItemPick(run, forceItemId)` in `src/sim.js`: new param injects a specific item into the offer before pick.
+- `runGame` passes `opts.forceItem` through to `resolveItemPick`.
+- `node run.js exploit [n] [seed]` CLI command prints both sweep tables.
+- Smoke test at n=20 flagged: Acclimatisation Log (+40pp), Pheromone Diffuser (+30pp), Rarity Certificate (+20pp), Taxonomy Badge: Abyssal (+15pp), Acclimatisation Program augment (+10pp), Cross-Pollination augment (+10pp). Run at n=200+ for reliable results.
+
+**Next action:** Phase 20-B — economy investigation. Add `economy-stack` policy to `src/sim.js` (prioritises Sporvik + Tycoon/Market Savant, keeps gold high). Run 500 games; if survival >10pp above greedy, economy is broken. Also confirm "double interest" mechanic in `src/game.js`.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 

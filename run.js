@@ -1,7 +1,7 @@
 'use strict';
 
 const { runGame, batchSim } = require('./src/sim');
-const { sweep, sweepBuilds, analysePolicy, topSeeds, formatSweep } = require('./src/balance');
+const { sweep, sweepBuilds, analysePolicy, topSeeds, formatSweep, sweepAugments, sweepItems, formatExploitSweep } = require('./src/balance');
 const { pad } = require('./src/utils');
 
 const rawArgs = process.argv.slice(2);
@@ -127,11 +127,24 @@ if (cmd === 'play') {
   }
   console.log();
 
+} else if (cmd === 'exploit') {
+  // node run.js exploit [n] [seed]  — sweep every augment + item for survival ceiling
+  const n    = parseInt(args[1]) || 200;
+  const seed = parseInt(args[2]) || 1;
+  console.log(`\n=== Exploit sweep — n=${n}/item-or-augment  seedStart=${seed} ===\n`);
+  const augResult  = sweepAugments(n, seed);
+  const itemResult = sweepItems(n, seed);
+  console.log(formatExploitSweep(augResult,  'Augments (forced at R3, AI picks R7+R12)'));
+  console.log();
+  console.log(formatExploitSweep(itemResult, 'Items (forced every item pick round)'));
+  console.log();
+
 } else {
   console.log('Usage:');
   console.log('  node run.js play    [seed] [policy] [--grant "Card:Item,..."] [--pick "R:AugId,..."]');
   console.log('  node run.js sim     [n] [policy] [seed]');
   console.log('  node run.js balance [n] [seed]           — sweep all policies + targeted builds');
+  console.log('  node run.js exploit [n] [seed]           — sweep every augment + item for survival ceiling');
   console.log('  policies: greedy | random | wide');
   console.log('            plasmic-stack | sporal-stack | chitinous-stack | crystalline-stack | abyssal-stack');
   console.log('            shy-stack | livid-stack | giddy-stack | sullen-stack | pompous-stack');

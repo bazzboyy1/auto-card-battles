@@ -5,6 +5,8 @@
 // medians, and survival rates. Used to surface dead paths and dominant builds.
 
 const { runGame, POLICIES } = require('./sim');
+const { AUGMENT_DEFS }     = require('./augments');
+const { ITEM_DEFS }        = require('./items');
 
 // Summary stats for a sorted-ascending array of numbers.
 function dist(sorted) {
@@ -157,4 +159,52 @@ function formatSweep(analyses) {
   return lines.join('\n');
 }
 
-module.exports = { analysePolicy, sweep, sweepBuilds, BUILDS, summariseRun, dist, topSeeds, formatSweep };
+// ── Exploit sweeps ────────────────────────────────────────────────────────────
+
+// For each augment: force-pick it at R3 (first augment round), let AI decide R7/R12.
+// Measures ceiling of "this augment is always available and always taken."
+function sweepAugments(n = 200, seedStart = 1) {
+  const baseline = analysePolicy('greedy', n, seedStart);
+  const results = AUGMENT_DEFS.map(aug => {
+    const a = analysePolicy('greedy', n, seedStart, { picks: { 3: { augmentId: aug.id } } });
+    return { name: aug.name, id: aug.id, survivalRate: a.survivalRate, delta: a.survivalRate - baseline.survivalRate };
+  });
+  results.sort((a, b) => b.delta - a.delta);
+  return { baseline: baseline.survivalRate, results };
+}
+
+// For each item: force-pick it at every item round (R5, R10, R15).
+// Measures ceiling of "player always drafts this item and spreads it across units."
+function sweepItems(n = 200, seedStart = 1) {
+  const baseline = analysePolicy('greedy', n, seedStart);
+  const results = ITEM_DEFS.map(item => {
+    const a = analysePolicy('greedy', n, seedStart, { forceItem: item.id });
+    return { name: item.name, id: item.id, survivalRate: a.survivalRate, delta: a.survivalRate - baseline.survivalRate };
+  });
+  results.sort((a, b) => b.delta - a.delta);
+  return { baseline: baseline.survivalRate, results };
+}
+
+const EXPLOIT_FLAG_PP = 8;
+
+function formatExploitSweep(sweepResult, label) {
+  const pad  = (s, n) => String(s).padEnd(n);
+  const padL = (s, n) => String(s).padStart(n);
+  const lines = [
+    `── ${label} (baseline greedy: ${(sweepResult.baseline * 100).toFixed(1)}%) ──`,
+    pad('Name', 30) + padL('surv%', 6) + '  ' + padL('delta', 6) + '  note',
+    '─'.repeat(50),
+  ];
+  for (const r of sweepResult.results) {
+    const flag = r.delta * 100 >= EXPLOIT_FLAG_PP ? '  ⚠ FLAG' : '';
+    lines.push(
+      pad(r.name, 30) +
+      padL((r.survivalRate * 100).toFixed(1), 6) + '  ' +
+      padL((r.delta >= 0 ? '+' : '') + (r.delta * 100).toFixed(1), 6) +
+      flag
+    );
+  }
+  return lines.join('\n');
+}
+
+module.exports = { analysePolicy, sweep, sweepBuilds, BUILDS, summariseRun, dist, topSeeds, formatSweep, sweepAugments, sweepItems, formatExploitSweep };
