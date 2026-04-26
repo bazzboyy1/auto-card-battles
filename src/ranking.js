@@ -36,4 +36,58 @@ function recordRun(round, livesRemaining, peakScore) {
   return { rating, best: stored.best, isNewBest };
 }
 
-module.exports = { calcRating, loadBest, saveBest, recordRun, STORAGE_KEY };
+// ── Difficulty tiers ──────────────────────────────────────────────────────────
+
+const TIERS = [
+  { id: 'standard',   label: 'Standard',         mult: 1.0  },
+  { id: 'discerning', label: 'Discerning Judges', mult: 1.25 },
+  { id: 'elite',      label: 'Elite Circuit',     mult: 1.5  },
+];
+const TIER_KEY = 'alien-exhibition-tiers';
+
+function loadTierState() {
+  try {
+    const raw = typeof localStorage !== 'undefined' && localStorage.getItem(TIER_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.unlocked)) return parsed;
+    }
+  } catch (_) {}
+  return { unlocked: ['standard'], active: 'standard' };
+}
+
+function saveTierState(state) {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(TIER_KEY, JSON.stringify(state));
+  } catch (_) {}
+}
+
+function getActiveTier() {
+  const state = loadTierState();
+  return TIERS.find(t => t.id === state.active) || TIERS[0];
+}
+
+// Call when player completes round 24. Returns newly unlocked tier or null.
+function tryUnlockNextTier(activeTierId) {
+  const state = loadTierState();
+  const idx   = TIERS.findIndex(t => t.id === activeTierId);
+  const next  = TIERS[idx + 1];
+  if (!next || state.unlocked.includes(next.id)) return null;
+  state.unlocked.push(next.id);
+  saveTierState(state);
+  return next;
+}
+
+// Returns false if tierId is locked.
+function setActiveTier(tierId) {
+  const state = loadTierState();
+  if (!state.unlocked.includes(tierId)) return false;
+  state.active = tierId;
+  saveTierState(state);
+  return true;
+}
+
+module.exports = {
+  calcRating, loadBest, saveBest, recordRun, STORAGE_KEY,
+  TIERS, TIER_KEY, loadTierState, saveTierState, getActiveTier, tryUnlockNextTier, setActiveTier,
+};

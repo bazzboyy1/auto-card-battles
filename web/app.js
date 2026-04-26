@@ -52,6 +52,7 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-sell').onclick     = onToggleSell;
 
   newGame();
+  renderDifficultyPicker(qs('#difficulty-selector'));
 
   qs('#btn-start').onclick = () => {
     Sound.play('roundStart');
@@ -92,10 +93,55 @@ function showRulesModal() {
   };
 }
 
+// ── Difficulty picker ─────────────────────────────────────────────────────────
+function renderDifficultyPicker(containerEl) {
+  if (!containerEl || !RANKING) return;
+  const state = RANKING.loadTierState();
+  containerEl.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'diff-row';
+  for (const tier of RANKING.TIERS) {
+    const unlocked = state.unlocked.includes(tier.id);
+    const active   = state.active === tier.id;
+    const btn = document.createElement('button');
+    btn.className = 'diff-btn' + (active ? ' active' : '') + (unlocked ? '' : ' locked');
+    const multLabel = tier.mult !== 1.0 ? ` ×${tier.mult}` : '';
+    btn.textContent = (unlocked ? '' : '🔒 ') + tier.label + multLabel;
+    if (unlocked && !active) {
+      btn.onclick = () => {
+        RANKING.setActiveTier(tier.id);
+        // Refresh all open pickers and the HUD label.
+        const splash = qs('#difficulty-selector');
+        if (splash) renderDifficultyPicker(splash);
+        const modal  = qs('#modal-diff-picker');
+        if (modal)  renderDifficultyPicker(modal);
+        updateHUDDifficulty();
+      };
+    } else if (!unlocked) {
+      const prev = RANKING.TIERS[RANKING.TIERS.findIndex(t => t.id === tier.id) - 1];
+      btn.title    = `Complete ${prev ? prev.label : 'previous tier'} to unlock`;
+      btn.disabled = true;
+    }
+    row.appendChild(btn);
+  }
+  containerEl.appendChild(row);
+}
+
+function updateHUDDifficulty() {
+  const el = qs('#hud-difficulty');
+  if (!el || !RANKING) return;
+  const tier = RANKING.getActiveTier();
+  el.textContent = tier.label;
+  el.className = 'stat-dim hud-diff' +
+    (tier.id === 'elite'      ? ' diff-elite'      :
+     tier.id === 'discerning' ? ' diff-discerning' : '');
+}
+
 // ── New game ──────────────────────────────────────────────────────────────────
 function newGame() {
+  const tier = RANKING ? RANKING.getActiveTier() : { mult: 1.0 };
   const rng  = mulberry32(Date.now() | 0);
-  S.run      = new Run(rng);
+  S.run      = new Run(rng, tier.mult);
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
@@ -659,6 +705,7 @@ function updateHUD() {
   else if (streak < -1){ sEl.textContent = `❄ ${Math.abs(streak)} loss streak`; sEl.style.color = '#f85149'; }
   else                  { sEl.textContent = ''; }
 
+  updateHUDDifficulty();
 }
 
 function renderBoard() {
@@ -1084,6 +1131,8 @@ function showGameOverModal() {
   Sound.play(survived ? 'gameWin' : 'gameLoss');
 
   const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
+  // Try to unlock the next difficulty tier when player clears all 24 rounds.
+  const newTierUnlock = (survived && RANKING) ? RANKING.tryUnlockNextTier(RANKING.getActiveTier().id) : null;
 
   let html = `<h2>${survived ? 'Run Complete' : 'Run Over'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
@@ -1137,7 +1186,15 @@ function showGameOverModal() {
     html += `</div>`;
   }
 
+  if (newTierUnlock) {
+    html += `<div class="tier-unlock-banner">🏆 New difficulty unlocked: <strong>${newTierUnlock.label}</strong></div>`;
+  }
+
+  html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Next Run Difficulty</div>`;
+  html += `<div id="modal-diff-picker"></div>`;
+
   qs('#modal-content').innerHTML = html;
+  renderDifficultyPicker(qs('#modal-diff-picker'));
   qs('#modal-actions').classList.remove('hidden');
   qs('#btn-continue').textContent = 'Play Again';
   qs('#btn-continue').onclick = () => { newGame(); };

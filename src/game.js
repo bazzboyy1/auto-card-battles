@@ -263,8 +263,9 @@ class Player {
 const CHAPTER_LABELS = ['Opening Exhibition', 'Main Exhibition', 'Grand Exhibition'];
 
 class Run {
-  constructor(rng) {
+  constructor(rng, diffMult = 1.0) {
     this.rng              = rng;
+    this.diffMult         = diffMult;
     this.round            = 0;
     this.player           = new Player(0, 'You', rng);
     this.augments         = [];          // shared array — also set on player
@@ -386,7 +387,9 @@ class Run {
     };
     const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
     const playerScore    = scoreBreakdown.total;
-    const { target: normalTarget, preferredTarget, isCritique } = ROUND_TARGETS[this.round - 1];
+    const { target: baseNormal, preferredTarget: basePref, isCritique } = ROUND_TARGETS[this.round - 1];
+    const normalTarget    = Math.round(baseNormal * this.diffMult);
+    const preferredTarget = Math.round(basePref   * this.diffMult);
     const judge     = this.currentJudge(this.round);
     const qualified = judge ? judge.qualifies(this.player.board, this.augments) : false;
     const target    = (qualified && preferredTarget != null) ? preferredTarget : normalTarget;
