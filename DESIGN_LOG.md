@@ -38,6 +38,14 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - Judge panel: when qualifying, now shows "✓ 2+ Abyssal active → Target: 680" instead of just "✓ Target: 680" — requirement stays visible alongside the confirmed bonus.
 - Shen-Nax excluded from Chapter 1 judge pool: `_assignJudges()` draws Ch1 from a filtered pool (all judges except shen_nax); Ch2/Ch3 draw from full remainder. Shen-Nax's "2+ T3 active" condition is near-impossible in rounds 1–8.
 
+**Phase 20-B addendum (2026-04-26):** Smart-greedy policy shipped (v0.29).
+- `smart-greedy` policy added to `src/sim.js`: saves gold when current board score already clears the next chapter critique target (R8/R16/R24). Plinths still bought regardless (levelling improves future shop odds). Card buying resumes when score is below the critique target.
+- `boardScore(player, round, run)` helper computes live board score inside the policy.
+- `runGame` now passes `run` as third arg to policy (ignored by all existing policies).
+- Survival: smart-greedy 54.7% vs greedy 56.7% — 2pp gap is the legitimate cost of conservative saving. Per-round pass rate nearly identical (90.2% vs 90.3%), confirming the policy isn't weaker per round, just slightly more conservative overall.
+- T3 early-game penalty tested but removed: a flat -20 penalty caused smart-greedy to skip genuinely good T3 cards, driving survival to 51%. The correct implementation would require synergy-context awareness (only skip T3 if it doesn't complete a threshold) — deferred.
+- Extra reroll (+1) tested and removed: added cost without offsetting benefit at current reroll cap (2g per attempt absorbed savings advantage).
+
 **Next action:** Phase 20-D — balance pass. Run exploit sweep at n=200 to get reliable item/augment flags, then fix: (1) livid-stack dominance (71%), (2) crystalline/giddy dead paths (36–41%), (3) Growth Serum × Blinxorp cap-bypass (79.7% blinxorp-max). Target: no build >15pp above greedy (57%), no build <20pp below greedy. Full data before touching numbers.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).

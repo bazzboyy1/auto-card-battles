@@ -1,7 +1,7 @@
 'use strict';
 
 const { CARD_DEFS, CARD_COSTS, STAR_MULT } = require('./cards');
-const { Run, ROUND_CAP } = require('./game');
+const { Run, ROUND_CAP, ROUND_TARGETS } = require('./game');
 const { attachItem } = require('./items');
 const { AUGMENT_DEFS } = require('./augments');
 const { mulberry32 } = require('./utils');
@@ -352,6 +352,12 @@ function greedyPolicy(player, round = 1) {
   greedyCore(player, round, null);
 }
 
+// Smart greedy: score-aware saving, T3 timing, aggressive rerolling when behind.
+// More representative of skilled human play than the base greedy policy.
+function smartGreedyPolicy(player, round = 1, run = null) {
+  smartGreedyCore(player, round, null, run);
+}
+
 // Wide: prefers cards that add new species over copies of existing ones.
 // Benefits from Varietal and Cross-Training augments.
 function widePolicy(player, round = 1) {
@@ -379,6 +385,80 @@ function pompousStackPolicy(player, round = 1) { greedyCore(player, round, { cls
 // Two-species mix: test whether multiplicative species stacks compound into
 // a dominant build not caught by single-species commits.
 function abyssalSporalMixPolicy(player, round = 1) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }); }
+
+// Score of the current board in the context of an upcoming round.
+function boardScore(player, round, run) {
+  const ctx = { round, player, augments: run ? run.augments : (player.augments || []) };
+  return player.board.calcScoreBreakdown(ctx).total;
+}
+
+// Smart greedy: extends greedyCore with score-awareness.
+// Saves gold (earns interest) when the current board already clears the next critique
+// target — the chapter's hard checkpoint. Buying more cards to pad a comfortable margin
+// is lower EV than banking the gold. Plinths are still bought regardless (levelling up
+// improves shop odds for future rounds). Card-buying resumes when score falls behind.
+function smartGreedyCore(player, round, bias, run) {
+  const augments  = player.augments || [];
+  const hasTycoon = augments.includes('Tycoon');
+  const hasMidas  = augments.includes('MidasTouch');
+  const INTEREST_PER = 5;
+  const rerollCost   = player.shop.rerollCost();
+
+  // 1. Score awareness — compare to the next CRITIQUE target, not the next round.
+  // Early-round targets are intentionally easy; saving because you can clear round 2
+  // while neglecting to build for the round 8 critique is too myopic.
+  // "Comfortable" = current score already clears the chapter's final hard check.
+  let comfortable = false;
+  if (run && ROUND_TARGETS.length) {
+    const CRITIQUE_ROUNDS = [8, 16, 24];
+    const nextCritique = CRITIQUE_ROUNDS.find(r => r >= round) || 24;
+    const cEntry = ROUND_TARGETS[nextCritique - 1];
+    if (cEntry) {
+      const critiqueTarget = Math.round(cEntry.target * (run.diffMult || 1));
+      comfortable = boardScore(player, round, run) >= critiqueTarget;
+    }
+  }
+
+  // Interest saving (same logic as greedyCore).
+  const nextThreshold   = (Math.floor(player.gold / INTEREST_PER) + 1) * INTEREST_PER;
+  const gapToThreshold  = nextThreshold - player.gold;
+  const saveMinGold     = hasTycoon ? 6 : 8;
+  const saveGap         = hasTycoon ? 3 : 2;
+  const saveForInterest = player.gold >= saveMinGold && gapToThreshold <= saveGap;
+
+  // Plinth: always invest when affordable — leveling improves shop quality regardless
+  // of current score comfort. Skip only when near an interest threshold.
+  if (!saveForInterest) {
+    while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
+      if (!player.addPlinth()) break;
+    }
+  }
+
+  if (comfortable || saveForInterest) {
+    optimizeBoard(player);
+    return;
+  }
+
+  while (buyBestCard(player, round, bias)) { /* continue */ }
+
+  const rerollGoldFloor = hasMidas ? rerollCost + CARD_COSTS[1] : 6;
+  const maxRerolls      = hasMidas ? 3 : 1;
+  let   rerolls         = 0;
+  while (rerolls < maxRerolls && player.gold >= rerollGoldFloor && !player.board.isFull()) {
+    const hasAffordable = player.shop.offers.some(name => {
+      if (!name) return false;
+      const def = CARD_DEFS.find(d => d.name === name);
+      return def && player.gold >= CARD_COSTS[def.tier];
+    });
+    if (hasAffordable) break;
+    if (player.gold < rerollCost) break;
+    player.shop.reroll();
+    rerolls++;
+    while (buyBestCard(player, round, bias)) { /* continue */ }
+  }
+
+  optimizeBoard(player);
+}
 
 // Economy-stack: prioritises Axis-7 gold-generating cards (Sporvik, Sharzak) and biases
 // augment scoring heavily toward Tycoon + MidasTouch. Tests the compound ceiling of
@@ -411,6 +491,7 @@ function randomPolicy(player, _round = 1) {
 
 const POLICIES = {
   greedy:              greedyPolicy,
+  'smart-greedy':      smartGreedyPolicy,
   random:              randomPolicy,
   wide:                widePolicy,
   'plasmic-stack':     plasmicStackPolicy,
@@ -460,7 +541,7 @@ function runGame(seed, policyName = 'greedy', opts = {}) {
 
     run.player.earnIncome();
     run.player.shop.refresh();
-    policy(run.player, nextRound);
+    policy(run.player, nextRound, run);
     if (pending && pending.length) applyGrants(run.player, pending);
     run.runBattle();
   }
