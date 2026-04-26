@@ -2,7 +2,7 @@
 
 // ── Module refs ───────────────────────────────────────────────────────────────
 let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
-let Run, POLICIES, BASE_INCOME, INTEREST_PER;
+let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS;
 let ITEM_DEFS, attachItem, detachItem;
 let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
@@ -22,6 +22,7 @@ const S = {
   sellMode:     false,
   augmentOffer: null,  // current 3-id augment offer being displayed
   itemOffer:    null,  // current 3-id item offer being displayed
+  curatorOffer: null,  // curator's selection after a critique round
   attachItem:   null,  // itemId currently in attach mode
 };
 
@@ -29,9 +30,8 @@ const S = {
 document.addEventListener('acb-ready', () => {
   ({ mulberry32 }                                  = window.ACB.utils);
   ({ CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT } = window.ACB.cards);
-  ({ Run }                                         = window.ACB.game);
+  ({ Run, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS } = window.ACB.game);
   ({ POLICIES }                                    = window.ACB.sim);
-  ({ BASE_INCOME, INTEREST_PER }                   = window.ACB.game);
   ({ ITEM_DEFS, attachItem, detachItem }           = window.ACB.items);
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
@@ -98,10 +98,11 @@ function newGame() {
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
-  S.phase      = 'shop';
-  S.sellMode   = false;
-  S.itemOffer  = null;
-  S.attachItem = null;
+  S.phase        = 'shop';
+  S.sellMode     = false;
+  S.itemOffer    = null;
+  S.curatorOffer = null;
+  S.attachItem   = null;
   // Re-wire continue button (game-over handler overrides it).
   qs('#btn-continue').onclick = onContinue;
   startRound();
@@ -118,9 +119,76 @@ function showAttentionToast(msg) {
   setTimeout(() => el.remove(), 2500);
 }
 
+function showChapterReveal(chapter, judge) {
+  const label = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
+  const el = document.createElement('div');
+  el.className = 'chapter-reveal';
+  el.innerHTML = `
+    <div class="chapter-reveal-label">Chapter ${chapter}</div>
+    <div class="chapter-reveal-chapter">${label}</div>
+    <div class="chapter-reveal-judge">${judge.name}</div>
+    <div class="chapter-reveal-pref">${judge.preference}</div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.4s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 420);
+  }, 2200);
+}
+
+// Render the judge panel below the HUD sub-row.
+function renderJudgePanel() {
+  const panel = qs('#judge-panel');
+  if (!panel) return;
+  const nextRound = S.run.round + 1;
+  if (nextRound > 24) { panel.classList.add('hidden'); return; }
+
+  const chapter = S.run.chapterFor(nextRound);
+  const judge   = S.run.currentJudge(nextRound);
+  if (!judge) { panel.classList.add('hidden'); return; }
+
+  const chapterLabel = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
+  const qualifying   = !judge.isNeutral && judge.qualifies(S.human.board, S.run.augments);
+  const tEntry       = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
+  const normalTarget    = tEntry ? tEntry.target : null;
+  const preferredTarget = tEntry ? tEntry.preferredTarget : null;
+  const isCritiqueNext  = tEntry ? tEntry.isCritique : false;
+  const critiqueTag     = isCritiqueNext ? ' <span class="judge-critique-tag">★ Critique</span>' : '';
+
+  let statusHtml;
+  if (judge.isNeutral) {
+    const tStr = normalTarget !== null ? ` · Target: <strong>${normalTarget}</strong>` : '';
+    statusHtml = `<span class="judge-not-qualifying">All equally scored${tStr}</span>`;
+  } else if (qualifying) {
+    const tStr = preferredTarget !== null ? `<strong>${preferredTarget}</strong>` : '−15%';
+    statusHtml = `<span class="judge-qualifying">✓ Target: ${tStr}</span>`;
+  } else {
+    const tNorm = normalTarget !== null ? `<strong>${normalTarget}</strong>` : '';
+    const tPref = preferredTarget !== null ? ` <span class="judge-pref-hint">(${preferredTarget} if met)</span>` : '';
+    statusHtml = `<span class="judge-not-qualifying">${judge.qualifyingHint} → ${tNorm}${tPref}</span>`;
+  }
+
+  panel.innerHTML = `
+    <span class="judge-chapter">Ch.${chapter} · ${chapterLabel}${critiqueTag}</span>
+    <span class="judge-divider">|</span>
+    <span class="judge-name">${judge.name}</span>
+    <span class="judge-pref">"${judge.preference}"</span>
+    ${statusHtml}
+  `;
+  panel.classList.remove('hidden');
+}
+
 // Check for pending picks before income + shop. Both augment and item picks
 // happen BEFORE earnIncome so Tycoon/Midas effects apply this round.
 function startRound() {
+  const nextRound = S.run.round + 1;
+  if (nextRound === 1 || nextRound === 9 || nextRound === 17) {
+    const chapter = S.run.chapterFor(nextRound);
+    const judge   = S.run.currentJudge(nextRound);
+    if (judge) setTimeout(() => showChapterReveal(chapter, judge), 150);
+  }
+
   const augOffer = S.run.pendingAugment();
   if (augOffer) {
     S.phase = 'augment';
@@ -160,7 +228,29 @@ function onContinue() {
     render();
     return;
   }
+  const curatorOffer = S.run.pendingCurator();
+  if (curatorOffer) {
+    S.phase = 'curator';
+    S.curatorOffer = curatorOffer;
+    render();
+    return;
+  }
   startRound();
+}
+
+function onPickCurator(idx) {
+  const result = S.run.pickCurator(idx);
+  if (!result) return;
+  S.phase = 'shop';
+  S.curatorOffer = null;
+  if (result.type === 'augment') {
+    Sound.play('pickAugment');
+    finishRoundSetup();
+    requestAnimationFrame(() => flashAugmentEffect(result.id));
+  } else {
+    Sound.play('pickItem');
+    finishRoundSetup();
+  }
 }
 
 // Augment pick: user clicked card at index idx.
@@ -415,6 +505,7 @@ function render() {
     renderAugmentBadges();
     renderItemBag();
     renderAugmentOffer();
+    renderJudgePanel();
   } else if (S.phase === 'shapeshifter') {
     qs('#shop-section').classList.add('hidden');
     showShapeshifterModal();
@@ -426,6 +517,16 @@ function render() {
     renderAugmentBadges();
     renderItemBag();
     renderItemOffer();
+    renderJudgePanel();
+  } else if (S.phase === 'curator') {
+    qs('#modal').classList.add('hidden');
+    qs('#shop-section').classList.remove('hidden');
+    renderBoard();
+    renderSynergyBar();
+    renderAugmentBadges();
+    renderItemBag();
+    renderCuratorOffer();
+    renderJudgePanel();
   } else if (S.phase === 'shop') {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
@@ -441,6 +542,7 @@ function render() {
     renderIncomePreview();
     renderDevPanel();
     updateShopControls();
+    renderJudgePanel();
   } else if (S.phase === 'scoring') {
     qs('#shop-section').classList.add('hidden');
     showScoringModal();
@@ -453,12 +555,13 @@ function render() {
 function updateHUD() {
   const h = S.human;
   // During pre-round phases show the upcoming round number.
-  const inPreRound = ['augment', 'shapeshifter', 'item', 'shop'].includes(S.phase);
+  const inPreRound = ['augment', 'shapeshifter', 'item', 'curator', 'shop'].includes(S.phase);
   const round = S.run.round + (inPreRound ? 1 : 0);
   qs('#hud-round').textContent = `Round ${round} / 24`;
   qs('#hud-phase').textContent = S.phase === 'shop' ? 'Market'
     : S.phase === 'augment' || S.phase === 'shapeshifter' ? 'Augment'
     : S.phase === 'item' ? 'Item Pick'
+    : S.phase === 'curator' ? "Curator's Gift"
     : S.phase === 'scoring' ? 'Judging'
     : 'Battle';
   qs('#hud-phase').className   = 'phase-tag' + (!inPreRound ? ' battle' : '');
@@ -776,6 +879,65 @@ function renderItemOffer() {
   }
 }
 
+function renderCuratorOffer() {
+  const offer  = S.curatorOffer;
+  const last   = S.run.battleHistory[S.run.battleHistory.length - 1];
+  const judge  = last ? HEAD_JUDGES.find(j => j.id === last.judgeId) : null;
+  const judgeName = judge ? judge.name : 'The Judges';
+
+  qs('#shop-section .area-label').textContent = "Curator's Selection";
+  qs('#shop-section-desc').textContent = `A gift from ${judgeName} at the end of their chapter`;
+  qs('#shop-controls').classList.add('hidden');
+
+  const el = qs('#shop-cards');
+  el.className = 'augment-offer';
+  el.innerHTML = '';
+
+  if (!offer) return;
+
+  if (offer.type === 'augment-pick') {
+    // The Assembly — free 3-choice augment pick.
+    for (let i = 0; i < offer.offers.length; i++) {
+      const aug = AUGMENT_DEFS.find(a => a.id === offer.offers[i]);
+      if (!aug) continue;
+      const card = document.createElement('div');
+      card.className = 'augment-card';
+      card.tabIndex = 0;
+      card.innerHTML = `<div class="aug-name">${aug.name}</div><div class="aug-desc">${aug.description}</div>`;
+      const pick = () => onPickCurator(i);
+      card.onclick = pick;
+      card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') pick(); };
+      el.appendChild(card);
+    }
+  } else {
+    // Single gift — show as a centred card with an Accept button.
+    let displayName, displayDesc, nameClass;
+    if (offer.type === 'item') {
+      const item = ITEM_DEFS.find(it => it.id === offer.id);
+      displayName = item ? item.name : offer.id;
+      displayDesc = item ? item.description : '';
+      nameClass = 'item-name';
+    } else {
+      const aug = AUGMENT_DEFS.find(a => a.id === offer.id);
+      displayName = aug ? aug.name : offer.id;
+      displayDesc = aug ? aug.description : '';
+      nameClass = 'aug-name';
+    }
+    const card = document.createElement('div');
+    card.className = 'augment-card curator-gift-card';
+    card.tabIndex = 0;
+    card.innerHTML = `
+      <div class="curator-gift-label">Judge's Gift — Free</div>
+      <div class="${nameClass}">${displayName}</div>
+      <div class="aug-desc">${displayDesc}</div>
+      <div class="curator-gift-hint">Click to accept</div>
+    `;
+    card.onclick = () => onPickCurator(0);
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') onPickCurator(0); };
+    el.appendChild(card);
+  }
+}
+
 // ── Item bag panel ────────────────────────────────────────────────────────────
 function renderItemBag() {
   let el = qs('#item-bag');
@@ -897,14 +1059,15 @@ function showGameOverModal() {
     html += `<div class="area-label" style="margin-top:14px;margin-bottom:4px">Round History</div>`;
     html += `<div class="battle-history">`;
     for (const e of run.battleHistory) {
-      const passCls = e.passed ? 'bh-pass' : 'bh-fail';
-      const mark    = e.passed ? '✓' : '✗';
+      const passCls  = e.passed ? 'bh-pass' : 'bh-fail';
+      const mark     = e.passed ? '✓' : '✗';
       const critique = e.isCritique ? ' ★' : '';
+      const prefTag  = e.qualified ? ' <span style="color:#3fb950;font-size:9px">✓pref</span>' : '';
       html += `<div class="bh-row">
         <span class="stat-dim">R${e.round}${critique}</span>
         <span class="${passCls}">${mark}</span>
         <span class="bh-score">${e.playerScore}</span>
-        <span class="bh-target">/ ${e.target}</span>
+        <span class="bh-target">/ ${e.target}${prefTag}</span>
       </div>`;
     }
     html += `</div>`;
@@ -1162,7 +1325,19 @@ function showScoringModal() {
   const playerWeights = breakdown.perCard.map(e => Math.max(1, e.final));
   const playerEntries = allocateByWeight(breakdown.perCard.map(e => e.card), playerWeights, r.playerScore);
 
-  const heading = r.isCritique ? `Round ${r.round} — Critique Session` : `Round ${r.round} — Judging`;
+  const judge = HEAD_JUDGES.find(j => j.id === r.judgeId);
+  const judgeName = judge ? judge.name : 'The Judges';
+  const heading = r.isCritique
+    ? `Critique Session — ${judgeName}`
+    : `Round ${r.round} — ${judgeName}`;
+  const preferredNote = (r.qualified && judge && !judge.isNeutral)
+    ? `<div style="font-size:11px;color:#3fb950;margin-top:2px">✓ Preferred (−15% applied)</div>`
+    : '';
+  if (r.isCritique) {
+    qs('#modal').classList.add('critique-round');
+  } else {
+    qs('#modal').classList.remove('critique-round');
+  }
 
   qs('#modal-content').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1178,6 +1353,7 @@ function showScoringModal() {
       <div class="scoring-col scoring-col-target">
         <div class="scoring-target-label">Judge's Target</div>
         <div class="scoring-target-number">${r.target}</div>
+        ${preferredNote}
       </div>
     </div>
     <div id="scoring-winner" class="hidden"></div>
@@ -1207,7 +1383,11 @@ function showScoringModal() {
     Sound.play(passed ? 'win' : 'loss');
     winnerEl.className = 'scoring-winner ' + (passed ? 'win' : 'loss');
     if (passed) {
-      winnerEl.textContent = `Target met! ${r.playerScore} \u2265 ${r.target}`;
+      if (r.lifeGained) {
+        winnerEl.innerHTML = `Target cleared! ${r.playerScore} \u2265 ${r.target} <span class="scoring-life-regain">\u25c6 Seal restored!</span>`;
+      } else {
+        winnerEl.textContent = `Target met! ${r.playerScore} \u2265 ${r.target}`;
+      }
     } else {
       const sealsLeft = r.livesAfter;
       const sealText  = sealsLeft === 0 ? 'No seals left \u2014 run over' : `${sealsLeft} seal${sealsLeft === 1 ? '' : 's'} remain`;
@@ -1224,7 +1404,12 @@ function showScoringModal() {
   );
 
   qs('#scoring-skip').onclick     = () => { Sound.play('uiClick'); skip(); };
-  qs('#scoring-continue').onclick = () => { Sound.play('uiClick'); qs('#modal').classList.remove('scoring'); onContinue(); };
+  qs('#scoring-continue').onclick = () => {
+    Sound.play('uiClick');
+    qs('#modal').classList.remove('scoring');
+    qs('#modal').classList.remove('critique-round');
+    onContinue();
+  };
 }
 
 // Steps through player cards then opponent cards revealing scores with a

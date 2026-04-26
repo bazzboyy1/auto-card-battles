@@ -1,8 +1,8 @@
 'use strict';
 
-const { Board } = require('./board');
+const { Board, effectiveClassCounts } = require('./board');
 const { Shop }  = require('./shop');
-const { CARD_COSTS, CARD_DEFS, createCard } = require('./cards');
+const { CARD_COSTS, CARD_DEFS, createCard, CLASS_SYNERGIES } = require('./cards');
 const { attachItem, ITEM_DEFS } = require('./items');
 const { AUGMENT_DEFS, pickN } = require('./augments');
 
@@ -19,32 +19,101 @@ const STARTING_LIVES = 3;
 
 const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20, 7: 24, 8: 28 };
 
-// Score target and critique flag for each of the 24 rounds.
+// Six judges — one drawn per chapter per run (no repeats).
+// preferredTarget on ROUND_TARGETS applies when the board meets a judge's qualifying condition.
+const HEAD_JUDGES = [
+  {
+    id: 'vlorb',
+    name: 'Judge Vlorb',
+    preference: 'Fascinated by Void specimens',
+    qualifyingHint: '2+ Abyssal active',
+    qualifies: (board) => board.active.filter(c => c.species === 'Abyssal').length >= 2,
+  },
+  {
+    id: 'praxis',
+    name: 'Curator Praxis',
+    preference: 'Values long-term commitment',
+    qualifyingHint: '3+ cards held 8+ rounds',
+    qualifies: (board) => board.active.filter(c => (c.roundsSinceBought || 0) >= 8).length >= 3,
+  },
+  {
+    id: 'shen_nax',
+    name: 'Critic Shen-Nax',
+    preference: 'Demands only the finest specimens',
+    qualifyingHint: '2+ T3 cards active',
+    qualifies: (board) => board.active.filter(c => c.tier === 3).length >= 2,
+  },
+  {
+    id: 'yorzal',
+    name: 'Judge Yorzal',
+    preference: 'Expects emotional coherence',
+    qualifyingHint: '2+ class synergies active',
+    qualifies: (board) => {
+      const { counts } = effectiveClassCounts(board);
+      return Object.keys(counts).filter(cls => {
+        const syn = CLASS_SYNERGIES[cls];
+        return syn && syn.getBonus(counts[cls]);
+      }).length >= 2;
+    },
+  },
+  {
+    id: 'collective',
+    name: 'The Collective',
+    preference: 'Rewards breadth of collection',
+    qualifyingHint: '4+ distinct species active',
+    qualifies: (board) => new Set(board.active.map(c => c.species)).size >= 4,
+  },
+  {
+    id: 'assembly',
+    name: 'The Assembly',
+    preference: 'Pure exhibition merit',
+    qualifyingHint: null,  // no preference bonus — target is always base
+    isNeutral: true,
+    qualifies: () => false,
+  },
+];
+
+// Curated gift for each judge's critique round.
+// 'item' → item pushed to player.itemBag; 'augment' → applied immediately;
+// 'augment-pick' → 3-choice free augment offer (The Assembly only).
+// The Assembly's Shapeshifter is filtered out of its pool to avoid nested sub-picks.
+const CURATOR_SELECTIONS = {
+  vlorb:      { type: 'item',         id: 'Emblem of Abyssal' },    // Taxonomy Badge: Abyssal
+  praxis:     { type: 'item',         id: "Guinsoo's Rageblade" },   // Acclimatisation Log
+  shen_nax:   { type: 'item',         id: "Giant's Belt" },          // Rarity Certificate
+  yorzal:     { type: 'augment',      id: 'CrossTraining' },         // Cross-Pollination
+  collective: { type: 'augment',      id: 'Varietal' },              // Diverse Portfolio
+  assembly:   { type: 'augment-pick' },                              // free 3-choice pick
+};
+
+// Score targets for each of the 24 rounds.
+// preferredTarget = base × 0.85 (rounded). Applied when board meets current judge's condition.
+// The Assembly (isNeutral) never grants the reduction — preferredTarget is unused for them.
 const ROUND_TARGETS = [
-  { target: 150,  isCritique: false },
-  { target: 220,  isCritique: false },
-  { target: 310,  isCritique: false },
-  { target: 410,  isCritique: false },
-  { target: 520,  isCritique: false },
-  { target: 650,  isCritique: false },
-  { target: 800,  isCritique: false },
-  { target: 1000, isCritique: true  }, // R8  — Critique 1
-  { target: 1100, isCritique: false },
-  { target: 1280, isCritique: false },
-  { target: 1480, isCritique: false },
-  { target: 1700, isCritique: false },
-  { target: 1950, isCritique: false },
-  { target: 2250, isCritique: false },
-  { target: 2600, isCritique: false },
-  { target: 3100, isCritique: true  }, // R16 — Critique 2
-  { target: 3400, isCritique: false },
-  { target: 3750, isCritique: false },
-  { target: 4150, isCritique: false },
-  { target: 4600, isCritique: false },
-  { target: 5050, isCritique: false },
-  { target: 5500, isCritique: false },
-  { target: 5950, isCritique: false },
-  { target: 7000, isCritique: true  }, // R24 — Grand Finale
+  { target: 150,  preferredTarget: 128,  isCritique: false },
+  { target: 220,  preferredTarget: 187,  isCritique: false },
+  { target: 310,  preferredTarget: 264,  isCritique: false },
+  { target: 410,  preferredTarget: 349,  isCritique: false },
+  { target: 520,  preferredTarget: 442,  isCritique: false },
+  { target: 650,  preferredTarget: 553,  isCritique: false },
+  { target: 800,  preferredTarget: 680,  isCritique: false },
+  { target: 1000, preferredTarget: 850,  isCritique: true  }, // R8  — Critique 1
+  { target: 1100, preferredTarget: 935,  isCritique: false },
+  { target: 1280, preferredTarget: 1088, isCritique: false },
+  { target: 1480, preferredTarget: 1258, isCritique: false },
+  { target: 1700, preferredTarget: 1445, isCritique: false },
+  { target: 1950, preferredTarget: 1658, isCritique: false },
+  { target: 2250, preferredTarget: 1913, isCritique: false },
+  { target: 2600, preferredTarget: 2210, isCritique: false },
+  { target: 3100, preferredTarget: 2635, isCritique: true  }, // R16 — Critique 2
+  { target: 3400, preferredTarget: 2890, isCritique: false },
+  { target: 3750, preferredTarget: 3188, isCritique: false },
+  { target: 4150, preferredTarget: 3528, isCritique: false },
+  { target: 4600, preferredTarget: 3910, isCritique: false },
+  { target: 5050, preferredTarget: 4293, isCritique: false },
+  { target: 5500, preferredTarget: 4675, isCritique: false },
+  { target: 5950, preferredTarget: 5058, isCritique: false },
+  { target: 7000, preferredTarget: 5950, isCritique: true  }, // R24 — Grand Finale
 ];
 
 class Player {
@@ -191,6 +260,8 @@ class Player {
 //   (random from unpicked augments) and returns it. The caller (sim loop or
 //   browser) must call pickAugment(idx) before earnIncome + shop phase that
 //   round, so Midas/Tycoon effects apply immediately.
+const CHAPTER_LABELS = ['Opening Exhibition', 'Main Exhibition', 'Grand Exhibition'];
+
 class Run {
   constructor(rng) {
     this.rng              = rng;
@@ -207,6 +278,32 @@ class Run {
     this.lives            = STARTING_LIVES;
     this.peakScore        = 0;
     this.battleHistory    = [];
+    this.headJudges       = this._assignJudges(); // [ch1Id, ch2Id, ch3Id]
+    this._curatorsPicked  = new Set();
+    this.curatorOffers    = {};
+  }
+
+  // Draw 3 judges from the pool without repeats.
+  _assignJudges() {
+    const pool = HEAD_JUDGES.map(j => j.id);
+    const chosen = [];
+    while (chosen.length < 3) {
+      const idx = Math.floor(this.rng() * pool.length);
+      chosen.push(pool.splice(idx, 1)[0]);
+    }
+    return chosen;
+  }
+
+  // Chapter number (1–3) for a given round (1–24).
+  chapterFor(round) {
+    return Math.min(3, Math.ceil(Math.max(1, round) / 8));
+  }
+
+  // Head judge object for a given round (defaults to this.round).
+  currentJudge(round) {
+    const r = round !== undefined ? round : this.round;
+    const chIdx = Math.min(2, Math.floor((Math.max(1, r) - 1) / 8));
+    return HEAD_JUDGES.find(j => j.id === this.headJudges[chIdx]) || null;
   }
 
   // Returns the 3-id offer for the upcoming round if a pick is pending,
@@ -289,11 +386,24 @@ class Run {
     };
     const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
     const playerScore    = scoreBreakdown.total;
-    const { target, isCritique } = ROUND_TARGETS[this.round - 1];
-    const passed = playerScore >= target;
+    const { target: normalTarget, preferredTarget, isCritique } = ROUND_TARGETS[this.round - 1];
+    const judge     = this.currentJudge(this.round);
+    const qualified = judge ? judge.qualifies(this.player.board, this.augments) : false;
+    const target    = (qualified && preferredTarget != null) ? preferredTarget : normalTarget;
+    const passed    = playerScore >= target;
 
     if (playerScore > this.peakScore) this.peakScore = playerScore;
     if (!passed) this.lives = Math.max(0, this.lives - 1);
+
+    // Life regain: beat a critique target by 25%+ → restore one seal (max 3).
+    let lifeGained = false;
+    if (isCritique && passed && playerScore >= Math.round(target * 1.25)) {
+      if (this.lives < STARTING_LIVES) {
+        this.lives++;
+        lifeGained = true;
+      }
+    }
+
     this.player.applyResult(passed);
 
     // Post-battle passive upkeep:
@@ -321,14 +431,76 @@ class Run {
     const entry = {
       round: this.round,
       target,
+      normalTarget,
+      preferredTarget,
       isCritique,
+      judgeId: judge ? judge.id : null,
+      qualified,
       playerScore,
       passed,
       livesAfter: this.lives,
+      lifeGained,
       scoreBreakdown,
     };
     this.battleHistory.push(entry);
     return entry;
+  }
+
+  // Returns the curator offer if the most recent battle was a critique round
+  // and the pick has not yet been taken. Caches the augment-pick offer so
+  // the rng is only consumed once.
+  pendingCurator() {
+    if (!this.battleHistory.length) return null;
+    const last = this.battleHistory[this.battleHistory.length - 1];
+    if (!last.isCritique) return null;
+    if (this._curatorsPicked.has(last.round)) return null;
+    const judge = HEAD_JUDGES.find(j => j.id === last.judgeId);
+    if (!judge) return null;
+    const sel = CURATOR_SELECTIONS[judge.id];
+    if (!sel) return null;
+    if (sel.type === 'augment-pick') {
+      if (!this.curatorOffers[last.round]) {
+        const pool = AUGMENT_DEFS.map(a => a.id)
+          .filter(id => !this.augments.includes(id) && id !== 'Shapeshifter');
+        this.curatorOffers[last.round] = pickN(pool, Math.min(3, pool.length), this.rng);
+      }
+      return { ...sel, offers: this.curatorOffers[last.round] };
+    }
+    return sel;
+  }
+
+  // Apply the curator pick. idx is used only for augment-pick (The Assembly).
+  // Returns { type, id } on success, null on failure.
+  pickCurator(idx) {
+    if (!this.battleHistory.length) return null;
+    const last = this.battleHistory[this.battleHistory.length - 1];
+    if (!last.isCritique) return null;
+    if (this._curatorsPicked.has(last.round)) return null;
+    const judge = HEAD_JUDGES.find(j => j.id === last.judgeId);
+    if (!judge) return null;
+    const sel = CURATOR_SELECTIONS[judge.id];
+    if (!sel) return null;
+    this._curatorsPicked.add(last.round);
+
+    if (sel.type === 'item') {
+      this.player.itemBag.push(sel.id);
+      return { type: 'item', id: sel.id };
+    }
+    if (sel.type === 'augment') {
+      if (!this.augments.includes(sel.id)) this.augments.push(sel.id);
+      return { type: 'augment', id: sel.id };
+    }
+    if (sel.type === 'augment-pick') {
+      const offers = this.curatorOffers[last.round];
+      if (!offers || idx < 0 || idx >= offers.length) return null;
+      const chosen = offers[idx];
+      if (!this.augments.includes(chosen)) this.augments.push(chosen);
+      if (chosen === 'Overflow') {
+        this.player.board.maxActive = Math.min(MAX_BOARD, this.player.board.maxActive + 1);
+      }
+      return { type: 'augment', id: chosen };
+    }
+    return null;
   }
 
   isOver() {
@@ -343,5 +515,6 @@ class Run {
 module.exports = {
   Player, Run,
   STARTING_GOLD, STARTING_LEVEL, STARTING_SLOTS, STARTING_LIVES,
-  MAX_LEVEL, PLINTH_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP, ROUND_TARGETS,
+  MAX_LEVEL, PLINTH_COST, BASE_INCOME, INTEREST_PER, ROUND_CAP,
+  ROUND_TARGETS, HEAD_JUDGES, CHAPTER_LABELS, CURATOR_SELECTIONS,
 };

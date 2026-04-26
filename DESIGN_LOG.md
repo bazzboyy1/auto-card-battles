@@ -242,6 +242,21 @@ Class synergy values (final):
   - Spear of Shojin species contribution invisible in synergy bar (preview skips player RNG — documented).
   - Items on wrong-axis cards (e.g. Growth Serum on axis-2 card) silently do nothing.
 
+**Phase 19-B complete (2026-04-26):** Judges + chapters shipped (v0.22).
+- `HEAD_JUDGES` array (6 judges) in `src/game.js`; `Run._assignJudges()` draws 3 without repeats using run RNG
+- `Run.chapterFor(round)` / `Run.currentJudge(round)` helpers; chapter boundaries at R1/R9/R17
+- `ROUND_TARGETS` extended with `preferredTarget` (base × 0.85, rounded) per round
+- `Run.runBattle()` checks `judge.qualifies(board, augments)` before each battle; uses `preferredTarget` when qualifying
+- `effectiveClassCounts` + `CLASS_SYNERGIES` imported into game.js for Yorzal's class-synergy check
+- Judge panel rendered below income-preview HUD bar: shows chapter label, judge name, preference text, qualifying status (green "✓ Preferred (−15% target)" vs neutral hint)
+- Panel updates live as board changes (called from every render branch)
+- Chapter reveal overlay on R1/R9/R17: slides in over 2.2s then fades out
+- Scoring modal heading includes judge name ("Round N — Judge Vlorb"); shows green "✓ Preferred (−15% applied)" note when qualifying
+- Battle history entry extended: `normalTarget`, `preferredTarget`, `judgeId`, `qualified`
+- Game-over round history shows "✓pref" badge on rounds where player qualified
+- `HEAD_JUDGES`, `CHAPTER_LABELS` exported from game.js, available via `window.ACB.game`
+- Browser-verified: judge panel visible R1, scoring modal shows judge name, no JS errors
+
 **Phase 19-A complete (2026-04-26):** Core swap shipped (v0.21).
 - Removed `src/opponents.js` dependency from game.js, sim.js, loader.js
 - `ROUND_CAP` 30 → 24; `STARTING_LIVES = 3` added to Run
@@ -257,7 +272,18 @@ Class synergy values (final):
 - `src/balance.js`: updated to use `battleHistory`
 - Browser-verified: lives decrement correctly, scoring modal shows target, run-end shows rating and history
 
-**Next action:** Phase 19-B — Judges + chapters. Add chapter boundary detection (R1–8/9–16/17–24), randomly assign Head Judge per chapter from pool of 6, preference check against board, target reduction when qualifying, HUD judge display. Full plan in `design_log/phase_19_plan.md`.
+**Phase 19-C complete (2026-04-26):** Critique rounds shipped (v0.23).
+- `CURATOR_SELECTIONS` in `src/game.js`: one themed item/augment per judge (Vlorb→Taxonomy Badge: Abyssal, Praxis→Acclimatisation Log, Shen-Nax→Rarity Certificate, Yorzal→Cross-Pollination augment, Collective→Diverse Portfolio augment, Assembly→3-choice free augment pick)
+- Life-regain: beat a critique target by 25%+ while lives < 3 → `run.lives++`, `lifeGained: true` in battle entry
+- `Run.pendingCurator()` / `Run.pickCurator(idx)`: checks last battle was a critique, returns cached offer; `_curatorsPicked` prevents double-pick
+- Scoring modal: adds `.critique-round` class on `#modal` for gold border/heading; life-regain shows "◆ Seal restored!" badge with pop animation
+- `onContinue()` checks `pendingCurator()` before `startRound()` → enters `'curator'` phase
+- Curator phase renders in shop-section with `renderCuratorOffer()`: single-gift card for most judges, 3-choice augment-card row for The Assembly; clicking accepts the gift and calls `startRound()` (which fires chapter reveal for R9/R17 after the gift)
+- Judge panel visibility fix (from feedback): shows concrete target numbers — "2+ Abyssal active → 800 (680 if met)" when not qualifying, "✓ Target: 680" when qualifying; critique rounds show "★ Critique" tag
+- The Assembly neutral text changed from "No bonus" to "All equally scored · Target: N"
+- Shapeshifter filtered from Assembly's augment-pick pool to avoid nested sub-picks
+
+**Next action:** Phase 19-D — Build archetypes. Archetype detection + HUD badge. Full plan in `design_log/phase_19_plan.md`.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
