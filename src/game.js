@@ -284,13 +284,22 @@ class Run {
     this.curatorOffers    = {};
   }
 
-  // Draw 3 judges from the pool without repeats.
+  // Draw 3 judges without repeats. Shen-Nax (requires 2+ T3 active) is excluded
+  // from Ch1 (rounds 1-8) where T3 cards are nearly impossible to field.
   _assignJudges() {
-    const pool = HEAD_JUDGES.map(j => j.id);
-    const chosen = [];
+    const allIds  = HEAD_JUDGES.map(j => j.id);
+    const ch1Pool = allIds.filter(id => id !== 'shen_nax');
+    const rest    = allIds.slice();
+    const chosen  = [];
+
+    const i1 = Math.floor(this.rng() * ch1Pool.length);
+    const ch1 = ch1Pool[i1];
+    chosen.push(ch1);
+    rest.splice(rest.indexOf(ch1), 1);
+
     while (chosen.length < 3) {
-      const idx = Math.floor(this.rng() * pool.length);
-      chosen.push(pool.splice(idx, 1)[0]);
+      const idx = Math.floor(this.rng() * rest.length);
+      chosen.push(rest.splice(idx, 1)[0]);
     }
     return chosen;
   }

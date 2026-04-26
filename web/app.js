@@ -210,7 +210,8 @@ function renderJudgePanel() {
     statusHtml = `<span class="judge-not-qualifying">All equally scored${tStr}</span>`;
   } else if (qualifying) {
     const tStr = preferredTarget !== null ? `<strong>${preferredTarget}</strong>` : '−15%';
-    statusHtml = `<span class="judge-qualifying">✓ Target: ${tStr}</span>`;
+    const hint = judge.qualifyingHint ? `${judge.qualifyingHint} → ` : '';
+    statusHtml = `<span class="judge-qualifying">✓ ${hint}Target: ${tStr}</span>`;
   } else {
     const tNorm = normalTarget !== null ? `<strong>${normalTarget}</strong>` : '';
     const tPref = preferredTarget !== null ? ` <span class="judge-pref-hint">(${preferredTarget} if met)</span>` : '';

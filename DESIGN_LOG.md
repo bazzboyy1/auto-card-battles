@@ -34,7 +34,11 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - "Double interest" = Tycoon augment doubling the interest component of earnIncome. Correctly modelled in sim. Not a balance problem.
 - Full sweep (n=300) key findings: livid-stack 71.0% (+14pp vs greedy), abyssal-sporal 66.7%, abyssal-stack 64.0%, blinxorp-max 79.7% (known ceiling). Dead paths confirmed: crystalline-stack 40.7%, giddy-stack 35.7% (−17–21pp vs greedy).
 
-**Next action:** Phase 20-C — two UX fixes from Playtest 3. (1) Judge panel: show requirement AND ✓ simultaneously when qualifying. (2) Shen-Nax: exclude from Chapter 1 judge pool.
+**Phase 20-C complete (2026-04-26):** Playtest 3 UX fixes (v0.28).
+- Judge panel: when qualifying, now shows "✓ 2+ Abyssal active → Target: 680" instead of just "✓ Target: 680" — requirement stays visible alongside the confirmed bonus.
+- Shen-Nax excluded from Chapter 1 judge pool: `_assignJudges()` draws Ch1 from a filtered pool (all judges except shen_nax); Ch2/Ch3 draw from full remainder. Shen-Nax's "2+ T3 active" condition is near-impossible in rounds 1–8.
+
+**Next action:** Phase 20-D — balance pass. Run exploit sweep at n=200 to get reliable item/augment flags, then fix: (1) livid-stack dominance (71%), (2) crystalline/giddy dead paths (36–41%), (3) Growth Serum × Blinxorp cap-bypass (79.7% blinxorp-max). Target: no build >15pp above greedy (57%), no build <20pp below greedy. Full data before touching numbers.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 
