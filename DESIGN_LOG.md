@@ -6,7 +6,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 19-F complete (2026-04-26). Sim calibration shipped (v0.26).
+**Phase:** Phase 20-C complete (2026-04-26). Sim improvements + playtest UX fixes shipped (v0.29). Phase 20-D (balance pass) is next.
 
 **Phase 19-F complete (2026-04-26):** Sim calibration — retuned ROUND_TARGETS (v0.26).
 - Greedy survival: 18.7% → 54.8% on Standard (spec: ~55-65%). Avg lives lost: 1.64 (spec: 1-3).
