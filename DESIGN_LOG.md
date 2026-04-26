@@ -26,7 +26,15 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - `node run.js exploit [n] [seed]` CLI command prints both sweep tables.
 - Smoke test at n=20 flagged: Acclimatisation Log (+40pp), Pheromone Diffuser (+30pp), Rarity Certificate (+20pp), Taxonomy Badge: Abyssal (+15pp), Acclimatisation Program augment (+10pp), Cross-Pollination augment (+10pp). Run at n=200+ for reliable results.
 
-**Next action:** Phase 20-B — economy investigation. Add `economy-stack` policy to `src/sim.js` (prioritises Sporvik + Tycoon/Market Savant, keeps gold high). Run 500 games; if survival >10pp above greedy, economy is broken. Also confirm "double interest" mechanic in `src/game.js`.
+**Phase 20-B complete (2026-04-26):** Economy investigation (v0.27 — no version bump, sim-only).
+- `economy-stack` policy added to `src/sim.js`: biases toward Axis-7 cards (Sporvik, Sharzak) + sets `_augmentBias = ['Tycoon', 'MidasTouch']`.
+- `economy-max` build added to `BUILDS` in `src/balance.js`: forced Tycoon@R3 + MidasTouch@R12 + Market Tag every item round.
+- Result: `economy-stack` 33.7%, `economy-max` 6.3% — both well below greedy 57.3%. **Economy is NOT broken.**
+- Root cause of user's "double interest feels strong": Axis-7 cards score nearly nothing (Sporvik baseScore=52, Sharzak=44); gold compounds but you've already lost lives before it helps. The psychological effect of watching gold tick up is real; the actual impact isn't.
+- "Double interest" = Tycoon augment doubling the interest component of earnIncome. Correctly modelled in sim. Not a balance problem.
+- Full sweep (n=300) key findings: livid-stack 71.0% (+14pp vs greedy), abyssal-sporal 66.7%, abyssal-stack 64.0%, blinxorp-max 79.7% (known ceiling). Dead paths confirmed: crystalline-stack 40.7%, giddy-stack 35.7% (−17–21pp vs greedy).
+
+**Next action:** Phase 20-C — two UX fixes from Playtest 3. (1) Judge panel: show requirement AND ✓ simultaneously when qualifying. (2) Shen-Nax: exclude from Chapter 1 judge pool.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 

@@ -380,6 +380,14 @@ function pompousStackPolicy(player, round = 1) { greedyCore(player, round, { cls
 // a dominant build not caught by single-species commits.
 function abyssalSporalMixPolicy(player, round = 1) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }); }
 
+// Economy-stack: prioritises Axis-7 gold-generating cards (Sporvik, Sharzak) and biases
+// augment scoring heavily toward Tycoon + MidasTouch. Tests the compound ceiling of
+// maximum gold snowball — used to detect broken economy interactions in Phase 20-B.
+function economyStackPolicy(player, round = 1) {
+  player._augmentBias = ['Tycoon', 'MidasTouch'];
+  greedyCore(player, round, { axis: 7 });
+}
+
 // Random: buys random affordable cards without strategy. Kept as control baseline.
 function randomPolicy(player, _round = 1) {
   while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
@@ -416,6 +424,7 @@ const POLICIES = {
   'sullen-stack':      sullenStackPolicy,
   'pompous-stack':     pompousStackPolicy,
   'abyssal-sporal':    abyssalSporalMixPolicy,
+  'economy-stack':     economyStackPolicy,
 };
 
 // ── Game Runner ───────────────────────────────────────────────────────────────

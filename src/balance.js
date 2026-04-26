@@ -116,6 +116,14 @@ const BUILDS = [
       picks:  { 3: { augmentId: 'TimeDilation' } },
     },
   },
+  {
+    name:   'economy-max',
+    policy: 'economy-stack',
+    opts: {
+      picks:    { 3: { augmentId: 'Tycoon' }, 12: { augmentId: 'MidasTouch' } },
+      forceItem: 'Hextech Gunblade',  // Market Tag: +2g/round per unit; MidasTouch doubles to +4g
+    },
+  },
 ];
 
 // Run all BUILDS and return analyses keyed by build name.
