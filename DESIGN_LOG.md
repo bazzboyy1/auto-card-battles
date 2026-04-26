@@ -6,6 +6,20 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
+**Phase:** Phase 19-F complete (2026-04-26). Sim calibration shipped (v0.26).
+
+**Phase 19-F complete (2026-04-26):** Sim calibration — retuned ROUND_TARGETS (v0.26).
+- Greedy survival: 18.7% → 54.8% on Standard (spec: ~55-65%). Avg lives lost: 1.64 (spec: 1-3).
+- Tier scaling: Discerning ×1.25 → 23.0%, Elite ×1.5 → 5.4% — meaningful progression confirmed.
+- Root cause of original failure: R1 target (150) matched the median score — 66% miss rate on Round 1 alone; R16-R24 targets (3100-7000) were 40-82% miss rates.
+- New curve: R1=100, R2=135, R3=200, R4-R15 unchanged (R4=400…R15=2600), R16=2800 (Critique 2), R17=3000, R18=3100, R19=3450, R20=3700, R21=3700, R22=3700, R23=3900, R24=4600 (Grand Finale). All preferred targets = base × 0.85.
+- Per-round miss rates: R1-R20 averaging 8-17%; R21-R23 effectively 3-7% (judge qualification suppresses late-chapter miss rates — intended reward for committed builds); R24 ~30%.
+- Balance sweep (500 seeds): greedy 54.8%, wide 52.8%, abyssal-stack 65.6%, livid-stack 71.0% (strong but historically in range). blinxorp-max 81.8% remains the known Growth Serum cap-bypass ceiling (deferred).
+- sim.js: runGame() accepts opts.diffMult (passed to Run constructor).
+- run.js: play/sim commands updated to use battleHistory (opponentHistory was removed Phase 19-A). sim shows lives distribution.
+
+**Next action:** Phase 20 (TBD) or playtest 3. Review livid-stack dominance (71% vs greedy 55%); assess whether crystalline-stack (39.6%) and giddy-stack (36.0%) constitute dead paths requiring Phase 20 balance fixes. Full plan TBD — spawn phase_20_plan.md when ready.
+
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 
 **Local dev fix (2026-04-25):** `serve.js` was rewriting `/` → serves `web/index.html` content while leaving the URL at `/`, so relative paths like `style.css` resolved against root and 404'd (broken since the GitHub Pages path-relativization). Fixed by serving root `index.html` (the meta-refresh page) at `/` — browser then navigates to `/web/index.html` and relative paths resolve. Local dev now matches GitHub Pages flow exactly.
@@ -289,7 +303,18 @@ Class synergy values (final):
 - `#archetype-display` strip below judge panel: primary archetype in purple pill badge + `archetype-appear` pop animation when first triggered; secondary archetypes in smaller dimmer pills beside it; hidden when no archetypes active
 - Reset on `newGame()`; called from `renderBoard()` so updates on every board change
 
-**Next action:** Phase 19-E — Meta-progression. Exhibition Rating display + difficulty tiers. Full plan in `design_log/phase_19_plan.md`.
+**Phase 19-E complete (2026-04-26):** Difficulty tiers + meta-progression (v0.25).
+- `TIERS` array in `src/ranking.js`: Standard (×1.0), Discerning Judges (×1.25), Elite Circuit (×1.5)
+- Tier state persisted in localStorage under `alien-exhibition-tiers`; `getActiveTier`, `tryUnlockNextTier`, `setActiveTier` exported
+- `Run` constructor accepts `diffMult`; targets in `runBattle()` scaled via `Math.round(base * diffMult)` — all other systems unchanged
+- `renderDifficultyPicker(containerEl)` renders pill buttons into any host; shown on splash (`#difficulty-selector`) and in the game-over modal (`#modal-diff-picker`)
+- `newGame()` reads active tier and passes its mult to `new Run(rng, tier.mult)`
+- `showGameOverModal()` calls `tryUnlockNextTier` on a 24-round clear; shows green unlock banner + refreshed picker
+- HUD right shows `#hud-difficulty` with current tier label (amber for Discerning, red for Elite)
+- Locked tiers show 🔒 prefix + disabled button with unlock-hint tooltip
+- Browser-verified: selector renders on splash, HUD shows "STANDARD", no JS errors
+
+**Next action:** Phase 19 complete. Decide next: (a) Playtest 3 — ship to external players, collect feedback; (b) Phase 20 balance — address livid-stack dominance (71% vs greedy 55%), crystalline/giddy dead-path risk (36-39%), and Growth Serum cap-bypass on Blinxorp; (c) both in parallel.
 
 **Open items (not yet spec'd):**
 - Shapeshifter + class interaction (deferred to playtest 3)
