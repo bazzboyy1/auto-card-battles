@@ -227,7 +227,10 @@ class Board {
     for (let i = 0; i < this.active.length; i++) {
       const card = this.active[i];
       if (card.passive && card.passive.axis === 3 && typeof results[i].flat === 'number' && results[i].flat !== 0) {
-        const v = results[i].flat;
+        let v = results[i].flat;
+        // Apply passive cap after item wrapping (prevents Growth Serum from doubling the cap).
+        const origPassive = card._originalPassive || card.passive;
+        if (typeof origPassive.cap === 'number') v = Math.min(origPassive.cap, v);
         scores[i] += v;
         lines[i].push({ label: card.passive.description || 'passive', add: v });
       }

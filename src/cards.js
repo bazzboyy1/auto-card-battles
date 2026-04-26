@@ -186,9 +186,10 @@ const CARD_DEFS = [
     name: 'Blinxorp', species: 'Abyssal', class: 'Livid', tier: 2, baseScore: 82,
     flavor: 'Blinxorps take a while to fully emerge from their transport containers. By round ten, most of the exhibition staff have filed formal complaints.',
     passive: {
-      description: '+25 per round since bought (max +400)',
+      description: '+25 per round since bought (max +300)',
       axis: 3,
-      eval(card) { return { flat: Math.min(400, 25 * (card.roundsSinceBought || 0)) }; },
+      cap: 300,
+      eval(card) { return { flat: 25 * (card.roundsSinceBought || 0) }; },
     },
   },
 
@@ -217,8 +218,9 @@ const CARD_DEFS = [
     passive: {
       description: '+15 per round since bought (max +300)',
       axis: 3,
+      cap: 300,
       eval(card) {
-        return { flat: Math.min(300, 15 * (card.roundsSinceBought || 0)) };
+        return { flat: 15 * (card.roundsSinceBought || 0) };
       },
     },
   },
@@ -316,8 +318,8 @@ const CLASS_SYNERGIES = {
   Giddy: {
     thresholds: [2, 3],
     getBonus(count) {
-      if (count >= 3) return { target: 'class', type: 'flat', value: 22 };
-      if (count >= 2) return { target: 'class', type: 'flat', value: 10 };
+      if (count >= 3) return { target: 'class', type: 'flat', value: 36 };
+      if (count >= 2) return { target: 'class', type: 'flat', value: 18 };
       return null;
     },
   },
