@@ -321,7 +321,10 @@ button:disabled { opacity: 0.4; cursor: default; }
 .syn-tt-t { color: var(--text-muted); font-weight: 700; min-width: 16px; }
 .syn-tt-b { color: var(--text-muted); text-align: right; }
 
-#hud-sub { text-align: center; padding: 3px 16px 4px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+#hud-sub { text-align: center; padding: 3px 16px 4px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-muted); flex-shrink: 0; display: flex; justify-content: center; gap: 20px; }
+#target-preview { color: var(--text-muted); }
+#target-preview.qualifying { color: #3fb950; }
+.income-cap { color: #ffa657; font-weight: 600; }
 
 /* ── Judge panel ── */
 #judge-panel {
@@ -795,6 +798,19 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 .scoring-winner.win  { background: #0d2018; color: var(--hp-high); border: 1px solid var(--primary); }
 .scoring-winner.loss { background: #2a0d0d; color: var(--hp-low);  border: 1px solid var(--danger); }
+
+/* Seal shatter animation — plays on the newly-lost seal diamond */
+@keyframes seal-shatter {
+  0%   { transform: scale(1.4);              color: var(--gold); opacity: 1; }
+  25%  { transform: scale(0.8) rotate(-12deg); color: #f85149;   opacity: 0.9; }
+  55%  { transform: scale(1.1) rotate(5deg);   color: #f85149;   opacity: 0.7; }
+  100% { transform: scale(1);                                      }
+}
+.seal-shatter { animation: seal-shatter 0.55s ease-out; }
+
+/* Grand Finale overlay — gold accent on top of chapter-reveal base */
+.grand-finale-reveal .chapter-reveal-chapter { font-size: 28px; letter-spacing: 0.04em; }
+.grand-finale-reveal .chapter-reveal-label   { letter-spacing: 0.18em; color: var(--gold); opacity: 0.7; }
 
 /* Life-regain inline badge */
 .scoring-life-regain {

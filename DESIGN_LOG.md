@@ -6,7 +6,7 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 20-C complete (2026-04-26). Sim improvements + playtest UX fixes shipped (v0.29). Phase 20-D (balance pass) is next.
+**Phase:** Phase 21 complete (2026-04-27). Polish & Clarity pass shipped (v0.31). Next: Playtest 4 — run the playtest script in `design_log/phase_21_plan.md` with a new player.
 
 **Phase 19-F complete (2026-04-26):** Sim calibration — retuned ROUND_TARGETS (v0.26).
 - Greedy survival: 18.7% → 54.8% on Standard (spec: ~55-65%). Avg lives lost: 1.64 (spec: 1-3).
@@ -46,7 +46,24 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - T3 early-game penalty tested but removed: a flat -20 penalty caused smart-greedy to skip genuinely good T3 cards, driving survival to 51%. The correct implementation would require synergy-context awareness (only skip T3 if it doesn't complete a threshold) — deferred.
 - Extra reroll (+1) tested and removed: added cost without offsetting benefit at current reroll cap (2g per attempt absorbed savings advantage).
 
-**Next action:** Phase 20-D — balance pass. Run exploit sweep at n=200 to get reliable item/augment flags, then fix: (1) livid-stack dominance (71%), (2) crystalline/giddy dead paths (36–41%), (3) Growth Serum × Blinxorp cap-bypass (79.7% blinxorp-max). Target: no build >15pp above greedy (57%), no build <20pp below greedy. Full data before touching numbers.
+**Phase 20-D complete (2026-04-26):** Balance pass shipped (v0.30).
+- **Growth Serum cap bypass fixed:** Blinxorp and Scrithnab passives now expose a `cap` property. `board.js` Stage 1 applies the cap *after* item wrapping — Growth Serum doubles the per-round rate but not the ceiling. Blinxorp cap lowered 400→300.
+- **Blinxorp-max:** 79.7% → 74.0% (−5.7pp). Remaining ceiling is from forced TimeDilation+abyssal combo; the cap exploit is eliminated.
+- **Giddy dead path fixed:** Giddy-3 flat 22→36, Giddy-2 flat 10→18. giddy-stack: 35.0% → 37.0% (above floor).
+- **Final balance (n=300, seed=42):** greedy 55.3%, livid-stack 69.3% (within ceiling), giddy 37.0%, crystalline 39.3% (both above floor). Forced-optimal builds: blinxorp-max 74%, fluxnob-max 73% — both require lucky augment+item alignment; all natural policies in range.
+- **Cross-Pollination** tested at 7% (too aggressive, dropped greedy 2.6pp and hurt giddy); kept at 8%.
+- **Acclimatisation Log** tested at 15/round (also too aggressive, hurt baseline ~5pp for no targeted-build benefit); kept at 20/round.
+
+**Phase 21 complete (2026-04-27):** Polish & Clarity pass shipped (v0.31).
+- **A — Rules modal fixed:** Removed stale "opponent/Rep" bullet. Replaced with two correct bullets: "Each round your exhibit is judged against a target score — miss it and lose a Seal" + "Lose all 3 Seals and your run ends · Beat a Critique round by 25%+ to restore one".
+- **B — Seal loss/regain feedback:** `sealLost` sound (harsh crack + downward sweep, distinct from `loss` melody) plays on every missed round. `sealRestored` sound (ascending bell chord) plays on life regain. CSS `@keyframes seal-shatter` animates the newly-lost seal diamond (flash gold→red→settle empty). Continue button delayed 500ms on life regain to hold the moment.
+- **C — Score target in HUD sub-row:** `#target-preview` span added next to income preview; populated by `renderJudgePanel()`. Shows base target normally; turns green and reads "Target: N (preferred)" when judge preference is met.
+- **D — Interest cap signal:** `renderIncomePreview()` now uses `innerHTML`; when raw interest is maxed (gold ≥ 25), adds amber `<span class="income-cap">✓ max</span>` inline with the interest figure.
+- **E — Bench affordance hint:** Bench area desc updated to "· Reserve bench — won't score · Click to move to Exhibit".
+- **F — Grand Finale overlay:** `showGrandFinaleReveal()` fires at `startRound()` when `nextRound === 24`. Reuses `.chapter-reveal` infrastructure with `.grand-finale-reveal` gold accent. `grandFinale` sound (dramatic low build + bright chord). Overlay reads "Round 24 / Grand Finale / All judges present · Final score".
+- **G — Reroll cost on button:** Already implemented (line 927 of app.js). No change needed.
+
+**Next action:** Playtest 4 — run the playtest script in `design_log/phase_21_plan.md` with a new player. Verify: new player understands seals within 2 rounds; finds and uses the bench; can explain "lose a seal" after the rules modal.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 
@@ -372,6 +389,7 @@ Class synergy values (final):
 - **`design_log/phase_11_scoring_animation.md`** — Phase 11 spec: battle scoring animation (per-card reveal, running totals, winner reveal). Read before starting Phase 11.
 - **`design_log/phase_13_plan.md`** — Phase 13 plan: post-deploy bug fixes (score snapshot, combine roundsSinceBought, species/class layout, side-panel attention toast). Read when starting Phase 13.
 - **`design_log/phase_19_plan.md`** — Phase 19 plan: The Exhibition Arc. Full structural redesign — removes fake opponents + RP system, replaces with escalating score targets, lives system, head judges per chapter, build archetypes, Exhibition Rating meta-progression. Read when starting Phase 19.
+- **`design_log/phase_21_plan.md`** — Phase 21 plan: Polish & Clarity pass. Prioritised fix list from game-design-framework review (2026-04-27). Includes playtest script.
 
 ---
 

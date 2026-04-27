@@ -145,6 +145,26 @@ const Sound = (() => {
       sweep(c, 300, 180, 'sawtooth', t, 0.07, 0.14);
       osc(c, 900, 'triangle', t + 0.05, 0.05, 0.08);
     },
+    sealLost() {
+      const c = getCtx(), t = c.currentTime;
+      // short crack + downward thud — distinct from the gentle 'loss' melody
+      osc(c, 90, 'sawtooth', t, 0.04, 0.28);
+      sweep(c, 380, 70, 'sawtooth', t + 0.01, 0.15, 0.22);
+      osc(c, 220, 'square', t + 0.03, 0.06, 0.14);
+    },
+    sealRestored() {
+      const c = getCtx(), t = c.currentTime;
+      // ascending bell-like chord — triumphant but brief
+      [784, 988, 1174, 1568].forEach((f, i) => osc(c, f, 'sine', t + i * 0.09, 0.22, 0.13));
+      osc(c, 1960, 'sine', t + 0.40, 0.22, 0.08);
+    },
+    grandFinale() {
+      const c = getCtx(), t = c.currentTime;
+      // dramatic low build then bright chord
+      [196, 247, 294].forEach((f, i) => osc(c, f, 'sawtooth', t + i * 0.09, 0.30, 0.14));
+      osc(c, 392, 'sine', t + 0.32, 0.50, 0.12);
+      osc(c, 523, 'sine', t + 0.52, 0.38, 0.09);
+    },
   };
 
   return {

@@ -74,7 +74,8 @@ function showRulesModal() {
       </div>
       <ul class="rules-list">
         <li><strong>Buy</strong> specimens from the market · place them in your <strong>Exhibit</strong> · hit <strong>Ready</strong></li>
-        <li><strong>Outscore</strong> your opponent's exhibit to keep your Rep — lose Rep on defeat, hit 0 and it's over</li>
+        <li><strong>Each round</strong> your exhibit is judged against a target score — miss it and lose a Seal</li>
+        <li>Lose all 3 Seals and your run ends · Beat a <strong>Critique</strong> round by 25%+ to restore one</li>
         <li><strong>3 copies</strong> of the same specimen auto-combine into a higher ★ version</li>
         <li>Match <strong class="c-species">Species</strong> or <strong class="c-class">Class</strong> across exhibits for synergy bonuses</li>
         <li>Save gold to earn <strong>interest</strong> · upgrade your exhibit for more slots and rarer specimens</li>
@@ -226,6 +227,20 @@ function renderJudgePanel() {
     ${statusHtml}
   `;
   panel.classList.remove('hidden');
+
+  // Keep target visible in the persistent HUD sub-row.
+  const targetPreviewEl = qs('#target-preview');
+  if (targetPreviewEl && normalTarget !== null) {
+    const showTarget = (qualifying && preferredTarget) ? preferredTarget : normalTarget;
+    const label = (qualifying && preferredTarget)
+      ? `Target: ${showTarget} (preferred)`
+      : `Target: ${showTarget}`;
+    targetPreviewEl.textContent = label;
+    targetPreviewEl.className = qualifying ? 'qualifying' : '';
+  } else if (targetPreviewEl) {
+    targetPreviewEl.textContent = '';
+    targetPreviewEl.className = '';
+  }
 }
 
 // ── Archetype detection ───────────────────────────────────────────────────────
@@ -291,12 +306,32 @@ function updateArchetypeDisplay() {
 
 // Check for pending picks before income + shop. Both augment and item picks
 // happen BEFORE earnIncome so Tycoon/Midas effects apply this round.
+function showGrandFinaleReveal() {
+  Sound.play('grandFinale');
+  const el = document.createElement('div');
+  el.className = 'chapter-reveal grand-finale-reveal';
+  el.innerHTML = `
+    <div class="chapter-reveal-label">Round 24</div>
+    <div class="chapter-reveal-chapter">Grand Finale</div>
+    <div class="chapter-reveal-pref">All judges present · Final score</div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.4s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 420);
+  }, 2200);
+}
+
 function startRound() {
   const nextRound = S.run.round + 1;
   if (nextRound === 1 || nextRound === 9 || nextRound === 17) {
     const chapter = S.run.chapterFor(nextRound);
     const judge   = S.run.currentJudge(nextRound);
     if (judge) setTimeout(() => showChapterReveal(chapter, judge), 150);
+  }
+  if (nextRound === 24) {
+    setTimeout(() => showGrandFinaleReveal(), 150);
   }
 
   const augOffer = S.run.pendingAugment();
@@ -905,21 +940,30 @@ function renderDevPanel() {
 
 function renderIncomePreview() {
   const bd    = S.human.incomeBreakdown ? S.human.incomeBreakdown() : null;
-  let total, parts;
+  let total, parts, interestCapped;
   if (bd) {
     total = bd.total;
+    // Interest is capped when raw base interest (gold / INTEREST_PER) >= 5.
+    interestCapped = Math.floor(S.human.gold / INTEREST_PER) >= 5;
     parts = [`Base ${bd.base}g`];
-    if (bd.interest > 0) parts.push(`Interest +${bd.interest}g${bd.tycoon ? ' (×2)' : ''}`);
-    if (bd.streak   > 0) parts.push(`Streak +${bd.streak}g`);
+    if (bd.interest > 0) {
+      const capMark = interestCapped ? ' <span class="income-cap">✓ max</span>' : '';
+      parts.push(`Interest +${bd.interest}g${bd.tycoon ? ' (×2)' : ''}${capMark}`);
+    }
+    if (bd.streak > 0) parts.push(`Streak +${bd.streak}g`);
   } else {
     const interest    = Math.min(5, Math.floor(S.human.gold / INTEREST_PER));
     const streakBonus = S.human._streakBonus ? S.human._streakBonus() : 0;
+    interestCapped    = interest >= 5;
     total             = BASE_INCOME + interest + streakBonus;
     parts = [`Base ${BASE_INCOME}g`];
-    if (interest > 0)    parts.push(`Interest +${interest}g`);
+    if (interest > 0) {
+      const capMark = interestCapped ? ' <span class="income-cap">✓ max</span>' : '';
+      parts.push(`Interest +${interest}g${capMark}`);
+    }
     if (streakBonus > 0) parts.push(`Streak +${streakBonus}g`);
   }
-  qs('#income-preview').textContent = `Next income: ${total}g  (${parts.join(' · ')})`;
+  qs('#income-preview').innerHTML = `Next income: ${total}g  (${parts.join(' · ')})`;
 }
 
 function updateShopControls() {
@@ -1506,6 +1550,7 @@ function showScoringModal() {
     winnerEl.className = 'scoring-winner ' + (passed ? 'win' : 'loss');
     if (passed) {
       if (r.lifeGained) {
+        Sound.play('sealRestored');
         winnerEl.innerHTML = `Target cleared! ${r.playerScore} \u2265 ${r.target} <span class="scoring-life-regain">\u25c6 Seal restored!</span>`;
       } else {
         winnerEl.textContent = `Target met! ${r.playerScore} \u2265 ${r.target}`;
@@ -1514,9 +1559,30 @@ function showScoringModal() {
       const sealsLeft = r.livesAfter;
       const sealText  = sealsLeft === 0 ? 'No seals left \u2014 run over' : `${sealsLeft} seal${sealsLeft === 1 ? '' : 's'} remain`;
       winnerEl.textContent = `Target missed \u2014 ${r.playerScore} / ${r.target} \u00b7 Seal lost \u00b7 ${sealText}`;
+      Sound.play('sealLost');
     }
     updateHUD();
-    const b = qs('#scoring-continue'); if (b) b.classList.remove('hidden');
+    // Animate the seal that just changed state.
+    const sealsEl = qs('#hud-lives');
+    if (sealsEl) {
+      if (!passed) {
+        // The seal at index r.livesAfter just became empty \u2014 flash it.
+        const seals = sealsEl.querySelectorAll('.life-seal');
+        const lostSeal = seals[r.livesAfter];
+        if (lostSeal) {
+          lostSeal.classList.add('seal-shatter');
+          setTimeout(() => lostSeal.classList.remove('seal-shatter'), 600);
+        }
+      }
+    }
+    const b = qs('#scoring-continue');
+    if (b) {
+      if (r.lifeGained) {
+        setTimeout(() => { if (b.isConnected) b.classList.remove('hidden'); }, 500);
+      } else {
+        b.classList.remove('hidden');
+      }
+    }
   };
 
   const skip = animateScoringSequence(
