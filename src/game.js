@@ -72,6 +72,20 @@ const HEAD_JUDGES = [
     isNeutral: true,
     qualifies: () => false,
   },
+  {
+    id: 'vrethix',
+    name: 'Appraiser Vrethix',
+    preference: 'Appreciates emotional range in a collection',
+    qualifyingHint: '3+ class synergies active',
+    locked: true,
+    qualifies: (board) => {
+      const { counts } = effectiveClassCounts(board);
+      return Object.keys(counts).filter(cls => {
+        const syn = CLASS_SYNERGIES[cls];
+        return syn && syn.getBonus(counts[cls]);
+      }).length >= 3;
+    },
+  },
 ];
 
 // Curated gift for each judge's critique round.
@@ -85,6 +99,7 @@ const CURATOR_SELECTIONS = {
   yorzal:     { type: 'augment',      id: 'CrossTraining' },         // Cross-Pollination
   collective: { type: 'augment',      id: 'Varietal' },              // Diverse Portfolio
   assembly:   { type: 'augment-pick' },                              // free 3-choice pick
+  vrethix:    { type: 'augment', id: 'CrossTraining' },             // Cross-Pollination
 };
 
 // Score targets for each of the 24 rounds.

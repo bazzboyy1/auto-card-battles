@@ -86,6 +86,18 @@ const AUGMENT_DEFS = [
     description: '+6% global score multiplier per active synergy bonus on your board',
     axis: 'diversity',
   },
+  {
+    id: 'deep_roots', name: 'Deep Roots',
+    description: 'Specimens held 10+ rounds score +15% of their flat as a bonus',
+    axis: 4,
+    locked: true,
+  },
+  {
+    id: 'curators_eye', name: "Curator's Eye",
+    description: 'Each 3★ specimen on your active board grants +5% to all scores',
+    axis: 'global',
+    locked: true,
+  },
 ];
 
 // Returns all augments available in the current session: unlocked augments

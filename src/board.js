@@ -162,11 +162,13 @@ class Board {
 
   // Scoring pipeline (async redesign spec + Phase 6 augments):
   //   Stage 0:  base × star; Claymore +40, HeroicResolve +25 (both pre-star)
-  //   Stage 1:  Axis 3 flat scaling + Guinsoo's Rageblade + TimeDilation
+  //   Stage 1:  Axis 3 flat scaling + Guinsoo's Rageblade + TimeDilation;
+  //             Prestige Tag (+12/class syn); Collector's Mark (+8/combined card)
   //   Stage 2:  Axis 2 flat conditional; IronWill ×2 (capped by Warmog's)
   //   Stage 3:  synergy flats (effective counts, with HiveMind bench included)
-  //   Stage 4a: synergy mults
-  //   Stage 4b: Axis 4/6/'6+4' per-card mults + Giant's Belt; ExponentialGrowth +0.25 to Axis-4
+  //   Stage 4a: synergy mults; CrossTraining global mult; Curator's Eye (+5%/3★)
+  //   Stage 4b: Axis 4/6/'6+4' per-card mults + Giant's Belt; ExponentialGrowth +0.25;
+  //             Deep Roots (×1.15 for cards held 10+ rounds)
   //   Stage 5:  Axis 8 board-level auras + Zeke's Herald
   // EarlyBird: for Axis-6/'6+4' passives, bypass Last Whisper wrap and use
   //   round+3 in the passive eval (evaluated in the results map below).
@@ -184,6 +186,14 @@ class Board {
     const { counts: speciesCounts, morphChoices, spearChoices } =
       effectiveSpeciesCounts(this, { ...ctx, augments });
     const { counts: classCounts } = effectiveClassCounts(this);
+
+    // Precomputed board-state values used by new augments and items.
+    const tripleStarActive  = this.active.filter(c => c.stars === 3).length;
+    const combinedActive    = this.active.filter(c => c.stars > 1).length;
+    const activeClassSynCount = Object.keys(classCounts).filter(cls => {
+      const syn = CLASS_SYNERGIES[cls];
+      return syn && syn.getBonus(classCounts[cls]);
+    }).length;
 
     const hasEarlyBird = hasAug('EarlyBird');
 
@@ -243,6 +253,16 @@ class Board {
         const v = 5 * card.roundsSinceBought;
         scores[i] += v;
         lines[i].push({ label: 'Time Dilation', add: v });
+      }
+      if (hasItem(card, 'prestige_tag') && activeClassSynCount > 0) {
+        const v = 12 * activeClassSynCount;
+        scores[i] += v;
+        lines[i].push({ label: `Prestige Tag (${activeClassSynCount} class syn)`, add: v });
+      }
+      if (hasItem(card, 'collectors_mark') && combinedActive > 0) {
+        const v = 8 * combinedActive;
+        scores[i] += v;
+        lines[i].push({ label: `Collector's Mark (${combinedActive} combined)`, add: v });
       }
     }
 
@@ -334,7 +354,7 @@ class Board {
       }
     }
 
-    // Cross-Training: +8% global mult per active synergy (species or class)
+    // Cross-Training: +6% global mult per active synergy (species or class)
     if (hasAug('CrossTraining')) {
       let activeSynCount = 0;
       for (const [species, count] of Object.entries(speciesCounts)) {
@@ -346,6 +366,11 @@ class Board {
         if (syn && syn.getBonus(count)) activeSynCount++;
       }
       if (activeSynCount > 0) globalMult *= (1 + 0.06 * activeSynCount);
+    }
+
+    // Curator's Eye: +5% global mult per 3★ active specimen
+    if (hasAug('curators_eye') && tripleStarActive > 0) {
+      globalMult *= (1 + 0.05 * tripleStarActive);
     }
 
     // Stage 4b — Axis 4/6/'6+4' per-card mults + Giant's Belt
@@ -364,6 +389,10 @@ class Board {
         const mult = giantsBeltMult(card.stars);
         cardMults[i] *= mult;
         lines[i].push({ label: "Giant's Belt", mult });
+      }
+      if (hasAug('deep_roots') && (card.roundsSinceBought || 0) >= 10) {
+        cardMults[i] *= 1.15;
+        lines[i].push({ label: 'Deep Roots', mult: 1.15 });
       }
     }
 
