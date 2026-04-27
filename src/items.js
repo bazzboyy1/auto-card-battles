@@ -1,5 +1,7 @@
 'use strict';
 
+const { isUnlocked } = require('./achievements');
+
 // Phase 5 (2026-04-19) — Items.
 //
 // 10 items attachable to units; each unit has 3 slots. Permanent per run.
@@ -41,6 +43,13 @@ const ITEM_DEFS = [
     axis: '5-class', class: cl,
   })),
 ];
+
+// Returns all items available in the current session (locked items excluded
+// until their reward id is persisted via addUnlock). In Node.js the filter
+// always excludes locked entries, keeping sim pools clean.
+function getAvailableItems() {
+  return ITEM_DEFS.filter(it => !it.locked || isUnlocked(it.id));
+}
 
 function getItem(id) {
   return ITEM_DEFS.find(it => it.id === id) || null;
@@ -122,5 +131,5 @@ function hasItem(card, itemId) {
 
 module.exports = {
   ITEM_DEFS, SPECIES, CLASSES,
-  getItem, attachItem, detachItem, hasItem, giantsBeltMult,
+  getAvailableItems, getItem, attachItem, detachItem, hasItem, giantsBeltMult,
 };

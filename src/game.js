@@ -3,8 +3,9 @@
 const { Board, effectiveClassCounts } = require('./board');
 const { Shop }  = require('./shop');
 const { CARD_COSTS, CARD_DEFS, createCard, CLASS_SYNERGIES } = require('./cards');
-const { attachItem, ITEM_DEFS } = require('./items');
-const { AUGMENT_DEFS, pickN } = require('./augments');
+const { attachItem, ITEM_DEFS, getAvailableItems } = require('./items');
+const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
+const { isUnlocked } = require('./achievements');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -279,6 +280,12 @@ class Run {
     this.lives            = STARTING_LIVES;
     this.peakScore        = 0;
     this.battleHistory    = [];
+    this.stats            = {
+      maxClassSynergiesActive: 0,
+      maxCrystallineActive:    0,
+      allSpeciesRepresented:   false,
+      maxTripleStarsActive:    0,
+    };
     this.headJudges       = this._assignJudges(); // [ch1Id, ch2Id, ch3Id]
     this._curatorsPicked  = new Set();
     this.curatorOffers    = {};
@@ -287,7 +294,7 @@ class Run {
   // Draw 3 judges without repeats. Shen-Nax (requires 2+ T3 active) is excluded
   // from Ch1 (rounds 1-8) where T3 cards are nearly impossible to field.
   _assignJudges() {
-    const allIds  = HEAD_JUDGES.map(j => j.id);
+    const allIds  = HEAD_JUDGES.filter(j => !j.locked || isUnlocked(j.id)).map(j => j.id);
     const ch1Pool = allIds.filter(id => id !== 'shen_nax');
     const rest    = allIds.slice();
     const chosen  = [];
@@ -325,7 +332,7 @@ class Run {
     if (this._augmentsPicked.has(nextRound)) return null;
 
     if (!this.augmentOffers[nextRound]) {
-      const pool = AUGMENT_DEFS.map(a => a.id).filter(id => !this.augments.includes(id));
+      const pool = getAvailableAugments().map(a => a.id).filter(id => !this.augments.includes(id));
       this.augmentOffers[nextRound] = pickN(pool, 3, this.rng);
     }
     return this.augmentOffers[nextRound];
@@ -368,7 +375,7 @@ class Run {
     if (!this.itemPickRounds.includes(nextRound)) return null;
     if (this._itemsPicked.has(nextRound)) return null;
     if (!this.itemOffers[nextRound]) {
-      const pool = ITEM_DEFS.map(it => it.id);
+      const pool = getAvailableItems().map(it => it.id);
       this.itemOffers[nextRound] = pickN(pool, 3, this.rng);
     }
     return this.itemOffers[nextRound];
@@ -396,6 +403,32 @@ class Run {
     };
     const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
     const playerScore    = scoreBreakdown.total;
+
+    // Track achievement-relevant stats from the live board state at scoring time.
+    {
+      const active = this.player.board.active;
+      const { counts: classCounts } = effectiveClassCounts(this.player.board);
+      const activeSynCount = Object.keys(classCounts).filter(cls => {
+        const syn = CLASS_SYNERGIES[cls];
+        return syn && syn.getBonus(classCounts[cls]);
+      }).length;
+      if (activeSynCount > this.stats.maxClassSynergiesActive)
+        this.stats.maxClassSynergiesActive = activeSynCount;
+
+      const crystallineCount = active.filter(c => c.species === 'Crystalline').length;
+      if (crystallineCount > this.stats.maxCrystallineActive)
+        this.stats.maxCrystallineActive = crystallineCount;
+
+      const tripleStarCount = active.filter(c => c.stars === 3).length;
+      if (tripleStarCount > this.stats.maxTripleStarsActive)
+        this.stats.maxTripleStarsActive = tripleStarCount;
+
+      if (!this.stats.allSpeciesRepresented) {
+        const speciesSet = new Set(active.map(c => c.species));
+        if (speciesSet.size >= 5) this.stats.allSpeciesRepresented = true;
+      }
+    }
+
     const { target: baseNormal, preferredTarget: basePref, isCritique } = ROUND_TARGETS[this.round - 1];
     const normalTarget    = Math.round(baseNormal * this.diffMult);
     const preferredTarget = Math.round(basePref   * this.diffMult);
@@ -472,7 +505,7 @@ class Run {
     if (!sel) return null;
     if (sel.type === 'augment-pick') {
       if (!this.curatorOffers[last.round]) {
-        const pool = AUGMENT_DEFS.map(a => a.id)
+        const pool = getAvailableAugments().map(a => a.id)
           .filter(id => !this.augments.includes(id) && id !== 'Shapeshifter');
         this.curatorOffers[last.round] = pickN(pool, Math.min(3, pool.length), this.rng);
       }

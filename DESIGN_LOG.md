@@ -6,7 +6,18 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 21 complete (2026-04-27). Polish & Clarity pass shipped (v0.31). Next: Playtest 4 — run the playtest script in `design_log/phase_21_plan.md` with a new player.
+**Phase:** Phase 23-A complete (2026-04-27). Unlock system infrastructure (no version bump — logic only). Next: 23-B — add new locked content (Deep Roots, Curator's Eye augments; Vrethix judge; Prestige Tag, Collector's Mark items).
+
+**Phase 22 complete (2026-04-27):** Balance pass shipped (v0.32).
+- **Livid dominance fixed:** Class mult ×1.10/×1.20 → ×1.08/×1.16. livid-stack: 69.3% → 63.3% (-6pp).
+- **Giddy dead path fixed:** Class flat +18/+36 → +30/+72. giddy-stack: 37% → 41.7% (+4.7pp).
+- **Crystalline dead path improved:** Species flat +18/+42/+78 → +28/+70/+110. crystalline-stack: 39.3% → 41.7% (+2.4pp).
+- **Sharzak redesigned:** base 44→62; passive changed from sell bonus (+3g, 0 score) to '+14 per other Giddy specimen on board' (axis 2). Root cause of both dead paths — Sharzak was dead weight in all its builds.
+- **Krombax buffed:** base 48→62. Crystalline T1 floor raised.
+- **Cross-Pollination augment nerfed:** 8% → 6% per active synergy. Exploit delta: +13.7pp → +11pp.
+- **Not changed:** Abyssal (×1.40/×1.90), AccliLog (20/round) — both tanked baseline when nerfed; deferred.
+- **Balance sweep (n=300, seed=42):** greedy 56.7%, livid 63.3%, abyssal-sporal 67.7%, abyssal-stack 66.3%, giddy 41.7%, crystalline 41.7%, blinxorp-max 79% (up from 74% — proportional to baseline shift; cap fix still in place).
+- **Exploit sweep:** AccliLog +22.3pp (accepted), Cross-Pollination +11pp, Taxonomy Badge: Abyssal +14.7pp.
 
 **Phase 19-F complete (2026-04-26):** Sim calibration — retuned ROUND_TARGETS (v0.26).
 - Greedy survival: 18.7% → 54.8% on Standard (spec: ~55-65%). Avg lives lost: 1.64 (spec: 1-3).
@@ -63,7 +74,14 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - **F — Grand Finale overlay:** `showGrandFinaleReveal()` fires at `startRound()` when `nextRound === 24`. Reuses `.chapter-reveal` infrastructure with `.grand-finale-reveal` gold accent. `grandFinale` sound (dramatic low build + bright chord). Overlay reads "Round 24 / Grand Finale / All judges present · Final score".
 - **G — Reroll cost on button:** Already implemented (line 927 of app.js). No change needed.
 
-**Next action:** Playtest 4 — run the playtest script in `design_log/phase_21_plan.md` with a new player. Verify: new player understands seals within 2 rounds; finds and uses the bench; can explain "lose a seal" after the rules modal.
+**Phase 23-A complete (2026-04-27):** Unlock system infrastructure (no version bump).
+- **`src/achievements.js` created:** `ACHIEVEMENTS` (5 entries), `evaluateAchievements(run)`, `getUnlocks()`, `addUnlock()`, `isUnlocked()`. localStorage-backed; graceful no-op in Node.js so sim pools stay clean.
+- **`run.stats` added to `Run`:** `maxClassSynergiesActive`, `maxCrystallineActive`, `allSpeciesRepresented`, `maxTripleStarsActive` — tracked each round in `runBattle()` after `calcScoreBreakdown()`.
+- **Filtered pools:** `getAvailableAugments()` / `getAvailableItems()` exported from augments.js / items.js; `pendingAugment()`, `pendingItem()`, `pendingCurator()` all use filtered pools.
+- **`_assignJudges()` updated:** filters `HEAD_JUDGES` by `!j.locked || isUnlocked(j.id)` — ready for Vrethix in 23-B.
+- **Smoke test (n=50, seed=42):** all policies ran without errors; ordering preserved.
+
+**Next action:** Phase 23-B — Add new locked content: Deep Roots + Curator's Eye to `src/augments.js`; Vrethix to `HEAD_JUDGES` in `src/game.js`; Prestige Tag + Collector's Mark to `src/items.js`. Run balance sweep to verify baseline unchanged with locked content excluded, then manually unlock all 5 and re-run to check exploit ceiling.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 
@@ -390,6 +408,7 @@ Class synergy values (final):
 - **`design_log/phase_13_plan.md`** — Phase 13 plan: post-deploy bug fixes (score snapshot, combine roundsSinceBought, species/class layout, side-panel attention toast). Read when starting Phase 13.
 - **`design_log/phase_19_plan.md`** — Phase 19 plan: The Exhibition Arc. Full structural redesign — removes fake opponents + RP system, replaces with escalating score targets, lives system, head judges per chapter, build archetypes, Exhibition Rating meta-progression. Read when starting Phase 19.
 - **`design_log/phase_21_plan.md`** — Phase 21 plan: Polish & Clarity pass. Prioritised fix list from game-design-framework review (2026-04-27). Includes playtest script.
+- **`design_log/phase_23_plan.md`** — Phase 23 plan: Unlock system. Run achievements gate 5 new content pieces (2 augments, 1 judge, 2 items). Full spec: data structures, achievement conditions, pool filtering, UI, implementation phases.
 
 ---
 

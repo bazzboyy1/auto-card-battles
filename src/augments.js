@@ -1,5 +1,7 @@
 'use strict';
 
+const { isUnlocked } = require('./achievements');
+
 // Phase 6 (2026-04-19) — Augments.
 //
 // Player picks 1-of-3 at rounds 3, 7, 12. Each augment persists for the rest
@@ -86,6 +88,14 @@ const AUGMENT_DEFS = [
   },
 ];
 
+// Returns all augments available in the current session: unlocked augments
+// (locked: true but reward id in localStorage) + all non-locked augments.
+// In Node.js (sim/balance), isUnlocked always returns false, so locked entries
+// are excluded — giving a clean baseline with no new content in the pool.
+function getAvailableAugments() {
+  return AUGMENT_DEFS.filter(a => !a.locked || isUnlocked(a.id));
+}
+
 function getAugment(id) {
   return AUGMENT_DEFS.find(a => a.id === id) || null;
 }
@@ -106,4 +116,4 @@ function pickN(arr, n, rng) {
   return result;
 }
 
-module.exports = { AUGMENT_DEFS, getAugment, hasAugment, pickN };
+module.exports = { AUGMENT_DEFS, getAvailableAugments, getAugment, hasAugment, pickN };
