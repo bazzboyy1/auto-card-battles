@@ -85,7 +85,7 @@ const CARD_DEFS = [
     },
   },
   {
-    name: 'Krombax', species: 'Crystalline', class: 'Shy', tier: 1, baseScore: 48,
+    name: 'Krombax', species: 'Crystalline', class: 'Shy', tier: 1, baseScore: 62,
     flavor: 'Krombaxes refract light to project a perfect crystal duplicate of themselves at all times. Judges count both. Krombaxes find this mortifying.',
     passive: {
       description: 'Counts as 2 Crystallines for synergy',
@@ -94,12 +94,15 @@ const CARD_DEFS = [
     },
   },
   {
-    name: 'Sharzak', species: 'Crystalline', class: 'Giddy', tier: 1, baseScore: 44,
+    name: 'Sharzak', species: 'Crystalline', class: 'Giddy', tier: 1, baseScore: 62,
     flavor: 'Sharzaks continuously shed gem-quality crystal fragments. Whoever buys one always finds a few lodged in their pockets afterwards.',
     passive: {
-      description: 'Selling returns +3g',
-      axis: 7,
-      eval() { return { sellBonus: 3 }; },
+      description: '+14 per other Giddy specimen on board',
+      axis: 2,
+      eval(card, ctx) {
+        const n = ctx.boardState.active.filter(c => c !== card && c.class === 'Giddy').length;
+        return { flat: 14 * n };
+      },
     },
   },
   {
@@ -276,9 +279,9 @@ const SYNERGIES = {
   Crystalline: {
     thresholds: [2, 4, 6],
     getBonus(count) {
-      if (count >= 6) return { target: 'species', type: 'flat', value: 78 };
-      if (count >= 4) return { target: 'species', type: 'flat', value: 42 };
-      if (count >= 2) return { target: 'species', type: 'flat', value: 18 };
+      if (count >= 6) return { target: 'species', type: 'flat', value: 110 };
+      if (count >= 4) return { target: 'species', type: 'flat', value: 70 };
+      if (count >= 2) return { target: 'species', type: 'flat', value: 28 };
       return null;
     },
   },
@@ -310,16 +313,16 @@ const CLASS_SYNERGIES = {
   Livid: {
     thresholds: [2, 4],
     getBonus(count) {
-      if (count >= 4) return { target: 'class', type: 'mult', value: 1.20 };
-      if (count >= 2) return { target: 'class', type: 'mult', value: 1.10 };
+      if (count >= 4) return { target: 'class', type: 'mult', value: 1.16 };
+      if (count >= 2) return { target: 'class', type: 'mult', value: 1.08 };
       return null;
     },
   },
   Giddy: {
     thresholds: [2, 3],
     getBonus(count) {
-      if (count >= 3) return { target: 'class', type: 'flat', value: 36 };
-      if (count >= 2) return { target: 'class', type: 'flat', value: 18 };
+      if (count >= 3) return { target: 'class', type: 'flat', value: 72 };
+      if (count >= 2) return { target: 'class', type: 'flat', value: 30 };
       return null;
     },
   },

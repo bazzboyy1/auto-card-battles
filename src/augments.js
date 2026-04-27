@@ -81,7 +81,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'CrossTraining', name: 'Cross-Pollination',
-    description: '+8% global score multiplier per active synergy bonus on your board',
+    description: '+6% global score multiplier per active synergy bonus on your board',
     axis: 'diversity',
   },
 ];

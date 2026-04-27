@@ -345,7 +345,7 @@ class Board {
         const syn = CLASS_SYNERGIES[cls];
         if (syn && syn.getBonus(count)) activeSynCount++;
       }
-      if (activeSynCount > 0) globalMult *= (1 + 0.08 * activeSynCount);
+      if (activeSynCount > 0) globalMult *= (1 + 0.06 * activeSynCount);
     }
 
     // Stage 4b — Axis 4/6/'6+4' per-card mults + Giant's Belt
