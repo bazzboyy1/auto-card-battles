@@ -8,6 +8,7 @@ let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
+let ACHIEVEMENTS_LIST, evaluateAchievements, isUnlocked, addUnlock;
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
 const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Pompous: '▲' };
@@ -38,6 +39,7 @@ document.addEventListener('acb-ready', () => {
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
   RANKING = window.ACB.ranking;
+  ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, evaluateAchievements, isUnlocked, addUnlock } = window.ACB.achievements);
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
@@ -60,6 +62,7 @@ document.addEventListener('acb-ready', () => {
     qs('#loading').classList.add('hidden');
     showRulesModal();
   };
+  qs('#btn-collection').onclick = showCollectionModal;
 });
 
 // ── Rules modal ───────────────────────────────────────────────────────────────
@@ -1178,6 +1181,9 @@ function showGameOverModal() {
   const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
   // Try to unlock the next difficulty tier when player clears all 24 rounds.
   const newTierUnlock = (survived && RANKING) ? RANKING.tryUnlockNextTier(RANKING.getActiveTier().id) : null;
+  // Evaluate and persist achievement unlocks.
+  const newUnlocks = evaluateAchievements ? evaluateAchievements(run) : [];
+  newUnlocks.forEach(a => addUnlock(a.reward.id));
 
   let html = `<h2>${survived ? 'Run Complete' : 'Run Over'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
@@ -1235,6 +1241,16 @@ function showGameOverModal() {
     html += `<div class="tier-unlock-banner">🏆 New difficulty unlocked: <strong>${newTierUnlock.label}</strong></div>`;
   }
 
+  if (newUnlocks.length > 0) {
+    html += `<div class="unlock-section">`;
+    html += `<div class="unlock-header">✦ New content unlocked</div>`;
+    for (const a of newUnlocks) {
+      const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
+      html += `<div class="unlock-entry"><span class="unlock-name">${a.reward.name}</span><span class="unlock-type">${typeLabel}</span></div>`;
+    }
+    html += `</div>`;
+  }
+
   html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Next Run Difficulty</div>`;
   html += `<div id="modal-diff-picker"></div>`;
 
@@ -1244,6 +1260,34 @@ function showGameOverModal() {
   qs('#btn-continue').textContent = 'Play Again';
   qs('#btn-continue').onclick = () => { newGame(); };
   qs('#modal').classList.remove('side-panel');
+  qs('#modal').classList.remove('hidden');
+}
+
+// ── Collection modal (splash screen) ─────────────────────────────────────────
+function showCollectionModal() {
+  let html = `<h2>Collection</h2>`;
+  html += `<p style="margin-bottom:14px;color:var(--text-muted);font-size:13px">Complete each achievement once to unlock new content permanently.</p>`;
+
+  for (const a of (ACHIEVEMENTS_LIST || [])) {
+    const unlocked = isUnlocked ? isUnlocked(a.reward.id) : false;
+    html += `<div class="ach-row ${unlocked ? 'ach-unlocked' : 'ach-locked'}">`;
+    html += `<div class="ach-name">${a.name}</div>`;
+    html += `<div class="ach-condition">${a.condition}</div>`;
+    if (unlocked) {
+      const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
+      html += `<div class="ach-reward">Unlocked: <strong>${a.reward.name}</strong> <span class="ach-type">${typeLabel}</span></div>`;
+    } else {
+      html += `<div class="ach-reward ach-reward-locked">Unlocks: <strong>???</strong></div>`;
+    }
+    html += `</div>`;
+  }
+
+  qs('#modal-content').innerHTML = html;
+  qs('#modal-actions').classList.remove('hidden');
+  qs('#btn-continue').textContent = 'Close';
+  qs('#btn-continue').onclick = () => { qs('#modal').classList.add('hidden'); };
+  qs('#modal').classList.remove('side-panel');
+  qs('#modal').classList.remove('scoring');
   qs('#modal').classList.remove('hidden');
 }
 

@@ -894,3 +894,45 @@ button:disabled { opacity: 0.4; cursor: default; }
   background: rgba(63,185,80,0.12); border: 1px solid #3fb950;
   color: #3fb950; font-size: 13px; text-align: center;
 }
+
+/* ── Achievement unlock section (game-over modal) ── */
+.unlock-section {
+  margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+  background: rgba(121,192,255,0.08); border: 1px solid rgba(121,192,255,0.35);
+}
+.unlock-header {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  color: #79c0ff; margin-bottom: 8px;
+}
+.unlock-entry { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.unlock-entry:last-child { margin-bottom: 0; }
+.unlock-name { font-weight: 600; color: #79c0ff; font-size: 13px; }
+.unlock-type {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px;
+}
+
+/* ── Collection modal ── */
+.splash-btn-collection {
+  margin-top: 10px; font-size: 0.85rem; padding: 0.4rem 1.2rem; opacity: 0.7;
+}
+.splash-btn-collection:hover:not(:disabled) { opacity: 1; }
+
+.ach-row {
+  padding: 10px 12px; border-radius: 7px; margin-bottom: 8px;
+  border: 1px solid var(--border); background: var(--surface2);
+}
+.ach-row:last-child { margin-bottom: 0; }
+.ach-unlocked { border-color: rgba(121,192,255,0.35); }
+.ach-locked { opacity: 0.55; }
+.ach-name { font-weight: 600; font-size: 13px; color: var(--gold); margin-bottom: 3px; }
+.ach-unlocked .ach-name { color: #79c0ff; }
+.ach-condition { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+.ach-reward { font-size: 12px; color: var(--text); }
+.ach-reward-locked { color: var(--text-muted); }
+.ach-type {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; margin-left: 4px;
+}
