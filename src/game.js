@@ -123,13 +123,13 @@ const ROUND_TARGETS = [
   { target: 2600, preferredTarget: 2210, isCritique: false }, // R15
   { target: 2800, preferredTarget: 2380, isCritique: true  }, // R16 — Critique 2
   { target: 3000, preferredTarget: 2550, isCritique: false }, // R17
-  { target: 3100, preferredTarget: 2635, isCritique: false }, // R18
-  { target: 3450, preferredTarget: 2933, isCritique: false }, // R19
-  { target: 3700, preferredTarget: 3145, isCritique: false }, // R20
-  { target: 3700, preferredTarget: 3145, isCritique: false }, // R21
-  { target: 3700, preferredTarget: 3145, isCritique: false }, // R22
-  { target: 3900, preferredTarget: 3315, isCritique: false }, // R23
-  { target: 4600, preferredTarget: 3910, isCritique: true  }, // R24 — Grand Finale
+  { target: 3200, preferredTarget: 2720, isCritique: false }, // R18
+  { target: 3500, preferredTarget: 2975, isCritique: false }, // R19
+  { target: 3850, preferredTarget: 3273, isCritique: false }, // R20
+  { target: 4100, preferredTarget: 3485, isCritique: false }, // R21
+  { target: 4350, preferredTarget: 3698, isCritique: false }, // R22
+  { target: 4650, preferredTarget: 3953, isCritique: false }, // R23
+  { target: 5000, preferredTarget: 4250, isCritique: true  }, // R24 — Grand Finale
 ];
 
 class Player {

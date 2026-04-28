@@ -40,8 +40,8 @@ function recordRun(round, livesRemaining, peakScore) {
 
 const TIERS = [
   { id: 'standard',   label: 'Standard',         mult: 1.0  },
-  { id: 'discerning', label: 'Discerning Judges', mult: 1.25 },
-  { id: 'elite',      label: 'Elite Circuit',     mult: 1.5  },
+  { id: 'discerning', label: 'Discerning Judges', mult: 1.12 },
+  { id: 'elite',      label: 'Elite Circuit',     mult: 1.25 },
 ];
 const TIER_KEY = 'alien-exhibition-tiers';
 
