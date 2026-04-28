@@ -53,7 +53,7 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-plinth').addEventListener('mouseenter', () => clampTooltipH(qs('#btn-plinth'), 210));
   qs('#btn-sell').onclick     = onToggleSell;
 
-  newGame();
+  newGame({ deferred: true });
   renderDifficultyPicker(qs('#difficulty-selector'));
 
   qs('#btn-start').onclick = () => {
@@ -94,6 +94,7 @@ function showRulesModal() {
     Sound.play('roundStart');
     overlay.remove();
     qs('#app').classList.remove('hidden');
+    startRound();
   };
 }
 
@@ -142,7 +143,7 @@ function updateHUDDifficulty() {
 }
 
 // ── New game ──────────────────────────────────────────────────────────────────
-function newGame() {
+function newGame({ deferred = false } = {}) {
   const tier = RANKING ? RANKING.getActiveTier() : { mult: 1.0 };
   const rng  = mulberry32(Date.now() | 0);
   S.run      = new Run(rng, tier.mult);
@@ -157,7 +158,7 @@ function newGame() {
   S.archetypeOrder = [];
   // Re-wire continue button (game-over handler overrides it).
   qs('#btn-continue').onclick = onContinue;
-  startRound();
+  if (!deferred) startRound();
 }
 
 // ── Round flow ────────────────────────────────────────────────────────────────
