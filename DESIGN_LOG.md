@@ -6,9 +6,13 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 25 complete (2026-04-28). 9 new achievement/reward slots shipped (v0.39). Balance baseline unchanged. Production plan step 3 done.
+**Phase:** Hotfix v0.40 (2026-04-28). Stale `run.stats.peakGold` crash fixed — game is playable again.
 
 **Next action:** Production plan step 4 — full balance pass. Run exploit sweep with new content force-unlocked (`node run.js exploit 200 42`), then tune any rewards exceeding +8pp above greedy. Focus: `class_harmony` (4–5 class syns), `prestige_circuit` (unconditional ×1.2), `mastery_protocol` on Axis-6 cards, `omnorb` in The Collective build.
+
+**Hotfix v0.40 (2026-04-28):** Critical crash fixed — shop empty on start and Continue-after-win stuck.
+- **Root cause:** `run.stats` was deleted in Phase 25's achievement rework, but `finishRoundSetup()` in `web/app.js` still read `S.run.stats.peakGold`. The crash happened before `shop.refresh()` and `render()`, causing: (1) empty shop on game start, (2) any Continue-after-battle leading to a stuck panel.
+- **Fix:** Removed the stale `run.stats.peakGold` line from `finishRoundSetup()` (one line deleted).
 
 **Phase 25 complete (2026-04-28):** 9 new achievement/reward slots shipped (v0.39).
 - **22 total achievements** (was 13). New: plasmic_master, pompous_devotee, emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor.
