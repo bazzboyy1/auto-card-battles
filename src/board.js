@@ -246,12 +246,12 @@ class Board {
         lines[i].push({ label: card.passive.description || 'passive', add: v });
       }
       if (hasItem(card, "Guinsoo's Rageblade") && card.roundsSinceBought) {
-        const v = 20 * card.roundsSinceBought;
+        const v = 18 * card.roundsSinceBought;
         scores[i] += v;
         lines[i].push({ label: "Guinsoo's Rageblade", add: v });
       }
       if (hasAug('TimeDilation') && card.roundsSinceBought) {
-        const v = 5 * card.roundsSinceBought;
+        const v = 4 * card.roundsSinceBought;
         scores[i] += v;
         lines[i].push({ label: 'Time Dilation', add: v });
       }
@@ -366,7 +366,7 @@ class Board {
         const syn = CLASS_SYNERGIES[cls];
         if (syn && syn.getBonus(count)) activeSynCount++;
       }
-      if (activeSynCount > 0) globalMult *= (1 + 0.06 * activeSynCount);
+      if (activeSynCount > 0) globalMult *= (1 + 0.05 * activeSynCount);
     }
 
     // Curator's Eye: +5% global mult per 3★ active specimen
@@ -438,8 +438,8 @@ class Board {
       if (hasItem(card, "Zeke's Herald")) {
         for (let j = 0; j < this.active.length; j++) {
           if (j !== i) {
-            cardMults[j] *= 1.15;
-            lines[j].push({ label: "Zeke's Herald", mult: 1.15 });
+            cardMults[j] *= 1.12;
+            lines[j].push({ label: "Zeke's Herald", mult: 1.12 });
           }
         }
       }

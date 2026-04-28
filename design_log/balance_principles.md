@@ -23,17 +23,19 @@ Every build path should feel like a real option. Players should be choosing betw
 
 ---
 
-## Numeric targets (Standard difficulty, greedy baseline ~55–57%)
+## Numeric targets (Standard difficulty, greedy baseline ~40–42%)
 
-| State | Survival target | Notes |
+> **Calibration note:** After v0.37's difficulty recalibration (steeper R17–R24 targets, R24 Grand Finale at 5000), the greedy baseline dropped from ~55–57% to ~40–42%. All absolute thresholds shifted accordingly. The *relative* targets (pp above greedy) are unchanged — use those as the primary guide.
+
+| State | Survival target | Relative to greedy |
 |---|---|---|
-| Any viable build | ≥ 45% | Below this, players feel punished for a reasonable choice |
-| Greedy (diverse) | ~55–57% | Calibration anchor |
-| Focused stack (species or class) | ~60–67% | 5–10pp above greedy — rewarding but not dominant |
-| Exploit ceiling | ≤ ~70% | Flagged at >8pp above greedy; investigated, not auto-nerfed |
-| Forced-optimal exploit | ≤ ~75% | Only acceptable if it requires specific augment+item alignment |
+| Any viable build | ≥ 30% | Within ~12pp below greedy |
+| Greedy (diverse) | ~40–42% | Calibration anchor |
+| Focused stack (species or class) | ~45–52% | 5–10pp above greedy — rewarding but not dominant |
+| Exploit ceiling | ≤ ~50% | Flagged at >8pp above greedy; investigated, not auto-nerfed |
+| Forced-optimal exploit | ≤ ~57% | Only acceptable if it requires specific augment+item alignment |
 
-These are survival-rate targets from the `node run.js balance` harness (n=300, seed=42).
+These are survival-rate targets from the `node run.js exploit` harness (n=200, seed=42) and `node run.js balance` (n=300, seed=42). When the exploit sweep baseline differs from the balance baseline (because all locked content is force-included), use the sweep's own baseline for delta calculations — not the locked-content-excluded baseline.
 
 ---
 
@@ -62,6 +64,25 @@ Class values are deliberately calibrated at **~50% of species equivalents** beca
 - Individual class bonuses should feel modest in isolation.
 - The payoff for stacking multiple class synergies is in the compounding, not any single bonus.
 - Sullen's ×1.02/×1.05 is intentionally small — it's designed to be the "free" class synergy you pick up while building something else, not a build target on its own.
+
+## Species/class overlap in the free card pool
+
+When a species' cheapest free cards (T1 + T2) share a class, drafting that species automatically activates the class synergy — no deliberate decision required. This is a **Response** failure: the player is rewarded for something they didn't choose to do.
+
+**Severity depends on synergy type:**
+
+| Species synergy | Class synergy | Verdict |
+|---|---|---|
+| Multiplicative (×mult) | Multiplicative (×mult) | **Dangerous** — both compound with each other and with every augment/item in the pipeline. The overlap premium grows as the board scales. |
+| Multiplicative or flat | Flat | Manageable — the free bonus is real but bounded; flat bonuses don't compound. |
+
+**Design rule:** Free T1 and T2 cards within a species must not share a class if *both* the species synergy and that class synergy are multiplicative. An accidental double-multiplier is not a commitment path — it's a dominant build that requires no skill to trigger.
+
+**How to audit:** For each species, list the classes of its free T1 and T2 cards. If two or more share a class, check whether both synergies are multiplicative. If so, reclassify one card. The fix belongs in the *class field* of the card data, not in synergy value tuning.
+
+**What to reclassify to:** Prefer a class whose synergy is flat (e.g. Sullen at ×1.02 is effectively negligible as a "free" bonus and is the correct accidental synergy to allow). Avoid reclassifying into a class already dominant on that species' existing cards.
+
+**When adding new cards:** Before assigning a class, check the class distribution of existing free cards in the same species. A new free card that creates a 2-of-a-class overlap with a multiplicative class synergy needs a different class.
 
 ---
 

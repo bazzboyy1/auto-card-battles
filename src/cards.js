@@ -198,7 +198,7 @@ const CARD_DEFS = [
     },
   },
   {
-    name: 'Blinxorp', species: 'Abyssal', class: 'Livid', tier: 2, baseScore: 82,
+    name: 'Blinxorp', species: 'Abyssal', class: 'Sullen', tier: 2, baseScore: 82,
     flavor: 'Blinxorps take a while to fully emerge from their transport containers. By round ten, most of the exhibition staff have filed formal complaints.',
     passive: {
       description: '+25 per round since bought (max +300)',
@@ -430,8 +430,8 @@ const SYNERGIES = {
   Abyssal: {
     thresholds: [2, 4],
     getBonus(count) {
-      if (count >= 4) return { target: 'species', type: 'mult', value: 1.90 };
-      if (count >= 2) return { target: 'species', type: 'mult', value: 1.40 };
+      if (count >= 4) return { target: 'species', type: 'mult', value: 1.80 };
+      if (count >= 2) return { target: 'species', type: 'mult', value: 1.32 };
       return null;
     },
   },
@@ -441,12 +441,12 @@ const SYNERGIES = {
 // Shy:     Gloopir(Plasmic T2), Puffzak(Sporal T2), Krombax(Crystalline T1), Skraxle(Chitinous T1),
 //          Phlorbex(Sporal T1), [Prismora(Crystalline T3) locked], [Klothrix(Chitinous T3) locked],
 //          [Omnorb(Abyssal T3) locked]
-// Livid:   Vorzak(Abyssal T1), Blinxorp(Abyssal T2), Slurvin(Plasmic T1), Molborg(Sporal T2),
+// Livid:   Vorzak(Abyssal T1), Slurvin(Plasmic T1), Molborg(Sporal T2),
 //          [Zorbrath(Crystalline T2) locked], [Vornix(Abyssal T1) locked]
 // Giddy:   Vexborg(Chitinous T1), Clattorb(Chitinous T2), Murborg(Plasmic T2), Sharzak(Crystalline T1),
 //          [Morblax(Chitinous T2) locked], [Zephrix(Sporal T2) locked]
 // Sullen:  Sporvik(Sporal T1), Lithvorn(Crystalline T2), Blorpax(Plasmic T1), Scrithnab(Chitinous T3),
-//          [Grazwick(Abyssal T2) locked], [Vorbex(Plasmic T2) locked]
+//          Blinxorp(Abyssal T2), [Grazwick(Abyssal T2) locked], [Vorbex(Plasmic T2) locked]
 // Pompous: Fluxnob(Plasmic T3), Sprangus(Sporal T3), Geodorb(Crystalline T3), Squorble(Abyssal T3),
 //          [Stellorb(Abyssal T3) locked]
 const CLASS_SYNERGIES = {

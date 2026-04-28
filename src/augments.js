@@ -15,7 +15,7 @@ const { isUnlocked } = require('./achievements');
 //   HeroicResolve  → Stage 0:  +25 base (before star mult), alongside Exhibition Stand
 //   IronWill       → Stage 2:  ×2 Axis-2 flat; if Stimulant Pod also present, cap
 //                              to one doubling (Iron Will wins, Stimulant Pod no-op)
-//   TimeDilation   → Stage 1:  +5 × roundsSinceBought per card, alongside Axis-3
+//   TimeDilation   → Stage 1:  +4 × roundsSinceBought per card, alongside Axis-3
 //   ExponentialGrowth → Stage 4b: +0.25 to Axis-4 mult (not Axis-6 or '6+4')
 //   EarlyBird      → results:  for Axis-6/'6+4' passives, bypass Bloom Stimulant
 //                              wrap and use round+3 (caps Bloom Stimulant's +2)
@@ -38,7 +38,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'TimeDilation', name: 'Acclimatisation Program',
-    description: 'All units gain +5 score per round since bought',
+    description: 'All units gain +4 score per round since bought',
     axis: 3,
   },
   {
@@ -83,7 +83,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'CrossTraining', name: 'Cross-Pollination',
-    description: '+6% global score multiplier per active synergy bonus on your board',
+    description: '+5% global score multiplier per active synergy bonus on your board',
     axis: 'diversity',
   },
   {

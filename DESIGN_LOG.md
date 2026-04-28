@@ -6,9 +6,23 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Hotfix v0.40 (2026-04-28). Stale `run.stats.peakGold` crash fixed — game is playable again.
+**Phase:** Balance pass v0.41 (2026-04-28). Species/class overlap design fix + balance nerfs.
 
-**Next action:** Production plan step 4 — full balance pass. Run exploit sweep with new content force-unlocked (`node run.js exploit 200 42`), then tune any rewards exceeding +8pp above greedy. Focus: `class_harmony` (4–5 class syns), `prestige_circuit` (unconditional ×1.2), `mastery_protocol` on Axis-6 cards, `omnorb` in The Collective build.
+**Next action:** Production plan step 5 — new species. Before adding cards, run `node run.js exploit 200 42` to confirm baseline, then design new species content targeting underused build paths (Crystalline, Giddy, Shy are all at −10pp below greedy). AccliLog requires a structural fix (per-card bonus cap, not rate reduction) — address when designing next balance pass.
+
+**Known outstanding exploit flags (accepted, not blocking):**
+- AccliLog (+32pp): Rate reduction cannot fix this — 3 forced copies compound regardless of per-round value. Needs a per-card total cap (e.g. max +240 over the course of a run). Defer to dedicated pass.
+- Taxonomy Badge: Abyssal (+20pp): Abyssal is now ×1.32/×1.80 and abyssal-stack sits at +10pp above greedy (within target). The badge's high delta is an exploit-sweep artifact (forced every item round). Not a live gameplay problem at natural frequencies.
+- Cross-Pollination (+13.5pp), AccliProg (+11.5pp): Improved from +17pp and +14pp. Further nerfs risk baseline damage — accept at current values.
+- Rarity Certificate (+14.5pp): Not a new problem — item didn't change; delta inflated by 11pp baseline drop after nerfs.
+
+**Balance pass v0.41 (2026-04-28):** Species/class overlap design fix + exploit nerf pass.
+- **Design fix:** Blinxorp reclassified Livid → Sullen. Root cause: Vorzak (T1 Abyssal/Livid) + Blinxorp (T2 Abyssal) both being Livid gave free Abyssal-2 + Livid-2 double-mult synergy with no deliberate decision. The fix makes the overlap intentional — you must mix non-Abyssal Livid cards to build Abyssal-Livid.
+- **Abyssal synergy nerf:** ×1.40/×1.90 → ×1.32/×1.80. Required because Blinxorp reclassification lowered the greedy baseline (AI no longer gets free Livid-2), widening the abyssal-stack gap to +15pp. Nerf brings abyssal-stack back to +10pp above greedy (within the 5–10pp focused-stack target).
+- **Item/augment nerfs:** AccliLog 20→18/round; AccliProg +5→+4/round; Cross-Pollination 6→5%; Pheromone Diffuser +15→+12% aura.
+- **Balance (n=100, seed=42):** greedy 30%, abyssal-stack 40% (+10pp ✓), livid-stack 34% (+4pp ✓), wide 33% (+3pp ✓). Ordering preserved.
+- **Design principles updated:** `balance_principles.md` — stale greedy baseline corrected (55–57% → 40–42% post-v0.37 recalibration); new rule added for species/class overlap in the free card pool (multiplicative+multiplicative overlaps on T1+T2 free cards are forbidden).
+- **66/66 unit tests pass.**
 
 **Hotfix v0.40 (2026-04-28):** Critical crash fixed — shop empty on start and Continue-after-win stuck.
 - **Root cause:** `run.stats` was deleted in Phase 25's achievement rework, but `finishRoundSetup()` in `web/app.js` still read `S.run.stats.peakGold`. The crash happened before `shop.refresh()` and `render()`, causing: (1) empty shop on game start, (2) any Continue-after-battle leading to a stuck panel.
