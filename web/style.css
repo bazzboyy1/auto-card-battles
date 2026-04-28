@@ -931,6 +931,16 @@ button:disabled { opacity: 0.4; cursor: default; }
 .ach-condition { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
 .ach-reward { font-size: 12px; color: var(--text); }
 .ach-reward-locked { color: var(--text-muted); }
+.ach-bar-wrap {
+  height: 4px; border-radius: 2px; background: var(--border);
+  margin-bottom: 3px; overflow: hidden;
+}
+.ach-bar {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, #388bfd, #79c0ff);
+  transition: width 0.3s ease;
+}
+.ach-bar-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 .ach-type {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border);

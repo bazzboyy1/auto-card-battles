@@ -540,7 +540,6 @@ function runGame(seed, policyName = 'greedy', opts = {}) {
     }
 
     run.player.earnIncome();
-    if (run.player.gold > run.stats.peakGold) run.stats.peakGold = run.player.gold;
     run.player.shop.refresh();
     policy(run.player, nextRound, run);
     if (pending && pending.length) applyGrants(run.player, pending);

@@ -8,7 +8,7 @@ let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
-let ACHIEVEMENTS_LIST, evaluateAchievements, isUnlocked, addUnlock;
+let ACHIEVEMENTS_LIST, isUnlocked, getCounter;
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
 const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Pompous: '▲' };
@@ -39,7 +39,7 @@ document.addEventListener('acb-ready', () => {
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
   RANKING = window.ACB.ranking;
-  ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, evaluateAchievements, isUnlocked, addUnlock } = window.ACB.achievements);
+  ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, isUnlocked, getCounter } = window.ACB.achievements);
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
@@ -1183,9 +1183,7 @@ function showGameOverModal() {
   const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
   // Try to unlock the next difficulty tier when player clears all 24 rounds.
   const newTierUnlock = (survived && RANKING) ? RANKING.tryUnlockNextTier(RANKING.getActiveTier().id) : null;
-  // Evaluate and persist achievement unlocks.
-  const newUnlocks = evaluateAchievements ? evaluateAchievements(run) : [];
-  newUnlocks.forEach(a => addUnlock(a.reward.id));
+  const newUnlocks = run.newlyUnlocked || [];
 
   let html = `<h2>${survived ? 'Run Complete' : 'Run Over'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
@@ -1277,18 +1275,21 @@ function showGameOverModal() {
 // ── Collection modal (splash screen) ─────────────────────────────────────────
 function showCollectionModal() {
   let html = `<h2>Collection</h2>`;
-  html += `<p style="margin-bottom:14px;color:var(--text-muted);font-size:13px">Complete each achievement once to unlock new content permanently.</p>`;
+  html += `<p style="margin-bottom:14px;color:var(--text-muted);font-size:13px">Win rounds with each condition active to unlock new content permanently.</p>`;
 
   for (const a of (ACHIEVEMENTS_LIST || [])) {
     const unlocked = isUnlocked ? isUnlocked(a.reward.id) : false;
+    const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
     html += `<div class="ach-row ${unlocked ? 'ach-unlocked' : 'ach-locked'}">`;
     html += `<div class="ach-name">${a.name}</div>`;
     html += `<div class="ach-condition">${a.condition}</div>`;
     if (unlocked) {
-      const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
       html += `<div class="ach-reward">Unlocked: <strong>${a.reward.name}</strong> <span class="ach-type">${typeLabel}</span></div>`;
     } else {
-      const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
+      const current = getCounter ? getCounter(a.id) : 0;
+      const pct = Math.min(100, Math.round(current / a.target * 100));
+      html += `<div class="ach-bar-wrap"><div class="ach-bar" style="width:${pct}%"></div></div>`;
+      html += `<div class="ach-bar-label">${current} / ${a.target} rounds</div>`;
       html += `<div class="ach-reward ach-reward-locked">Unlocks: <strong>${a.reward.name}</strong> <span class="ach-type">${typeLabel}</span></div>`;
     }
     html += `</div>`;

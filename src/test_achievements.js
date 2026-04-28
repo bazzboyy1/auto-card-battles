@@ -1,6 +1,6 @@
 'use strict';
 
-// Unit tests for achievement check() functions in achievements.js.
+// Unit tests for achievement conditionMet() functions in achievements.js.
 // Run: node src/test_achievements.js
 
 const assert = require('assert');
@@ -8,22 +8,11 @@ const { ACHIEVEMENTS } = require('./achievements');
 
 function find(id) { return ACHIEVEMENTS.find(a => a.id === id); }
 
-// Minimal run-like object. stats fields not supplied default to zero/false.
-function makeRun({ round = 0, stats = {}, activeCards = [] } = {}) {
-  return {
-    round,
-    stats: {
-      maxClassSynergiesActive: 0,
-      maxCrystallineActive:    0,
-      allSpeciesRepresented:   false,
-      maxTripleStarsActive:    0,
-      ...stats,
-    },
-    player: { board: { active: activeCards } },
-  };
-}
+// Minimal board-like object with active cards.
+function board(cards) { return { active: cards }; }
 
-function card(roundsSinceBought) { return { roundsSinceBought }; }
+// Card factory: species + class
+function card(species, cls) { return { species, class: cls }; }
 
 let pass = 0, fail = 0;
 function test(name, fn) {
@@ -31,103 +20,102 @@ function test(name, fn) {
   catch (e) { console.log(`  ✗  ${name}: ${e.message}`); fail++; }
 }
 
-// ----- emotional_range -----
-{
-  const a = find('emotional_range');
-  console.log('\nemotional_range');
-  test('fires at exactly 3 class synergies', () =>
-    assert.ok(a.check(makeRun({ stats: { maxClassSynergiesActive: 3 } }))));
-  test('fires above 3', () =>
-    assert.ok(a.check(makeRun({ stats: { maxClassSynergiesActive: 5 } }))));
-  test('does not fire at 2', () =>
-    assert.ok(!a.check(makeRun({ stats: { maxClassSynergiesActive: 2 } }))));
-  test('does not fire at 0', () =>
-    assert.ok(!a.check(makeRun({ stats: { maxClassSynergiesActive: 0 } }))));
+// conditionMet(board, classCounts, speciesCounts)
+// speciesCounts and classCounts are pre-computed maps — we pass them directly.
+
+function spc(obj) { return obj; }
+function cls(obj) { return obj; }
+
+// ----- Species devotee (15-beat, species-2+) -----
+
+for (const [id, sp] of [
+  ['abyssal_devotee',    'Abyssal'],
+  ['sporal_devotee',     'Sporal'],
+  ['chitinous_devotee',  'Chitinous'],
+  ['crystalline_devotee','Crystalline'],
+  ['plasmic_devotee',    'Plasmic'],
+]) {
+  const a = find(id);
+  console.log(`\n${id}`);
+  test(`fires at 2 ${sp}`, () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ [sp]: 2 }))));
+  test(`fires above 2 ${sp}`, () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ [sp]: 5 }))));
+  test(`does not fire at 1 ${sp}`, () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ [sp]: 1 }))));
+  test(`does not fire at 0`, () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}))));
 }
 
-// ----- patient_collector -----
+// ----- Species master (25-beat, higher threshold) -----
+
 {
-  const a = find('patient_collector');
-  console.log('\npatient_collector');
-  test('fires at round 16 with exactly 3 cards >= 10 rounds', () =>
-    assert.ok(a.check(makeRun({
-      round: 16,
-      activeCards: [card(10), card(10), card(10)],
-    }))));
-  test('fires above round 16 with 3+ long-held cards', () =>
-    assert.ok(a.check(makeRun({
-      round: 20,
-      activeCards: [card(10), card(14), card(20), card(2)],
-    }))));
-  test('does not fire at round 15 even with 3 qualifying cards', () =>
-    assert.ok(!a.check(makeRun({
-      round: 15,
-      activeCards: [card(10), card(10), card(10)],
-    }))));
-  test('does not fire at round 16 with only 2 qualifying cards', () =>
-    assert.ok(!a.check(makeRun({
-      round: 16,
-      activeCards: [card(10), card(10), card(5)],
-    }))));
-  test('does not fire at round 16 with 0 cards', () =>
-    assert.ok(!a.check(makeRun({ round: 16, activeCards: [] }))));
-  test('undefined roundsSinceBought is treated as 0 (no false positive)', () =>
-    assert.ok(!a.check(makeRun({
-      round: 16,
-      activeCards: [card(undefined), card(undefined), card(undefined)],
-    }))));
-  test('roundsSinceBought exactly 10 counts toward threshold', () =>
-    assert.ok(a.check(makeRun({
-      round: 16,
-      activeCards: [card(10), card(10), card(10)],
-    }))));
-  test('roundsSinceBought 9 does not count', () =>
-    assert.ok(!a.check(makeRun({
-      round: 16,
-      activeCards: [card(9), card(10), card(10)],
-    }))));
+  const a = find('abyssal_master');
+  console.log('\nabyssal_master');
+  test('fires at 4 Abyssal', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Abyssal: 4 }))));
+  test('does not fire at 3 Abyssal', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ Abyssal: 3 }))));
 }
 
-// ----- star_collector -----
 {
-  const a = find('star_collector');
-  console.log('\nstar_collector');
-  test('fires when maxTripleStarsActive >= 2', () =>
-    assert.ok(a.check(makeRun({ stats: { maxTripleStarsActive: 2 } }))));
-  test('fires above 2', () =>
-    assert.ok(a.check(makeRun({ stats: { maxTripleStarsActive: 3 } }))));
-  test('does not fire at 1', () =>
-    assert.ok(!a.check(makeRun({ stats: { maxTripleStarsActive: 1 } }))));
-  test('does not fire at 0', () =>
-    assert.ok(!a.check(makeRun({ stats: { maxTripleStarsActive: 0 } }))));
+  const a = find('crystalline_master');
+  console.log('\ncrystalline_master');
+  test('fires at 4 Crystalline', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Crystalline: 4 }))));
+  test('does not fire at 3 Crystalline', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ Crystalline: 3 }))));
 }
 
-// ----- crystal_formation -----
 {
-  const a = find('crystal_formation');
-  console.log('\ncrystal_formation');
-  test('fires at exactly 4 crystalline and round 12', () =>
-    assert.ok(a.check(makeRun({ round: 12, stats: { maxCrystallineActive: 4 } }))));
-  test('fires with 6 crystalline at round 24', () =>
-    assert.ok(a.check(makeRun({ round: 24, stats: { maxCrystallineActive: 6 } }))));
-  test('does not fire with 4 crystalline at round 11', () =>
-    assert.ok(!a.check(makeRun({ round: 11, stats: { maxCrystallineActive: 4 } }))));
-  test('does not fire with 3 crystalline at round 12', () =>
-    assert.ok(!a.check(makeRun({ round: 12, stats: { maxCrystallineActive: 3 } }))));
-  test('does not fire with 3 crystalline at round 11', () =>
-    assert.ok(!a.check(makeRun({ round: 11, stats: { maxCrystallineActive: 3 } }))));
-  test('fires even when player dies on round 12 (round reached = 12)', () =>
-    assert.ok(a.check(makeRun({ round: 12, stats: { maxCrystallineActive: 4 } }))));
+  const a = find('sporal_master');
+  console.log('\nsporal_master');
+  test('fires at 4 Sporal', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Sporal: 4 }))));
+  test('does not fire at 3 Sporal', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ Sporal: 3 }))));
 }
 
-// ----- well_rounded -----
 {
-  const a = find('well_rounded');
-  console.log('\nwell_rounded');
-  test('fires when allSpeciesRepresented is true', () =>
-    assert.ok(a.check(makeRun({ stats: { allSpeciesRepresented: true } }))));
-  test('does not fire when allSpeciesRepresented is false', () =>
-    assert.ok(!a.check(makeRun({ stats: { allSpeciesRepresented: false } }))));
+  const a = find('chitinous_master');
+  console.log('\nchitinous_master (threshold: 3+)');
+  test('fires at 3 Chitinous', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Chitinous: 3 }))));
+  test('fires at 4 Chitinous', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Chitinous: 4 }))));
+  test('does not fire at 2 Chitinous', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ Chitinous: 2 }))));
+}
+
+// ----- Class devotee (15-beat, class-2+) -----
+
+for (const [id, cl] of [
+  ['livid_devotee',  'Livid'],
+  ['giddy_devotee',  'Giddy'],
+  ['shy_devotee',    'Shy'],
+  ['sullen_devotee', 'Sullen'],
+]) {
+  const a = find(id);
+  console.log(`\n${id}`);
+  test(`fires at 2 ${cl}`, () =>
+    assert.ok(a.conditionMet(board([]), cls({ [cl]: 2 }), spc({}))));
+  test(`fires above 2 ${cl}`, () =>
+    assert.ok(a.conditionMet(board([]), cls({ [cl]: 4 }), spc({}))));
+  test(`does not fire at 1 ${cl}`, () =>
+    assert.ok(!a.conditionMet(board([]), cls({ [cl]: 1 }), spc({}))));
+  test(`does not fire at 0`, () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}))));
+}
+
+// ----- Cross-check: class conditions don't fire on species counts -----
+{
+  console.log('\ncross-checks (class ≠ species)');
+  const livid = find('livid_devotee');
+  test('livid_devotee does not fire on Livid species count (wrong axis)', () =>
+    assert.ok(!livid.conditionMet(board([]), cls({}), spc({ Livid: 5 }))));
+  const abyssal = find('abyssal_devotee');
+  test('abyssal_devotee does not fire on Abyssal class count (wrong axis)', () =>
+    assert.ok(!abyssal.conditionMet(board([]), cls({ Abyssal: 5 }), spc({}))));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

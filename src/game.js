@@ -5,7 +5,7 @@ const { Shop }  = require('./shop');
 const { CARD_COSTS, CARD_DEFS, createCard, CLASS_SYNERGIES } = require('./cards');
 const { attachItem, ITEM_DEFS, getAvailableItems } = require('./items');
 const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
-const { isUnlocked } = require('./achievements');
+const { isUnlocked, incrementAchievementCounters } = require('./achievements');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -295,18 +295,7 @@ class Run {
     this.lives            = STARTING_LIVES;
     this.peakScore        = 0;
     this.battleHistory    = [];
-    this.stats            = {
-      maxClassSynergiesActive: 0,
-      maxCrystallineActive:    0,
-      allSpeciesRepresented:   false,
-      maxTripleStarsActive:    0,
-      maxAbyssalActive:        0,
-      peakGold:                0,
-      maxT3Active:             0,
-      maxLongTermCards:        0,
-      maxGiddyActive:          0,
-      dualSynergyAchieved:     false,
-    };
+    this.newlyUnlocked    = [];
     this.headJudges       = this._assignJudges(); // [ch1Id, ch2Id, ch3Id]
     this._curatorsPicked  = new Set();
     this.curatorOffers    = {};
@@ -425,52 +414,7 @@ class Run {
     const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
     const playerScore    = scoreBreakdown.total;
 
-    // Track achievement-relevant stats from the live board state at scoring time.
-    {
-      const active = this.player.board.active;
-      const { counts: classCounts } = effectiveClassCounts(this.player.board);
-      const activeSynCount = Object.keys(classCounts).filter(cls => {
-        const syn = CLASS_SYNERGIES[cls];
-        return syn && syn.getBonus(classCounts[cls]);
-      }).length;
-      if (activeSynCount > this.stats.maxClassSynergiesActive)
-        this.stats.maxClassSynergiesActive = activeSynCount;
-
-      const crystallineCount = active.filter(c => c.species === 'Crystalline').length;
-      if (crystallineCount > this.stats.maxCrystallineActive)
-        this.stats.maxCrystallineActive = crystallineCount;
-
-      const tripleStarCount = active.filter(c => c.stars === 3).length;
-      if (tripleStarCount > this.stats.maxTripleStarsActive)
-        this.stats.maxTripleStarsActive = tripleStarCount;
-
-      if (!this.stats.allSpeciesRepresented) {
-        const speciesSet = new Set(active.map(c => c.species));
-        if (speciesSet.size >= 5) this.stats.allSpeciesRepresented = true;
-      }
-
-      const abyssalCount = active.filter(c => c.species === 'Abyssal').length;
-      if (abyssalCount > this.stats.maxAbyssalActive)
-        this.stats.maxAbyssalActive = abyssalCount;
-
-      const t3Count = active.filter(c => c.tier === 3).length;
-      if (t3Count > this.stats.maxT3Active)
-        this.stats.maxT3Active = t3Count;
-
-      const longTermCount = active.filter(c => (c.roundsSinceBought || 0) >= 10).length;
-      if (longTermCount > this.stats.maxLongTermCards)
-        this.stats.maxLongTermCards = longTermCount;
-
-      const giddyCount = classCounts.Giddy || 0;
-      if (giddyCount > this.stats.maxGiddyActive)
-        this.stats.maxGiddyActive = giddyCount;
-
-      if (!this.stats.dualSynergyAchieved) {
-        const lividCount = classCounts.Livid || 0;
-        if (crystallineCount >= 2 && lividCount >= 2)
-          this.stats.dualSynergyAchieved = true;
-      }
-    }
+    const { counts: classCounts } = effectiveClassCounts(this.player.board);
 
     const { target: baseNormal, preferredTarget: basePref, isCritique } = ROUND_TARGETS[this.round - 1];
     const normalTarget    = Math.round(baseNormal * this.diffMult);
@@ -494,6 +438,10 @@ class Run {
 
     this.player.applyResult(passed);
 
+    // Increment persistent achievement counters (browser-only; no-op in Node.js).
+    const newAchs = incrementAchievementCounters(this.player.board, classCounts, passed);
+    for (const a of newAchs) this.newlyUnlocked.push(a);
+
     // Post-battle passive upkeep:
     // - Tick roundsSinceBought on each active card (bench does not tick).
     // - Collect tickGold from Axis-7 passives + Hextech Gunblade.
@@ -515,8 +463,6 @@ class Run {
         this.player.gold += 2 * midasMult;
       }
     }
-    if (this.player.gold > this.stats.peakGold) this.stats.peakGold = this.player.gold;
-
     const entry = {
       round: this.round,
       target,

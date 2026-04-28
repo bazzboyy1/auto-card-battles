@@ -1,19 +1,24 @@
 'use strict';
 
-// Phase 23 — Unlock system.
+// Cumulative cross-run achievement system (v0.38).
 //
-// Achievements fire at run-end and gate new content (augments, items, judges).
-// All existing content is always available from run 1; only new content is locked.
+// Each achievement has a target: the number of PASSED rounds where its
+// condition was active at judging. Counters persist across runs in localStorage.
+// In Node.js (sim/balance harness) localStorage is absent — all writes are
+// no-ops and locked content stays excluded from sim pools (isUnlocked → false).
 //
-// Storage: localStorage key 'alien-exhibition-unlocks' → JSON array of reward IDs.
-// In Node.js (sim/balance harness) localStorage is absent, so isUnlocked() always
-// returns false — locked content is excluded from pools, giving a clean baseline.
+// Storage:
+//   'alien-exhibition-unlocks'  → JSON array of reward IDs
+//   'alien-exhibition-counters' → JSON object { achievementId: count }
 
-const UNLOCKS_KEY = 'alien-exhibition-unlocks';
+const UNLOCKS_KEY  = 'alien-exhibition-unlocks';
+const COUNTERS_KEY = 'alien-exhibition-counters';
 
 function _store() {
   return typeof localStorage !== 'undefined' ? localStorage : null;
 }
+
+// ── Unlock persistence ────────────────────────────────────────────────────────
 
 function getUnlocks() {
   const s = _store();
@@ -35,114 +40,176 @@ function isUnlocked(rewardId) {
   return getUnlocks().includes(rewardId);
 }
 
-// Five achievements. check(run) is evaluated at run-end against run.stats
-// and the final board state.
+// ── Counter persistence ───────────────────────────────────────────────────────
+
+function getCounters() {
+  const s = _store();
+  if (!s) return {};
+  try { return JSON.parse(s.getItem(COUNTERS_KEY) || '{}'); } catch (e) { return {}; }
+}
+
+function getCounter(id) {
+  return getCounters()[id] || 0;
+}
+
+function _setCounters(obj) {
+  const s = _store();
+  if (!s) return;
+  s.setItem(COUNTERS_KEY, JSON.stringify(obj));
+}
+
+// ── Achievement definitions ───────────────────────────────────────────────────
+//
+// conditionMet(board, classCounts, speciesCounts) — evaluated at judging time
+// on each PASSED round. board.active is the live scored board. classCounts and
+// speciesCounts are pre-computed counts from effectiveClassCounts / active cards.
+//
+// target — number of qualifying passing rounds needed to unlock the reward.
+
 const ACHIEVEMENTS = [
+  // Species devotee — 15 passing rounds with species-2+ active
   {
-    id: 'emotional_range',
-    name: 'Emotional Range',
-    condition: '3+ class synergies active simultaneously during any round',
-    reward: { id: 'vrethix', type: 'judge', name: 'Judge Vrethix' },
-    check: (run) => run.stats.maxClassSynergiesActive >= 3,
+    id: 'abyssal_devotee',
+    name: 'Void Devotee',
+    condition: 'Win 15 rounds with 2+ Abyssal specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (spc.Abyssal || 0) >= 2,
+    reward: { id: 'vornix', type: 'card', name: 'Vornix' },
   },
   {
-    id: 'patient_collector',
-    name: 'Patient Collector',
-    condition: 'Reach Round 16 with 3+ specimens held for 10+ rounds uninterrupted',
-    reward: { id: 'deep_roots', type: 'augment', name: 'Deep Roots' },
-    check: (run) =>
-      run.round >= 16 &&
-      run.player.board.active.filter(c => (c.roundsSinceBought || 0) >= 10).length >= 3,
+    id: 'sporal_devotee',
+    name: 'Spore Devotee',
+    condition: 'Win 15 rounds with 2+ Sporal specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (spc.Sporal || 0) >= 2,
+    reward: { id: 'zephrix', type: 'card', name: 'Zephrix' },
   },
   {
-    id: 'star_collector',
-    name: 'Star Collector',
-    condition: '2+ 3★ specimens active simultaneously during any round',
-    reward: { id: 'curators_eye', type: 'augment', name: "Curator's Eye" },
-    check: (run) => run.stats.maxTripleStarsActive >= 2,
+    id: 'chitinous_devotee',
+    name: 'Chitin Devotee',
+    condition: 'Win 15 rounds with 2+ Chitinous specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (spc.Chitinous || 0) >= 2,
+    reward: { id: 'morblax', type: 'card', name: 'Morblax' },
   },
   {
-    id: 'crystal_formation',
-    name: 'Crystal Formation',
-    condition: 'Activate Crystalline-4 synergy and survive to Round 12',
+    id: 'crystalline_devotee',
+    name: 'Crystal Devotee',
+    condition: 'Win 15 rounds with 2+ Crystalline specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (spc.Crystalline || 0) >= 2,
+    reward: { id: 'zorbrath', type: 'card', name: 'Zorbrath' },
+  },
+  {
+    id: 'plasmic_devotee',
+    name: 'Plasma Devotee',
+    condition: 'Win 15 rounds with 2+ Plasmic specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (spc.Plasmic || 0) >= 2,
     reward: { id: 'prestige_tag', type: 'item', name: 'Prestige Tag' },
-    check: (run) => run.stats.maxCrystallineActive >= 4 && run.round >= 12,
-  },
-  {
-    id: 'well_rounded',
-    name: 'Well Rounded',
-    condition: 'Have all 5 species represented on your active board simultaneously',
-    reward: { id: 'collectors_mark', type: 'item', name: "Collector's Mark" },
-    check: (run) => run.stats.allSpeciesRepresented,
   },
 
-  // Phase 24 achievements — unlock new cards
+  // Species master — 25 passing rounds with higher threshold
   {
-    id: 'abyssal_patience',
-    name: 'Abyssal Patience',
-    condition: 'Activate Abyssal-2 synergy and survive to Round 8',
-    reward: { id: 'grazwick', type: 'card', name: 'Grazwick' },
-    check: (run) => run.stats.maxAbyssalActive >= 2 && run.round >= 8,
-  },
-  {
-    id: 'giddy_horde',
-    name: 'Giddy Horde',
-    condition: 'Have 4+ Giddy specimens active simultaneously during any round',
-    reward: { id: 'morblax', type: 'card', name: 'Morblax' },
-    check: (run) => run.stats.maxGiddyActive >= 4,
-  },
-  {
-    id: 'dual_synergist',
-    name: 'Dual Synergist',
-    condition: 'Have both Crystalline-2 and Livid-2 synergies active simultaneously',
-    reward: { id: 'zorbrath', type: 'card', name: 'Zorbrath' },
-    check: (run) => run.stats.dualSynergyAchieved,
-  },
-  {
-    id: 'void_commander',
-    name: 'Void Commander',
-    condition: 'Have 4+ Abyssal specimens active simultaneously during any round',
-    reward: { id: 'vornix', type: 'card', name: 'Vornix' },
-    check: (run) => run.stats.maxAbyssalActive >= 4,
-  },
-  {
-    id: 'gold_rush',
-    name: 'Gold Rush',
-    condition: 'Hold 25+ gold at any point during a run',
-    reward: { id: 'zephrix', type: 'card', name: 'Zephrix' },
-    check: (run) => run.stats.peakGold >= 25,
-  },
-  {
-    id: 'tier_collector',
-    name: 'Tier Collector',
-    condition: 'Have 3+ Tier 3 specimens active simultaneously during any round',
-    reward: { id: 'prismora', type: 'card', name: 'Prismora' },
-    check: (run) => run.stats.maxT3Active >= 3,
-  },
-  {
-    id: 'deep_patience',
-    name: 'Deep Patience',
-    condition: 'Have 5+ specimens held for 10+ rounds simultaneously',
-    reward: { id: 'klothrix', type: 'card', name: 'Klothrix' },
-    check: (run) => run.stats.maxLongTermCards >= 5,
-  },
-  {
-    id: 'grand_finale',
-    name: 'Grand Finale',
-    condition: 'Survive all 24 rounds with at least 1 Seal remaining',
+    id: 'abyssal_master',
+    name: 'Void Master',
+    condition: 'Win 25 rounds with 4+ Abyssal specimens active',
+    target: 25,
+    conditionMet: (board, cls, spc) => (spc.Abyssal || 0) >= 4,
     reward: { id: 'stellorb', type: 'card', name: 'Stellorb' },
-    check: (run) => run.round >= 24 && run.lives >= 1,
+  },
+  {
+    id: 'crystalline_master',
+    name: 'Crystal Master',
+    condition: 'Win 25 rounds with 4+ Crystalline specimens active',
+    target: 25,
+    conditionMet: (board, cls, spc) => (spc.Crystalline || 0) >= 4,
+    reward: { id: 'prismora', type: 'card', name: 'Prismora' },
+  },
+  {
+    id: 'sporal_master',
+    name: 'Spore Master',
+    condition: 'Win 25 rounds with 4+ Sporal specimens active',
+    target: 25,
+    conditionMet: (board, cls, spc) => (spc.Sporal || 0) >= 4,
+    reward: { id: 'curators_eye', type: 'augment', name: "Curator's Eye" },
+  },
+  {
+    id: 'chitinous_master',
+    name: 'Chitin Master',
+    condition: 'Win 25 rounds with 3+ Chitinous specimens active',
+    target: 25,
+    conditionMet: (board, cls, spc) => (spc.Chitinous || 0) >= 3,
+    reward: { id: 'collectors_mark', type: 'item', name: "Collector's Mark" },
+  },
+
+  // Class devotee — 15 passing rounds with class-2+ active
+  {
+    id: 'livid_devotee',
+    name: 'Livid Devotee',
+    condition: 'Win 15 rounds with 2+ Livid specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (cls.Livid || 0) >= 2,
+    reward: { id: 'grazwick', type: 'card', name: 'Grazwick' },
+  },
+  {
+    id: 'giddy_devotee',
+    name: 'Giddy Devotee',
+    condition: 'Win 15 rounds with 2+ Giddy specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (cls.Giddy || 0) >= 2,
+    reward: { id: 'deep_roots', type: 'augment', name: 'Deep Roots' },
+  },
+  {
+    id: 'shy_devotee',
+    name: 'Shy Devotee',
+    condition: 'Win 15 rounds with 2+ Shy specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (cls.Shy || 0) >= 2,
+    reward: { id: 'klothrix', type: 'card', name: 'Klothrix' },
+  },
+  {
+    id: 'sullen_devotee',
+    name: 'Sullen Devotee',
+    condition: 'Win 15 rounds with 2+ Sullen specimens active',
+    target: 15,
+    conditionMet: (board, cls, spc) => (cls.Sullen || 0) >= 2,
+    reward: { id: 'vrethix', type: 'judge', name: 'Appraiser Vrethix' },
   },
 ];
 
-// Returns achievement objects whose condition is newly met (not already unlocked).
-// Call after a run completes. Caller is responsible for persisting via addUnlock().
-function evaluateAchievements(run) {
-  const already = getUnlocks();
-  return ACHIEVEMENTS.filter(a => {
-    if (already.includes(a.reward.id)) return false;
-    try { return a.check(run); } catch (e) { return false; }
-  });
+// Increment achievement counters for one round.
+// Called from runBattle() after each round resolves. Only increments on passed rounds.
+// Returns array of achievement objects newly unlocked by this call.
+// In Node.js (no localStorage), always returns [] — no side effects.
+function incrementAchievementCounters(board, classCounts, passed) {
+  if (!passed) return [];
+  const s = _store();
+  if (!s) return [];
+
+  // Build species counts from active board
+  const speciesCounts = {};
+  for (const c of board.active) {
+    speciesCounts[c.species] = (speciesCounts[c.species] || 0) + 1;
+  }
+
+  const counters        = getCounters();
+  const alreadyUnlocked = getUnlocks();
+  const newlyUnlocked   = [];
+
+  for (const ach of ACHIEVEMENTS) {
+    if (alreadyUnlocked.includes(ach.reward.id)) continue;
+    if (!ach.conditionMet(board, classCounts, speciesCounts)) continue;
+    counters[ach.id] = (counters[ach.id] || 0) + 1;
+    if (counters[ach.id] >= ach.target) {
+      newlyUnlocked.push(ach);
+      alreadyUnlocked.push(ach.reward.id); // prevent double-fire within same call
+    }
+  }
+
+  _setCounters(counters);
+  for (const ach of newlyUnlocked) addUnlock(ach.reward.id);
+  return newlyUnlocked;
 }
 
-module.exports = { ACHIEVEMENTS, evaluateAchievements, getUnlocks, addUnlock, isUnlocked };
+module.exports = { ACHIEVEMENTS, getUnlocks, addUnlock, isUnlocked, getCounter, incrementAchievementCounters };

@@ -6,9 +6,28 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Collection UX shipped (v0.36). 29 card defs, 13 achievements. Players can now see reward names before unlocking, and access Collection from the game-over screen.
+**Phase:** Achievement rework shipped (v0.38). 13 cumulative cross-run achievements replace the old single-run binary system. Next: Step 3 — fill TBD locked content (target dead paths not yet covered).
 
-**Next action:** Phase 25 — Options: (a) playtest unlock flow end-to-end with real players; (b) locked-card exploit sweep (cards have no `sweepCards` harness yet). Recommend (b) first — exploit sweep is lowest-overhead correctness check before shipping to players.
+**Next action:** Step 3 — Fill TBD locked content. Add the 9 achievement/reward slots currently TBD: plasmic_master card, pompous_devotee content, and 7 archetype/difficulty achievements (emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor). Design the rewards before adding; each must target an underused build path.
+
+**Achievement rework complete (2026-04-28):** Persistent cumulative counters replace single-run binary achievements (v0.38).
+- **Old model:** 13 achievements, `check(run)` at run-end, binary unlock. Completable in ~5 runs.
+- **New model:** 13 achievements, `conditionMet(board, classCounts, speciesCounts)` per PASSED round, counter in localStorage (`alien-exhibition-counters`). Requires 20–30 runs to complete the full tree.
+- **Same 13 rewards** — backward compatible. `alien-exhibition-unlocks` format unchanged; existing unlocked content stays unlocked.
+- **Achievements (13):** 5 species devotee (15 beats, species-2+) → locked card; 4 species master (25 beats, higher threshold) → locked card/augment/item; 4 class devotee (15 beats, class-2+) → locked card/augment/judge.
+- **Progress bars** in Collection modal ("0 / 15 rounds"); counters visible to player mid-grind.
+- **Infrastructure:** `incrementAchievementCounters(board, classCounts, passed)` called from `runBattle()`. Returns newly unlocked achievements → stored in `run.newlyUnlocked` → shown in game-over modal. No-op in Node.js sim.
+- **Removed:** `run.stats` tracking block (44 lines) replaced by single `run.newlyUnlocked = []`. `run.stats.peakGold` removed from sim.js too.
+- **47 / 47 unit tests pass.** Balance ordering preserved (n=50 smoke test clean).
+
+**Late-game snowball fix complete (2026-04-28):** Removed flat R20/R21/R22 section (v0.37).
+- **Root cause:** R20/R21/R22 all at target 3700 while greedy median scores were 3814/3934/4067 — two consecutive free rounds once past R20, skilled players coasted.
+- **New R17–R24 curve:** 3000 / 3200 / 3500 / 3850 / 4100 / 4350 / 4650 / 5000. Smooth escalation, no flat sections.
+- **R24 Grand Finale:** 4600 → 5000. ~50% pass rate for greedy (coin-flip feel intended).
+- **Tier mults recalibrated:** Discerning 1.25 → 1.12, Elite 1.50 → 1.25. Maintains original calibration intent: Discerning ~22.5% greedy survival (was 23%), Elite ~10%.
+- **Balance sweep (n=300, seed=1):** greedy 41.0%, livid 51.0%, abyssal 51.7%, blinxorp-max 66.3%. Ordering preserved.
+- **Production plan agreed:** 6-step order — (1) snowball fix ✓, (2) achievement rework, (3) fill TBD locked content, (4) full balance pass, (5) new species, (6) balance pass again. Production content targets: ~75 cards, 6-7 species, 6-7 classes, 25-30 augments, 35-40 items, 10-12 judges, 5-6 difficulty tiers, 30-40 achievements.
+- **Achievement redesign agreed:** cumulative "beat N rounds with condition active at judging" — 22 achievements specced across species devotee/master, class devotee, build archetypes, and difficulty tiers. Replaces 13 single-run binary achievements.
 
 **Collection UX complete (2026-04-28):** Player-facing unlock discoverability (v0.36).
 - **Reward names revealed:** Collection modal now shows locked reward names (was "???") — players know what they're working toward.
