@@ -6,9 +6,15 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 24 complete (2026-04-27). Card expansion shipped (v0.35). 9 new cards added: 1 free (Phlorbex), 8 locked behind new achievements. Total: 29 card defs, 13 achievements.
+**Phase:** Collection UX shipped (v0.36). 29 card defs, 13 achievements. Players can now see reward names before unlocking, and access Collection from the game-over screen.
 
-**Next action:** Phase 25 — TBD. Options: (a) playtest unlock flow end-to-end with real players; (b) locked-card exploit sweep (cards have no `sweepCards` harness yet); (c) UI polish for collection panel (show locked card previews with ???). Recommend (b) first — exploit sweep is lowest-overhead correctness check before shipping to players.
+**Next action:** Phase 25 — Options: (a) playtest unlock flow end-to-end with real players; (b) locked-card exploit sweep (cards have no `sweepCards` harness yet). Recommend (b) first — exploit sweep is lowest-overhead correctness check before shipping to players.
+
+**Collection UX complete (2026-04-28):** Player-facing unlock discoverability (v0.36).
+- **Reward names revealed:** Collection modal now shows locked reward names (was "???") — players know what they're working toward.
+- **Achievement summary in game-over modal:** Shows "X / 13 achievements" count + "View Collection →" button after every run.
+- **loader.js load order fix:** achievements now loads before cards (cards.js requires it at line 3). Was a silent cold-cache crash bug.
+- **Modal z-index raised 50→150:** Collection modal now renders above the splash screen correctly.
 
 **Phase 24 complete (2026-04-27):** Card expansion shipped (v0.35).
 - **New free card:** Phlorbex (Sporal/Shy, T1, base 54) — other Sporal specimens +10 flat score (axis 8 aura).
