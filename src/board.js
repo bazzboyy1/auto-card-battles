@@ -226,6 +226,7 @@ class Board {
         const extras = [];
         if (hasItem(c, 'Claymore'))  { base += 40; extras.push('+Claymore'); }
         if (hasAug('HeroicResolve')) { base += 25; extras.push('+Heroic'); }
+        if (hasAug('grand_specimen') && c.tier === 3) { base += 30; extras.push('+GrandSpec'); }
         scores[i] = Math.round(base * STAR_MULT[c.stars]);
         const starLabel = c.stars === 2 ? '2★' : c.stars === 3 ? '3★' : '1★';
         const extStr = extras.length ? ` (${extras.join(', ')})` : '';
@@ -381,6 +382,7 @@ class Board {
         if (typeof results[i].mult === 'number' && (ax === 4 || ax === 6 || ax === '6+4')) {
           let mult = results[i].mult;
           if (ax === 4 && hasAug('ExponentialGrowth')) mult += 0.25;
+          if (hasAug('mastery_protocol') && (ax === 4 || ax === 6 || ax === '6+4')) mult += 0.1;
           cardMults[i] *= mult;
           lines[i].push({ label: card.passive.description || 'passive', mult });
         }
@@ -394,6 +396,26 @@ class Board {
         cardMults[i] *= 1.15;
         lines[i].push({ label: 'Deep Roots', mult: 1.15 });
       }
+      if (hasAug('apex_showcase') && card.stars === 3) {
+        cardMults[i] *= 1.2;
+        lines[i].push({ label: 'Apex Showcase', mult: 1.2 });
+      }
+      if (hasItem(card, 'veterans_plinth') && (card.roundsSinceBought || 0) >= 15) {
+        cardMults[i] *= 1.3;
+        lines[i].push({ label: "Veteran's Plinth", mult: 1.3 });
+      }
+      if (hasItem(card, 'prestige_circuit')) {
+        cardMults[i] *= 1.2;
+        lines[i].push({ label: 'Prestige Circuit', mult: 1.2 });
+      }
+    }
+
+    // Class Harmony: +12% global mult per active class synergy beyond the first
+    if (hasAug('class_harmony')) {
+      const activeSynCount = Object.keys(CLASS_SYNERGIES).filter(cls =>
+        CLASS_SYNERGIES[cls].getBonus(classCounts[cls] || 0)
+      ).length;
+      if (activeSynCount > 1) globalMult *= 1 + (activeSynCount - 1) * 0.12;
     }
 
     // Stage 5 — Axis 8 auras + Zeke's Herald

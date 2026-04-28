@@ -60,9 +60,10 @@ function _setCounters(obj) {
 
 // ── Achievement definitions ───────────────────────────────────────────────────
 //
-// conditionMet(board, classCounts, speciesCounts) — evaluated at judging time
+// conditionMet(board, classCounts, speciesCounts, ctx) — evaluated at judging time
 // on each PASSED round. board.active is the live scored board. classCounts and
 // speciesCounts are pre-computed counts from effectiveClassCounts / active cards.
+// ctx = { round, diffMult, activeClassSynergyCount } — supplied by game.js.
 //
 // target — number of qualifying passing rounds needed to unlock the reward.
 
@@ -176,13 +177,95 @@ const ACHIEVEMENTS = [
     conditionMet: (board, cls, spc) => (cls.Sullen || 0) >= 2,
     reward: { id: 'vrethix', type: 'judge', name: 'Appraiser Vrethix' },
   },
+
+  // Phase 25 additions —————————————————————————————————————————————————————
+
+  // Species master (1 missing)
+  {
+    id: 'plasmic_master',
+    name: 'Plasma Master',
+    condition: 'Win 25 rounds with 4+ Plasmic specimens active',
+    target: 25,
+    conditionMet: (board, cls, spc) => (spc.Plasmic || 0) >= 4,
+    reward: { id: 'vorbex', type: 'card', name: 'Vorbex' },
+  },
+
+  // Class devotee (1 missing)
+  {
+    id: 'pompous_devotee',
+    name: 'Pompous Devotee',
+    condition: 'Win 15 rounds with 2+ Pompous specimens active',
+    target: 15,
+    conditionMet: (board, cls) => (cls.Pompous || 0) >= 2,
+    reward: { id: 'grand_specimen', type: 'augment', name: 'Grand Specimen Program' },
+  },
+
+  // Archetype achievements
+  {
+    id: 'emotional_virtuoso',
+    name: 'Emotional Virtuoso',
+    condition: 'Win 25 rounds with 3+ class synergies simultaneously active',
+    target: 25,
+    conditionMet: (board, cls, spc, ctx) => (ctx.activeClassSynergyCount || 0) >= 3,
+    reward: { id: 'class_harmony', type: 'augment', name: 'Class Harmony' },
+  },
+  {
+    id: 'patient_master',
+    name: 'Patient Master',
+    condition: 'Win 25 rounds with 4+ cards held 10+ rounds',
+    target: 25,
+    conditionMet: (board) => board.active.filter(c => (c.roundsSinceBought || 0) >= 10).length >= 4,
+    reward: { id: 'veterans_plinth', type: 'item', name: "Veteran's Plinth" },
+  },
+  {
+    id: 'star_curator',
+    name: 'Star Curator',
+    condition: 'Win 25 rounds with 3+ active 3★ specimens',
+    target: 25,
+    conditionMet: (board) => board.active.filter(c => c.stars === 3).length >= 3,
+    reward: { id: 'apex_showcase', type: 'augment', name: 'Apex Showcase' },
+  },
+  {
+    id: 'late_game_collector',
+    name: 'Late Game Collector',
+    condition: 'Win 20 Chapter 3 rounds (rounds 17–24)',
+    target: 20,
+    conditionMet: (board, cls, spc, ctx) => (ctx.round || 0) >= 17,
+    reward: { id: 'sormax', type: 'judge', name: 'Appraiser Sormax' },
+  },
+
+  // Difficulty achievements
+  {
+    id: 'discerning_graduate',
+    name: 'Discerning Graduate',
+    condition: 'Win 15 rounds on Discerning difficulty or harder',
+    target: 15,
+    conditionMet: (board, cls, spc, ctx) => (ctx.diffMult || 1) >= 1.12,
+    reward: { id: 'prestige_circuit', type: 'item', name: 'Prestige Circuit' },
+  },
+  {
+    id: 'elite_curator',
+    name: 'Elite Curator',
+    condition: 'Win 10 rounds on Elite difficulty',
+    target: 10,
+    conditionMet: (board, cls, spc, ctx) => (ctx.diffMult || 1) >= 1.25,
+    reward: { id: 'mastery_protocol', type: 'augment', name: 'Mastery Protocol' },
+  },
+  {
+    id: 'grand_survivor',
+    name: 'Grand Survivor',
+    condition: 'Win 5 Grand Finale rounds (Round 24)',
+    target: 5,
+    conditionMet: (board, cls, spc, ctx) => (ctx.round || 0) === 24,
+    reward: { id: 'omnorb', type: 'card', name: 'Omnorb' },
+  },
 ];
 
 // Increment achievement counters for one round.
 // Called from runBattle() after each round resolves. Only increments on passed rounds.
 // Returns array of achievement objects newly unlocked by this call.
 // In Node.js (no localStorage), always returns [] — no side effects.
-function incrementAchievementCounters(board, classCounts, passed) {
+function incrementAchievementCounters(board, classCounts, passed, ctx = {}) {
   if (!passed) return [];
   const s = _store();
   if (!s) return [];
@@ -199,7 +282,7 @@ function incrementAchievementCounters(board, classCounts, passed) {
 
   for (const ach of ACHIEVEMENTS) {
     if (alreadyUnlocked.includes(ach.reward.id)) continue;
-    if (!ach.conditionMet(board, classCounts, speciesCounts)) continue;
+    if (!ach.conditionMet(board, classCounts, speciesCounts, ctx)) continue;
     counters[ach.id] = (counters[ach.id] || 0) + 1;
     if (counters[ach.id] >= ach.target) {
       newlyUnlocked.push(ach);

@@ -98,6 +98,31 @@ const AUGMENT_DEFS = [
     axis: 'global',
     locked: true,
   },
+  // Phase 25 locked augments
+  {
+    id: 'grand_specimen', name: 'Grand Specimen Program',
+    description: 'All T3 specimens gain +30 base score (before star multiplier)',
+    axis: 1,
+    locked: true,
+  },
+  {
+    id: 'class_harmony', name: 'Class Harmony',
+    description: '+12% global score multiplier per active class synergy beyond the first',
+    axis: 'global',
+    locked: true,
+  },
+  {
+    id: 'apex_showcase', name: 'Apex Showcase',
+    description: '3★ specimens score ×1.2 (multiplicative bonus)',
+    axis: 4,
+    locked: true,
+  },
+  {
+    id: 'mastery_protocol', name: 'Mastery Protocol',
+    description: 'All multiplicative passives (Axis 4, 6, 6+4) gain +0.1 to their multiplier',
+    axis: 4,
+    locked: true,
+  },
 ];
 
 // Returns all augments available in the current session: unlocked augments

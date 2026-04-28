@@ -6,9 +6,17 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Achievement rework shipped (v0.38). 13 cumulative cross-run achievements replace the old single-run binary system. Next: Step 3 — fill TBD locked content (target dead paths not yet covered).
+**Phase:** Phase 25 complete (2026-04-28). 9 new achievement/reward slots shipped (v0.39). Balance baseline unchanged. Production plan step 3 done.
 
-**Next action:** Step 3 — Fill TBD locked content. Add the 9 achievement/reward slots currently TBD: plasmic_master card, pompous_devotee content, and 7 archetype/difficulty achievements (emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor). Design the rewards before adding; each must target an underused build path.
+**Next action:** Production plan step 4 — full balance pass. Run exploit sweep with new content force-unlocked (`node run.js exploit 200 42`), then tune any rewards exceeding +8pp above greedy. Focus: `class_harmony` (4–5 class syns), `prestige_circuit` (unconditional ×1.2), `mastery_protocol` on Axis-6 cards, `omnorb` in The Collective build.
+
+**Phase 25 complete (2026-04-28):** 9 new achievement/reward slots shipped (v0.39).
+- **22 total achievements** (was 13). New: plasmic_master, pompous_devotee, emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor.
+- **New content:** Vorbex (Plasmic T2, ×1.5 if Plasmic-4), Omnorb (Abyssal T3, ×1.8 if 4+ unique species); augments: Grand Specimen Program (+30 T3 base), Class Harmony (+12%/class syn beyond first), Apex Showcase (3★ ×1.2), Mastery Protocol (+0.1 to axis-4/6/6+4 mults); items: Veteran's Plinth (×1.3 if held 15+ rounds), Prestige Circuit (×1.2 unconditional); judge: Appraiser Sormax (prefers 4+ cards held 10+).
+- **`incrementAchievementCounters` extended:** 4th `ctx` arg `{ round, diffMult, activeClassSynergyCount }` added; computed in game.js before call. All existing achievements unchanged (ctx optional, defaults to `{}`).
+- **Pipeline hooks in board.js:** grand_specimen (Stage 0), mastery_protocol + apex_showcase + veterans_plinth + prestige_circuit (Stage 4b), class_harmony (global mult after Stage 4b).
+- **Unit tests:** 66/66 passing (was 47).
+- **Balance (n=300, seed=42):** greedy 40.7% — within noise of v0.38's 41.0%. Ordering preserved. All new content locked (excluded from sim pools).
 
 **Achievement rework complete (2026-04-28):** Persistent cumulative counters replace single-run binary achievements (v0.38).
 - **Old model:** 13 achievements, `check(run)` at run-end, binary unlock. Completable in ~5 runs.
@@ -452,6 +460,7 @@ Class synergy values (final):
 - For "continue / what's next / go": read `design_log/initial_spec.md`. Full design spec + phase plan.
 - For "why did we do X": read relevant sub-file (created as phases complete).
 - When a pass finishes, append notes to the relevant sub-file and update the "Current state" block above.
+- **Before any design work** (new cards, synergies, augments, items, achievements): read `design_log/balance_principles.md`. These are the agreed design principles — act on them without re-deriving them.
 
 ---
 
@@ -468,6 +477,8 @@ Class synergy values (final):
 - **`design_log/phase_19_plan.md`** — Phase 19 plan: The Exhibition Arc. Full structural redesign — removes fake opponents + RP system, replaces with escalating score targets, lives system, head judges per chapter, build archetypes, Exhibition Rating meta-progression. Read when starting Phase 19.
 - **`design_log/phase_21_plan.md`** — Phase 21 plan: Polish & Clarity pass. Prioritised fix list from game-design-framework review (2026-04-27). Includes playtest script.
 - **`design_log/phase_23_plan.md`** — Phase 23 plan: Unlock system. Run achievements gate 5 new content pieces (2 augments, 1 judge, 2 items). Full spec: data structures, achievement conditions, pool filtering, UI, implementation phases.
+- **`design_log/balance_principles.md`** — Design philosophy: viable diversity target, numeric survival targets, dead-ends vs. commitment paths, species/class synergy calibration rules, asymmetric balance limitations. Read before any design work.
+- **`design_log/phase_25_plan.md`** — Phase 25 plan: 9 new achievement/reward slots (plasmic_master, pompous_devotee, emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor). Full implementation spec including board.js hooks, ctx arg extension, unit tests, balance checks.
 
 ---
 

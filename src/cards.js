@@ -362,6 +362,33 @@ const CARD_DEFS = [
       },
     },
   },
+
+  // --- Phase 25 locked cards ---
+  {
+    id: 'vorbex',
+    name: 'Vorbex', species: 'Plasmic', class: 'Sullen', tier: 2, baseScore: 84, locked: true,
+    flavor: "Vorbexes are essentially very confident plasma. Individually they do little. Surrounded by enough of their kin, something extraordinary — and frankly unsettling — occurs.",
+    passive: {
+      description: '×1.5 score if Plasmic-4 synergy active',
+      axis: 4,
+      eval(card, ctx) {
+        return { mult: (ctx.speciesCounts.Plasmic || 0) >= 4 ? 1.5 : 1 };
+      },
+    },
+  },
+  {
+    id: 'omnorb',
+    name: 'Omnorb', species: 'Abyssal', class: 'Shy', tier: 3, baseScore: 128, locked: true,
+    flavor: 'Omnorbs have adapted to survive in any atmospheric condition. Judges describe their presence as "a reminder that the galaxy does not care about your strategy."',
+    passive: {
+      description: '×1.8 score if 4+ unique species on active board',
+      axis: 4,
+      eval(card, ctx) {
+        const uniqueSpecies = new Set(ctx.boardState.active.map(c => c.species)).size;
+        return { mult: uniqueSpecies >= 4 ? 1.8 : 1 };
+      },
+    },
+  },
 ];
 
 const CARD_COSTS  = { 1: 3,  2: 4,  3: 5  };
@@ -410,15 +437,16 @@ const SYNERGIES = {
   },
 };
 
-// Class distribution (Phase 24). Free cards always in pool; locked cards require achievement unlock.
+// Class distribution (Phase 25). Free cards always in pool; locked cards require achievement unlock.
 // Shy:     Gloopir(Plasmic T2), Puffzak(Sporal T2), Krombax(Crystalline T1), Skraxle(Chitinous T1),
-//          Phlorbex(Sporal T1), [Prismora(Crystalline T3) locked], [Klothrix(Chitinous T3) locked]
+//          Phlorbex(Sporal T1), [Prismora(Crystalline T3) locked], [Klothrix(Chitinous T3) locked],
+//          [Omnorb(Abyssal T3) locked]
 // Livid:   Vorzak(Abyssal T1), Blinxorp(Abyssal T2), Slurvin(Plasmic T1), Molborg(Sporal T2),
 //          [Zorbrath(Crystalline T2) locked], [Vornix(Abyssal T1) locked]
 // Giddy:   Vexborg(Chitinous T1), Clattorb(Chitinous T2), Murborg(Plasmic T2), Sharzak(Crystalline T1),
 //          [Morblax(Chitinous T2) locked], [Zephrix(Sporal T2) locked]
 // Sullen:  Sporvik(Sporal T1), Lithvorn(Crystalline T2), Blorpax(Plasmic T1), Scrithnab(Chitinous T3),
-//          [Grazwick(Abyssal T2) locked]
+//          [Grazwick(Abyssal T2) locked], [Vorbex(Plasmic T2) locked]
 // Pompous: Fluxnob(Plasmic T3), Sprangus(Sporal T3), Geodorb(Crystalline T3), Squorble(Abyssal T3),
 //          [Stellorb(Abyssal T3) locked]
 const CLASS_SYNERGIES = {

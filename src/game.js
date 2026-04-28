@@ -86,6 +86,14 @@ const HEAD_JUDGES = [
       }).length >= 3;
     },
   },
+  {
+    id: 'sormax',
+    name: 'Appraiser Sormax',
+    preference: 'Rewards long-term dedication to specimens',
+    qualifyingHint: '4+ cards held 10+ rounds',
+    locked: true,
+    qualifies: (board) => board.active.filter(c => (c.roundsSinceBought || 0) >= 10).length >= 4,
+  },
 ];
 
 // Curated gift for each judge's critique round.
@@ -100,6 +108,7 @@ const CURATOR_SELECTIONS = {
   collective: { type: 'augment',      id: 'Varietal' },              // Diverse Portfolio
   assembly:   { type: 'augment-pick' },                              // free 3-choice pick
   vrethix:    { type: 'augment', id: 'CrossTraining' },             // Cross-Pollination
+  sormax:     { type: 'item',   id: "Guinsoo's Rageblade" },        // Acclimatisation Log
 };
 
 // Score targets for each of the 24 rounds.
@@ -439,7 +448,14 @@ class Run {
     this.player.applyResult(passed);
 
     // Increment persistent achievement counters (browser-only; no-op in Node.js).
-    const newAchs = incrementAchievementCounters(this.player.board, classCounts, passed);
+    const activeClassSynergyCount = Object.keys(CLASS_SYNERGIES).filter(cls =>
+      CLASS_SYNERGIES[cls].getBonus((classCounts[cls] || 0))
+    ).length;
+    const newAchs = incrementAchievementCounters(this.player.board, classCounts, passed, {
+      round: this.round,
+      diffMult: this.diffMult || 1,
+      activeClassSynergyCount,
+    });
     for (const a of newAchs) this.newlyUnlocked.push(a);
 
     // Post-battle passive upkeep:

@@ -107,6 +107,102 @@ for (const [id, cl] of [
     assert.ok(!a.conditionMet(board([]), cls({}), spc({}))));
 }
 
+// ----- Phase 25 additions -----
+
+// plasmic_master
+{
+  const a = find('plasmic_master');
+  console.log('\nplasmic_master');
+  test('fires at 4 Plasmic', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({ Plasmic: 4 }))));
+  test('does not fire at 3 Plasmic', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({ Plasmic: 3 }))));
+}
+
+// pompous_devotee
+{
+  const a = find('pompous_devotee');
+  console.log('\npompous_devotee');
+  test('fires at 2 Pompous', () =>
+    assert.ok(a.conditionMet(board([]), cls({ Pompous: 2 }), spc({}))));
+  test('does not fire at 1 Pompous', () =>
+    assert.ok(!a.conditionMet(board([]), cls({ Pompous: 1 }), spc({}))));
+}
+
+// emotional_virtuoso (ctx-based)
+{
+  const a = find('emotional_virtuoso');
+  console.log('\nemotional_virtuoso');
+  test('fires at activeClassSynergyCount = 3', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { activeClassSynergyCount: 3 })));
+  test('does not fire at activeClassSynergyCount = 2', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}), { activeClassSynergyCount: 2 })));
+}
+
+// patient_master (board-based)
+{
+  const a = find('patient_master');
+  function cardWithRounds(n) { return { species: 'Plasmic', class: 'Shy', roundsSinceBought: n }; }
+  console.log('\npatient_master');
+  test('fires with 4 cards held 10+ rounds', () =>
+    assert.ok(a.conditionMet(board([cardWithRounds(10), cardWithRounds(12), cardWithRounds(10), cardWithRounds(15)]), cls({}), spc({}))));
+  test('does not fire with 3 cards held 10+ rounds', () =>
+    assert.ok(!a.conditionMet(board([cardWithRounds(10), cardWithRounds(12), cardWithRounds(10), cardWithRounds(5)]), cls({}), spc({}))));
+}
+
+// star_curator (board-based)
+{
+  const a = find('star_curator');
+  function star(n) { return { species: 'Plasmic', class: 'Shy', stars: n }; }
+  console.log('\nstar_curator');
+  test('fires with 3 active 3★ specimens', () =>
+    assert.ok(a.conditionMet(board([star(3), star(3), star(3)]), cls({}), spc({}))));
+  test('does not fire with 2 active 3★ specimens', () =>
+    assert.ok(!a.conditionMet(board([star(3), star(3), star(2)]), cls({}), spc({}))));
+}
+
+// late_game_collector (ctx.round)
+{
+  const a = find('late_game_collector');
+  console.log('\nlate_game_collector');
+  test('fires at round 17', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { round: 17 })));
+  test('does not fire at round 16', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}), { round: 16 })));
+}
+
+// discerning_graduate (ctx.diffMult)
+{
+  const a = find('discerning_graduate');
+  console.log('\ndiscerning_graduate');
+  test('fires at diffMult 1.12', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { diffMult: 1.12 })));
+  test('fires at diffMult 1.25', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { diffMult: 1.25 })));
+  test('does not fire at diffMult 1.0', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}), { diffMult: 1.0 })));
+}
+
+// elite_curator (ctx.diffMult)
+{
+  const a = find('elite_curator');
+  console.log('\nelite_curator');
+  test('fires at diffMult 1.25', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { diffMult: 1.25 })));
+  test('does not fire at diffMult 1.12', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}), { diffMult: 1.12 })));
+}
+
+// grand_survivor (ctx.round)
+{
+  const a = find('grand_survivor');
+  console.log('\ngrand_survivor');
+  test('fires at round 24', () =>
+    assert.ok(a.conditionMet(board([]), cls({}), spc({}), { round: 24 })));
+  test('does not fire at round 23', () =>
+    assert.ok(!a.conditionMet(board([]), cls({}), spc({}), { round: 23 })));
+}
+
 // ----- Cross-check: class conditions don't fire on species counts -----
 {
   console.log('\ncross-checks (class ≠ species)');

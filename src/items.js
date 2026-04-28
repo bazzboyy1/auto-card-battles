@@ -30,8 +30,11 @@ const ITEM_DEFS = [
   { id: 'Last Whisper',        name: 'Bloom Stimulant',      description: "Unit's round-timing passive activates 2 rounds earlier", axis: '6-mod' },
   { id: "Guinsoo's Rageblade", name: 'Acclimatisation Log',  description: '+20 score per round this unit has been on board',       axis: 3   },
   { id: 'Spear of Shojin',     name: 'Camouflage Gland',     description: 'Each round, counts as a random species you have ≥2 of', axis: 5   },
-  { id: 'prestige_tag',    name: 'Prestige Tag',     description: '+12 flat per active class synergy on equipped specimen',        axis: 1, locked: true },
-  { id: 'collectors_mark', name: "Collector's Mark", description: '+8 flat per combined (2★ or 3★) specimen active on board', axis: 1, locked: true },
+  { id: 'prestige_tag',    name: 'Prestige Tag',      description: '+12 flat per active class synergy on equipped specimen',     axis: 1, locked: true },
+  { id: 'collectors_mark', name: "Collector's Mark", description: '+8 flat per combined (2★ or 3★) specimen active on board',   axis: 1, locked: true },
+  // Phase 25 locked items
+  { id: 'veterans_plinth', name: "Veteran's Plinth",  description: '×1.3 score if this specimen has been held 15+ rounds',       axis: 4, locked: true },
+  { id: 'prestige_circuit', name: 'Prestige Circuit', description: '×1.2 score (no condition required)',                         axis: 4, locked: true },
   // Species taxonomy badges — one per species.
   ...SPECIES.map(sp => ({
     id: `Emblem of ${sp}`, name: `Taxonomy Badge: ${sp}`,
