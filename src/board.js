@@ -207,7 +207,7 @@ class Board {
         evalFn    = origP.eval;
         evalRound = round + 3;
       }
-      const selfCtx = { round: evalRound, boardState: this, speciesCounts, self: card, player, augments };
+      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments };
       try { return evalFn(card, selfCtx) || {}; } catch (_) { return {}; }
     });
 

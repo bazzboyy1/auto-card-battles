@@ -1,6 +1,6 @@
 'use strict';
 
-const { CARD_DEFS, CARD_COSTS, createCard } = require('./cards');
+const { CARD_DEFS, CARD_COSTS, createCard, getAvailableCards } = require('./cards');
 
 const SHOP_SIZE   = 5;
 const REROLL_COST = 2; // default; Midas Touch reduces to 1
@@ -36,9 +36,10 @@ function drawOffers(level, rng, n) {
       if (roll < cumulative) { tier = t; break; }
     }
 
-    let candidates = CARD_DEFS.filter(d => d.tier === tier && !offered.has(d.name));
+    const available = getAvailableCards();
+    let candidates = available.filter(d => d.tier === tier && !offered.has(d.name));
     if (candidates.length === 0) {
-      candidates = CARD_DEFS.filter(d => !offered.has(d.name));
+      candidates = available.filter(d => !offered.has(d.name));
     }
     if (candidates.length === 0) { result.push(null); continue; }
 

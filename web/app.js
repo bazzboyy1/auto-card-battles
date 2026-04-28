@@ -357,6 +357,7 @@ function startRound() {
 // Called after augment pick (or immediately if no pick pending).
 function finishRoundSetup() {
   S.human.earnIncome();
+  if (S.human.gold > S.run.stats.peakGold) S.run.stats.peakGold = S.human.gold;
   S.human.shop.refresh();
   S.phase    = 'shop';
   S.sellMode = false;
@@ -1251,11 +1252,20 @@ function showGameOverModal() {
     html += `</div>`;
   }
 
+  const doneCount = (ACHIEVEMENTS_LIST || []).filter(a => isUnlocked(a.reward.id)).length;
+  const totalCount = (ACHIEVEMENTS_LIST || []).length;
+  html += `<div class="ach-progress-row">
+    <span><span class="area-label">Achievements</span> <span class="stat-dim">${doneCount} / ${totalCount}</span></span>
+    <button class="btn-view-coll" id="btn-view-coll">View Collection →</button>
+  </div>`;
+
   html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Next Run Difficulty</div>`;
   html += `<div id="modal-diff-picker"></div>`;
 
   qs('#modal-content').innerHTML = html;
   renderDifficultyPicker(qs('#modal-diff-picker'));
+  const vcBtn = qs('#btn-view-coll');
+  if (vcBtn) vcBtn.onclick = showCollectionModal;
   qs('#modal-actions').classList.remove('hidden');
   qs('#btn-continue').textContent = 'Play Again';
   qs('#btn-continue').onclick = () => { newGame(); };
@@ -1277,7 +1287,8 @@ function showCollectionModal() {
       const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
       html += `<div class="ach-reward">Unlocked: <strong>${a.reward.name}</strong> <span class="ach-type">${typeLabel}</span></div>`;
     } else {
-      html += `<div class="ach-reward ach-reward-locked">Unlocks: <strong>???</strong></div>`;
+      const typeLabel = a.reward.type.charAt(0).toUpperCase() + a.reward.type.slice(1);
+      html += `<div class="ach-reward ach-reward-locked">Unlocks: <strong>${a.reward.name}</strong> <span class="ach-type">${typeLabel}</span></div>`;
     }
     html += `</div>`;
   }

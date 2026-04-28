@@ -300,6 +300,12 @@ class Run {
       maxCrystallineActive:    0,
       allSpeciesRepresented:   false,
       maxTripleStarsActive:    0,
+      maxAbyssalActive:        0,
+      peakGold:                0,
+      maxT3Active:             0,
+      maxLongTermCards:        0,
+      maxGiddyActive:          0,
+      dualSynergyAchieved:     false,
     };
     this.headJudges       = this._assignJudges(); // [ch1Id, ch2Id, ch3Id]
     this._curatorsPicked  = new Set();
@@ -442,6 +448,28 @@ class Run {
         const speciesSet = new Set(active.map(c => c.species));
         if (speciesSet.size >= 5) this.stats.allSpeciesRepresented = true;
       }
+
+      const abyssalCount = active.filter(c => c.species === 'Abyssal').length;
+      if (abyssalCount > this.stats.maxAbyssalActive)
+        this.stats.maxAbyssalActive = abyssalCount;
+
+      const t3Count = active.filter(c => c.tier === 3).length;
+      if (t3Count > this.stats.maxT3Active)
+        this.stats.maxT3Active = t3Count;
+
+      const longTermCount = active.filter(c => (c.roundsSinceBought || 0) >= 10).length;
+      if (longTermCount > this.stats.maxLongTermCards)
+        this.stats.maxLongTermCards = longTermCount;
+
+      const giddyCount = classCounts.Giddy || 0;
+      if (giddyCount > this.stats.maxGiddyActive)
+        this.stats.maxGiddyActive = giddyCount;
+
+      if (!this.stats.dualSynergyAchieved) {
+        const lividCount = classCounts.Livid || 0;
+        if (crystallineCount >= 2 && lividCount >= 2)
+          this.stats.dualSynergyAchieved = true;
+      }
     }
 
     const { target: baseNormal, preferredTarget: basePref, isCritique } = ROUND_TARGETS[this.round - 1];
@@ -487,6 +515,7 @@ class Run {
         this.player.gold += 2 * midasMult;
       }
     }
+    if (this.player.gold > this.stats.peakGold) this.stats.peakGold = this.player.gold;
 
     const entry = {
       round: this.round,

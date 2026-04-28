@@ -1,5 +1,7 @@
 'use strict';
 
+const { isUnlocked } = require('./achievements');
+
 // Balance notes (Phase 5, 2026-04-17):
 // - Abyssal base scores reduced to match Plasmics (were highest of any species)
 // - Sporal + Crystalline base scores raised so they're competitive individual picks
@@ -117,6 +119,16 @@ const CARD_DEFS = [
     },
   },
 
+  {
+    name: 'Phlorbex', species: 'Sporal', class: 'Shy', tier: 1, baseScore: 54,
+    flavor: 'Phlorbexes shed microscopic spore clouds that cause nearby Sporals to flourish aggressively. Exhibitors report that Phlorbexes seem genuinely embarrassed by the effect.',
+    passive: {
+      description: 'Other Sporal specimens on board +10 flat score',
+      axis: 8,
+      eval() { return { auraFlat: 10, target: 'other-Sporal' }; },
+    },
+  },
+
   // Tier 2 — cost 4g
   {
     name: 'Gloopir', species: 'Plasmic', class: 'Shy', tier: 2, baseScore: 80,
@@ -196,6 +208,44 @@ const CARD_DEFS = [
     },
   },
 
+  {
+    name: 'Grazwick', species: 'Abyssal', class: 'Sullen', tier: 2, baseScore: 82, locked: true, id: 'grazwick',
+    flavor: 'Grazwicks spend the first seven rounds in a state of profound withdrawal. By round eight, something shifts. Judges are advised not to comment on this.',
+    passive: {
+      description: 'Inactive rounds 1–7. From round 8: ×1.8 score',
+      axis: 6,
+      eval(card, ctx) {
+        if ((ctx.round || 0) < 8) return {};
+        return { mult: 1.8 };
+      },
+    },
+  },
+  {
+    name: 'Morblax', species: 'Chitinous', class: 'Giddy', tier: 2, baseScore: 83, locked: true, id: 'morblax',
+    flavor: 'Morblaxes are impossible to calm down when surrounded by emotionally elevated specimens. The clicking gets faster. Nobody is quite sure what it means.',
+    passive: {
+      description: '+15 per Giddy specimen on board (including self)',
+      axis: 2,
+      eval(card, ctx) {
+        const n = ctx.boardState.active.filter(c => c.class === 'Giddy').length;
+        return { flat: 15 * n };
+      },
+    },
+  },
+  {
+    name: 'Zorbrath', species: 'Crystalline', class: 'Livid', tier: 2, baseScore: 90, locked: true, id: 'zorbrath',
+    flavor: 'Zorbrath crystal matrices are uniquely reactive to emotional frequencies. In the presence of both Crystalline resonance and Livid energy they achieve a threat level that judges find extremely compelling.',
+    passive: {
+      description: '×1.4 score if both Crystalline-2 and Livid-2 synergies are active',
+      axis: 4,
+      eval(card, ctx) {
+        const crystalline = (ctx.speciesCounts || {}).Crystalline || 0;
+        const lividCount  = (ctx.classCounts  || {}).Livid      || 0;
+        return { mult: (crystalline >= 2 && lividCount >= 2) ? 1.4 : 1 };
+      },
+    },
+  },
+
   // Tier 3 — cost 5g
   {
     name: 'Fluxnob', species: 'Plasmic', class: 'Pompous', tier: 3, baseScore: 130,
@@ -247,6 +297,71 @@ const CARD_DEFS = [
       },
     },
   },
+
+  // --- Phase 24 locked cards (gated by achievements) ---
+  {
+    id: 'vornix',
+    name: 'Vornix', species: 'Abyssal', class: 'Livid', tier: 1, baseScore: 50, locked: true,
+    flavor: 'Vornixes establish dominance through sustained atmospheric menace. With four or more Abyssals competing, the hostility reaches measurable levels. Judges wear protective lenses.',
+    passive: {
+      description: '+24 per other Abyssal on board',
+      axis: 2,
+      eval(card, ctx) {
+        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Abyssal').length;
+        return { flat: 24 * n };
+      },
+    },
+  },
+  {
+    id: 'zephrix',
+    name: 'Zephrix', species: 'Sporal', class: 'Giddy', tier: 2, baseScore: 82, locked: true,
+    flavor: 'Zephrixae are natural sycophants who perform best in the presence of perceived wealth. Provide adequate funding and they will put on a show. Do not ask how they know about your finances.',
+    passive: {
+      description: '+3g per round while on board; +40 flat score if holding 20+ gold at judging',
+      axis: 2,
+      eval(card, ctx) {
+        const gold = ctx.player ? (ctx.player.gold || 0) : 0;
+        return { tickGold: 3, flat: gold >= 20 ? 40 : 0 };
+      },
+    },
+  },
+  {
+    id: 'prismora',
+    name: 'Prismora', species: 'Crystalline', class: 'Shy', tier: 3, baseScore: 124, locked: true,
+    flavor: 'Prismoras refract light differently depending on how many exceptional specimens share their space. With three or more Tier 3 exhibits present they produce a spectrum that has not yet been formally classified.',
+    passive: {
+      description: '×(1 + 0.15 per T3 card on board, including self)',
+      axis: 4,
+      eval(card, ctx) {
+        const t3Count = ctx.boardState.active.filter(c => c.tier === 3).length;
+        return { mult: 1 + 0.15 * t3Count };
+      },
+    },
+  },
+  {
+    id: 'klothrix',
+    name: 'Klothrix', species: 'Chitinous', class: 'Shy', tier: 3, baseScore: 120, locked: true,
+    flavor: 'Klothrixae do not open their outer carapace for judges they have not met. Given sufficient time in the same exhibition, something remarkable is revealed. It takes a while.',
+    passive: {
+      description: '+30 per round since bought (max +450)',
+      axis: 3,
+      cap: 450,
+      eval(card) { return { flat: 30 * (card.roundsSinceBought || 0) }; },
+    },
+  },
+  {
+    id: 'stellorb',
+    name: 'Stellorb', species: 'Abyssal', class: 'Pompous', tier: 3, baseScore: 126, locked: true,
+    flavor: 'Stellorbs carry themselves with an air of inevitability. In the sixteenth round, surrounded by sufficient Abyssal company, they begin radiating something that fills three pages of the exhibition incident log.',
+    passive: {
+      description: '×1.5 score if Abyssal-4 synergy active and round 16+',
+      axis: '6+4',
+      eval(card, ctx) {
+        const abyssal = (ctx.speciesCounts || {}).Abyssal || 0;
+        return { mult: (abyssal >= 4 && (ctx.round || 0) >= 16) ? 1.5 : 1 };
+      },
+    },
+  },
 ];
 
 const CARD_COSTS  = { 1: 3,  2: 4,  3: 5  };
@@ -295,12 +410,17 @@ const SYNERGIES = {
   },
 };
 
-// 5 classes × 4 cards each. Each class spans 3–4 species to force multi-species boards.
-// Shy:     Gloopir(Plasmic), Puffzak(Sporal), Krombax(Crystalline), Skraxle(Chitinous)
-// Livid:   Vorzak(Abyssal), Blinxorp(Abyssal), Slurvin(Plasmic), Molborg(Sporal)
-// Giddy:   Vexborg(Chitinous), Clattorb(Chitinous), Murborg(Plasmic), Sharzak(Crystalline)
-// Sullen:  Sporvik(Sporal), Lithvorn(Crystalline), Blorpax(Plasmic), Scrithnab(Chitinous)
-// Pompous: Fluxnob(Plasmic), Sprangus(Sporal), Geodorb(Crystalline), Squorble(Abyssal)
+// Class distribution (Phase 24). Free cards always in pool; locked cards require achievement unlock.
+// Shy:     Gloopir(Plasmic T2), Puffzak(Sporal T2), Krombax(Crystalline T1), Skraxle(Chitinous T1),
+//          Phlorbex(Sporal T1), [Prismora(Crystalline T3) locked], [Klothrix(Chitinous T3) locked]
+// Livid:   Vorzak(Abyssal T1), Blinxorp(Abyssal T2), Slurvin(Plasmic T1), Molborg(Sporal T2),
+//          [Zorbrath(Crystalline T2) locked], [Vornix(Abyssal T1) locked]
+// Giddy:   Vexborg(Chitinous T1), Clattorb(Chitinous T2), Murborg(Plasmic T2), Sharzak(Crystalline T1),
+//          [Morblax(Chitinous T2) locked], [Zephrix(Sporal T2) locked]
+// Sullen:  Sporvik(Sporal T1), Lithvorn(Crystalline T2), Blorpax(Plasmic T1), Scrithnab(Chitinous T3),
+//          [Grazwick(Abyssal T2) locked]
+// Pompous: Fluxnob(Plasmic T3), Sprangus(Sporal T3), Geodorb(Crystalline T3), Squorble(Abyssal T3),
+//          [Stellorb(Abyssal T3) locked]
 const CLASS_SYNERGIES = {
   Shy: {
     thresholds: [2, 4],
@@ -353,4 +473,11 @@ function createCard(defName, stars = 1) {
   return { ...def, stars, _id: _nextId++, roundsSinceBought: 0, items: [] };
 }
 
-module.exports = { CARD_DEFS, CARD_COSTS, STAR_MULT, SYNERGIES, CLASS_SYNERGIES, CLASSES, createCard };
+// Returns the subset of CARD_DEFS available in the current session.
+// Locked cards are excluded until their achievement reward id is persisted.
+// In Node.js (sim/balance) isUnlocked always returns false — locked cards stay out of pools.
+function getAvailableCards() {
+  return CARD_DEFS.filter(d => !d.locked || isUnlocked(d.id));
+}
+
+module.exports = { CARD_DEFS, CARD_COSTS, STAR_MULT, SYNERGIES, CLASS_SYNERGIES, CLASSES, createCard, getAvailableCards };

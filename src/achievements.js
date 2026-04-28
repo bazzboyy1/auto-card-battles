@@ -75,6 +75,64 @@ const ACHIEVEMENTS = [
     reward: { id: 'collectors_mark', type: 'item', name: "Collector's Mark" },
     check: (run) => run.stats.allSpeciesRepresented,
   },
+
+  // Phase 24 achievements — unlock new cards
+  {
+    id: 'abyssal_patience',
+    name: 'Abyssal Patience',
+    condition: 'Activate Abyssal-2 synergy and survive to Round 8',
+    reward: { id: 'grazwick', type: 'card', name: 'Grazwick' },
+    check: (run) => run.stats.maxAbyssalActive >= 2 && run.round >= 8,
+  },
+  {
+    id: 'giddy_horde',
+    name: 'Giddy Horde',
+    condition: 'Have 4+ Giddy specimens active simultaneously during any round',
+    reward: { id: 'morblax', type: 'card', name: 'Morblax' },
+    check: (run) => run.stats.maxGiddyActive >= 4,
+  },
+  {
+    id: 'dual_synergist',
+    name: 'Dual Synergist',
+    condition: 'Have both Crystalline-2 and Livid-2 synergies active simultaneously',
+    reward: { id: 'zorbrath', type: 'card', name: 'Zorbrath' },
+    check: (run) => run.stats.dualSynergyAchieved,
+  },
+  {
+    id: 'void_commander',
+    name: 'Void Commander',
+    condition: 'Have 4+ Abyssal specimens active simultaneously during any round',
+    reward: { id: 'vornix', type: 'card', name: 'Vornix' },
+    check: (run) => run.stats.maxAbyssalActive >= 4,
+  },
+  {
+    id: 'gold_rush',
+    name: 'Gold Rush',
+    condition: 'Hold 25+ gold at any point during a run',
+    reward: { id: 'zephrix', type: 'card', name: 'Zephrix' },
+    check: (run) => run.stats.peakGold >= 25,
+  },
+  {
+    id: 'tier_collector',
+    name: 'Tier Collector',
+    condition: 'Have 3+ Tier 3 specimens active simultaneously during any round',
+    reward: { id: 'prismora', type: 'card', name: 'Prismora' },
+    check: (run) => run.stats.maxT3Active >= 3,
+  },
+  {
+    id: 'deep_patience',
+    name: 'Deep Patience',
+    condition: 'Have 5+ specimens held for 10+ rounds simultaneously',
+    reward: { id: 'klothrix', type: 'card', name: 'Klothrix' },
+    check: (run) => run.stats.maxLongTermCards >= 5,
+  },
+  {
+    id: 'grand_finale',
+    name: 'Grand Finale',
+    condition: 'Survive all 24 rounds with at least 1 Seal remaining',
+    reward: { id: 'stellorb', type: 'card', name: 'Stellorb' },
+    check: (run) => run.round >= 24 && run.lives >= 1,
+  },
 ];
 
 // Returns achievement objects whose condition is newly met (not already unlocked).

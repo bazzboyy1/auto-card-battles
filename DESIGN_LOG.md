@@ -6,7 +6,33 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 23-A complete (2026-04-27). Unlock system infrastructure (no version bump — logic only). Next: 23-B — add new locked content (Deep Roots, Curator's Eye augments; Vrethix judge; Prestige Tag, Collector's Mark items).
+**Phase:** Phase 24 complete (2026-04-27). Card expansion shipped (v0.35). 9 new cards added: 1 free (Phlorbex), 8 locked behind new achievements. Total: 29 card defs, 13 achievements.
+
+**Next action:** Phase 25 — TBD. Options: (a) playtest unlock flow end-to-end with real players; (b) locked-card exploit sweep (cards have no `sweepCards` harness yet); (c) UI polish for collection panel (show locked card previews with ???). Recommend (b) first — exploit sweep is lowest-overhead correctness check before shipping to players.
+
+**Phase 24 complete (2026-04-27):** Card expansion shipped (v0.35).
+- **New free card:** Phlorbex (Sporal/Shy, T1, base 54) — other Sporal specimens +10 flat score (axis 8 aura).
+- **8 locked cards** (each gated behind a new achievement):
+  - Grazwick (Abyssal/Sullen, T2, 82): inactive rounds 1–7; ×1.8 from round 8 (axis 6).
+  - Morblax (Chitinous/Giddy, T2, 83): +15 per Giddy specimen on board incl. self (axis 2).
+  - Zorbrath (Crystalline/Livid, T2, 90): ×1.4 if both Crystalline-2 and Livid-2 active (axis 4).
+  - Vornix (Abyssal/Livid, T1, 50): +24 per other Abyssal on board (axis 2).
+  - Zephrix (Sporal/Giddy, T2, 82): +3g/round; +40 flat if holding 20+ gold at judging (axis 2).
+  - Prismora (Crystalline/Shy, T3, 124): ×(1 + 0.15 per T3 card on board incl. self) (axis 4).
+  - Klothrix (Chitinous/Shy, T3, 120): +30 per round since bought, max +450 (axis 3).
+  - Stellorb (Abyssal/Pompous, T3, 126): ×1.5 if Abyssal-4 active and round 16+ (axis 6+4).
+- **8 new achievements** (abyssal_patience, giddy_horde, dual_synergist, void_commander, gold_rush, tier_collector, deep_patience, grand_finale).
+- **Infrastructure:** `getAvailableCards()` in cards.js filters CARD_DEFS by `!locked || isUnlocked`; shop.js uses it. `classCounts` added to `selfCtx` in board.js (needed by Zorbrath). Six new `run.stats` fields tracked in game.js; `peakGold` tracked in sim.js and app.js.
+- **Balance (n=300, seed=42):** greedy 55.0% ✓ (pool dilution from T1 Phlorbex is minimal; all T2+ conditional cards kept locked to preserve T2 pool size at 7). livid-stack 66.3%, abyssal-stack 65.7%, blinxorp-max 75.3%.
+- **Locked card ceiling exploit sweep:** deferred — no `sweepCards` harness yet. Starting values need verification before shipping to players.
+
+**Phase 23-B complete (2026-04-27):** New locked content shipped (v0.33).
+- **Deep Roots** augment (`deep_roots`, locked): ×1.15 per-card mult at Stage 4b for cards held 10+ rounds.
+- **Curator's Eye** augment (`curators_eye`, locked): +5% global mult per 3★ active specimen (Stage 4a).
+- **Appraiser Vrethix** judge (`vrethix`, locked): 3+ class synergies active → preferred target (−15%). Curator gift: Cross-Pollination.
+- **Prestige Tag** item (`prestige_tag`, locked): +12 flat per active class synergy on equipped specimen (Stage 1).
+- **Collector's Mark** item (`collectors_mark`, locked): +8 flat per combined (2★/3★) active card (Stage 1).
+- **Balance verified (n=300/200, seed=42):** Baseline greedy 56.7% — unchanged from Phase 22 (locked content excluded from pools). Exploit ceiling: all four new pieces well below 8pp flag threshold (Deep Roots −7pp, Curator's Eye −23pp, Prestige Tag −16pp, Collector's Mark −18pp). No new exploits.
 
 **Phase 22 complete (2026-04-27):** Balance pass shipped (v0.32).
 - **Livid dominance fixed:** Class mult ×1.10/×1.20 → ×1.08/×1.16. livid-stack: 69.3% → 63.3% (-6pp).
@@ -81,7 +107,15 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 - **`_assignJudges()` updated:** filters `HEAD_JUDGES` by `!j.locked || isUnlocked(j.id)` — ready for Vrethix in 23-B.
 - **Smoke test (n=50, seed=42):** all policies ran without errors; ordering preserved.
 
-**Next action:** Phase 23-B — Add new locked content: Deep Roots + Curator's Eye to `src/augments.js`; Vrethix to `HEAD_JUDGES` in `src/game.js`; Prestige Tag + Collector's Mark to `src/items.js`. Run balance sweep to verify baseline unchanged with locked content excluded, then manually unlock all 5 and re-run to check exploit ceiling.
+**Phase 23-C/D complete (2026-04-27):** Achievement unit tests + unlock UI shipped (v0.34).
+- **23-C:** `src/test_achievements.js` — 24 unit tests across all 5 check() functions. Boundary cases for `patient_collector` (rounds 15/16, card count 2/3, roundsSinceBought 9/10, undefined handling) and `crystal_formation` (count 3/4, round 11/12). All 24 pass.
+- **23-D:** Collection panel + unlock section.
+  - `web/loader.js`: load `achievements.js` before `augments`/`items` (dependency order — augments requires isUnlocked).
+  - `web/app.js`: `evaluateAchievements` + `addUnlock` called in `showGameOverModal`; unlock section rendered when new content fires; `showCollectionModal()` lists all 5 achievements from splash (locked = ???, unlocked = reward name + type badge).
+  - `web/index.html`: "Collection" button on splash; v0.34.
+  - `web/style.css`: `.unlock-section`, `.ach-row`, `.ach-unlocked`, `.ach-locked`, `.splash-btn-collection` styles.
+
+**Next action:** Phase 24 — card expansion. Add new cards to `src/cards.js` and gate some behind the unlock pool (building on Phase 23 infrastructure). See `design_log/phase_23_plan.md` "Out of scope" section for card unlock notes.
 
 **Phase:** Phase 16 complete (2026-04-25). Sim-driven balance pass shipped (v0.18).
 

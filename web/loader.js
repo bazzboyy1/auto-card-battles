@@ -34,8 +34,8 @@
 
   try {
     const utils        = await req('../src/utils.js');
-    const cards        = await req('../src/cards.js');
     const achievements = await req('../src/achievements.js');
+    const cards        = await req('../src/cards.js');
     const augments     = await req('../src/augments.js');
     const items        = await req('../src/items.js');
     const board        = await req('../src/board.js');
