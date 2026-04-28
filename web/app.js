@@ -358,7 +358,6 @@ function startRound() {
 // Called after augment pick (or immediately if no pick pending).
 function finishRoundSetup() {
   S.human.earnIncome();
-  if (S.human.gold > S.run.stats.peakGold) S.run.stats.peakGold = S.human.gold;
   S.human.shop.refresh();
   S.phase    = 'shop';
   S.sellMode = false;
