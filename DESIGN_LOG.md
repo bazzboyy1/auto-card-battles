@@ -6,9 +6,26 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Balance pass v0.41 (2026-04-28). Species/class overlap design fix + balance nerfs.
+**Phase:** Run telemetry v0.42 (2026-04-29). Logging infrastructure shipped to capture skilled human play.
 
-**Next action:** Production plan step 5 — new species. Before adding cards, run `node run.js exploit 200 42` to confirm baseline, then design new species content targeting underused build paths (Crystalline, Giddy, Shy are all at −10pp below greedy). AccliLog requires a structural fix (per-card bonus cap, not rate reduction) — address when designing next balance pass.
+**Next action:** Player plays 2–3 runs and uploads the resulting JSON logs. Once we have human top-end data (peak score per round, gold per round, when comfort windows kick in), recalibrate Elite Circuit targets to apply pressure at human ceiling rather than sim greedy ceiling. Production plan step 5 (new species cards) is paused until the recalibration question is settled — adding new content before the targets are right will just shift the comfort problem.
+
+**Run telemetry shipped (2026-04-29):** v0.42.
+- **`src/runlog.js`** — `RunLog` class with per-round event timeline, board snapshots, JSON download. No-op in Node.js (sim unaffected).
+- **Hooks wired in `web/app.js`:** newGame (seed, difficulty), startRound, finishRoundSetup (income + shop_refresh), onBuyShop, onReroll, onLock, onAddPlinth, onCardClick (sell/move/attach), pip click (detach), onPickAugment, onPickItem, onPickCurator, onPickShapeshifter, runCombines (combine detection), onReady (full readyState snapshot + result), showGameOverModal (final stats, calls endGame).
+- **UI:** 📥 button in HUD (always visible, mid-run download), prominent "Download Run Log (JSON)" button in game-over modal.
+- **Schema captured:** events array per round with ts (ms since game start), readyState (gold, level, full active+bench with per-card final score, augments, item bag, synergies), result (score, target, passed, qualified, livesAfter, lifeGained, judgeId, isCritique).
+- **Browser-verified:** Round 1 captures all expected events (income, shop_refresh, buy×2, reroll), readyState (gold=7, 2 active), result (score=120 / target=100, passed). No console errors.
+
+**Design context (2026-04-28 → 2026-04-29):** Player feedback that mono-stack builds (Sporal-9, Plasmic-8) feel too easy to assemble and "destroy" late-round targets. Multiple design discussions converged on: the issue is *pacing*, not *variety* — once a build comes together, skilled play has 7+ comfortable rounds with nothing the game can ask. Sim's greedy baseline (40–42% survival) is well below human top-end. Backpack Battles parallel: pressure comes from external scaling, not gold mechanics. Cross-axis specialists (Quorrath-style cards) and gold sinks were considered but demoted — the primary lever is **target curve recalibration against human top-end data**. Telemetry was shipped first to enable that calibration.
+
+**Decisions made (2026-04-29 design session):**
+- **Reject:** speciesless catalyst cards (theme conflict, may amplify mono-stacks rather than constrain them).
+- **Reject:** removing interest economy (contradicts balance_principles.md — economy needs to *become* a real dimension, not be removed).
+- **Reject:** gold decay (hacky, taxes legitimate save-when-nothing-good strategy).
+- **Demote:** cross-axis specialists (Zorbrath-style) — useful texture, not a pacing fix.
+- **Promote:** target curve recalibration based on captured human play data (this commit enables it).
+- **Defer:** gold sinks (gold-cost augments/items) — design enrichment, not pacing fix; revisit after recalibration lands.
 
 **Known outstanding exploit flags (accepted, not blocking):**
 - AccliLog (+32pp): Rate reduction cannot fix this — 3 forced copies compound regardless of per-round value. Needs a per-card total cap (e.g. max +240 over the course of a run). Defer to dedicated pass.
