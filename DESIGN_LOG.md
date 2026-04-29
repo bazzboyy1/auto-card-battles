@@ -6,9 +6,15 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Run telemetry v0.42 (2026-04-29). Logging infrastructure shipped to capture skilled human play.
+**Phase:** Elite target recalibration v0.43 (2026-04-29). Graduated per-round Elite multiplier shipped based on 5 human Elite run logs.
 
-**Next action:** Player plays 2–3 runs and uploads the resulting JSON logs. Once we have human top-end data (peak score per round, gold per round, when comfort windows kick in), recalibrate Elite Circuit targets to apply pressure at human ceiling rather than sim greedy ceiling. Production plan step 5 (new species cards) is paused until the recalibration question is settled — adding new content before the targets are right will just shift the comfort problem.
+**Next action:** Player plays 2–3 Elite Circuit runs with v0.43 and reports whether the late-game comfort window (R19-R24) now feels pressured. If E3-style builds (7000–8000 R24 scores) feel tight rather than automatic, recalibration is done and production plan step 5 (new species cards) can resume. If not, iterate on the R19-R24 mults in `src/ranking.js` (elite tier `mults` array, indices 18-23).
+
+**Elite target recalibration (2026-04-29):** v0.43.
+- **Analysis basis:** 5 Elite Circuit run logs — 3 survived (peak 7180–12741), 2 died (R6, R23). Pattern: early game (R4-R8) is already a genuine danger zone under ×1.25; late game (R19-R24) was trivial after gold dump (~L9 unlock between R14-R19 causes score spike from ~4000 to 8000-12000+).
+- **Fix:** Elite tier now uses a per-round `mults` array in `src/ranking.js`. R1-R18 stay at ×1.25 (early kill-zone unchanged). R19→×1.30, R20→×1.35, R21→×1.40, R22→×1.44, R23→×1.47, R24→×1.50.
+- **Resulting targets:** R24 goes 6250→7500. E3-style runs (7180 score) must maintain judge qualification at R23-R24 to survive. E1/E5-style builds (11000-12700) remain comfortable but less automatic.
+- **Implementation:** `Run` constructor gains optional `diffMults` array; `game.js` `scoreRound` uses `diffMults[round-1]` when present; `app.js` threads `tier.mults` through; runlog `target.diffMult` records the actual per-round multiplier.
 
 **Run telemetry shipped (2026-04-29):** v0.42.
 - **`src/runlog.js`** — `RunLog` class with per-round event timeline, board snapshots, JSON download. No-op in Node.js (sim unaffected).
