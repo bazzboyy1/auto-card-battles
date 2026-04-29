@@ -41,7 +41,17 @@ function recordRun(round, livesRemaining, peakScore) {
 const TIERS = [
   { id: 'standard',   label: 'Standard',         mult: 1.0  },
   { id: 'discerning', label: 'Discerning Judges', mult: 1.12 },
-  { id: 'elite',      label: 'Elite Circuit',     mult: 1.25 },
+  {
+    id: 'elite', label: 'Elite Circuit', mult: 1.25,
+    // Per-round multipliers: R1-R18 stay at ×1.25 (early danger unchanged).
+    // R19-R24 escalate to ×1.50 — closes the post-gold-dump comfort window.
+    mults: [
+      1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, // R1-R8
+      1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, // R9-R16
+      1.25, 1.25,                                       // R17-R18
+      1.30, 1.35, 1.40, 1.44, 1.47, 1.50,              // R19-R24
+    ],
+  },
 ];
 const TIER_KEY = 'alien-exhibition-tiers';
 

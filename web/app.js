@@ -103,7 +103,7 @@ function describeNextRound() {
   if (nextRound > 24) return null;
   const judge   = S.run.currentJudge(nextRound);
   const tEntry  = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
-  const diff    = S.run.diffMult || 1.0;
+  const diff    = (S.run.diffMults && S.run.diffMults[nextRound - 1]) || S.run.diffMult || 1.0;
   const target  = tEntry ? {
     normalBase:    tEntry.target,
     preferredBase: tEntry.preferredTarget,
@@ -202,7 +202,7 @@ function newGame({ deferred = false } = {}) {
   const tier = RANKING ? RANKING.getActiveTier() : { mult: 1.0 };
   const seed = Date.now() | 0;
   const rng  = mulberry32(seed);
-  S.run      = new Run(rng, tier.mult);
+  S.run      = new Run(rng, tier.mult, tier.mults || null);
   S.human    = S.run.player;
   S.human.isHuman = true;
   S.human.name    = 'You';
