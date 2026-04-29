@@ -10,7 +10,7 @@ let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
 let ACHIEVEMENTS_LIST, isUnlocked, getCounter;
 let RunLog, snapshotBoard;
-const GAME_VERSION = '0.43';
+const GAME_VERSION = (document.getElementById('game-version')?.textContent || 'v0.43').replace(/^v/, '');
 const runLog = { instance: null }; // lazy-init after modules load
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
