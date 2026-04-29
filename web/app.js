@@ -9,6 +9,9 @@ let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
 let ACHIEVEMENTS_LIST, isUnlocked, getCounter;
+let RunLog, snapshotBoard;
+const GAME_VERSION = '0.42';
+const runLog = { instance: null }; // lazy-init after modules load
 const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search || '');
 
 const CLASS_GLYPHS = { Shy: '◌', Livid: '◆', Giddy: '◈', Sullen: '▪', Pompous: '▲' };
@@ -40,6 +43,8 @@ document.addEventListener('acb-ready', () => {
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
   RANKING = window.ACB.ranking;
   ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, isUnlocked, getCounter } = window.ACB.achievements);
+  ({ RunLog, snapshotBoard } = window.ACB.runlog);
+  runLog.instance = new RunLog();
 
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
@@ -63,7 +68,57 @@ document.addEventListener('acb-ready', () => {
     showRulesModal();
   };
   qs('#btn-collection').onclick = showCollectionModal;
+
+  const dlBtn = qs('#btn-download-log');
+  if (dlBtn) dlBtn.onclick = onDownloadLog;
 });
+
+// ── Run log helpers ──────────────────────────────────────────────────────────
+function rlog(event) {
+  if (runLog.instance) runLog.instance.log(event);
+}
+
+function onDownloadLog() {
+  if (!runLog.instance) return;
+  // Snapshot current state if a round is mid-flight (so you can download
+  // mid-run without ending the game).
+  runLog.instance.download();
+}
+
+function captureSpeciesAndClass() {
+  const { counts: sc } = effectiveSpeciesCounts(S.human.board, { augments: S.run.augments, player: S.human });
+  const { counts: cc } = effectiveClassCounts(S.human.board);
+  return { species: { ...sc }, class: { ...cc } };
+}
+
+function buildReadyState() {
+  const bd = S.human.board.calcScoreBreakdown({ round: S.run.round + 1, augments: S.run.augments });
+  const { species, class: classCounts } = captureSpeciesAndClass();
+  return snapshotBoard(S.human, S.run, bd, species, classCounts);
+}
+
+// Build a {round, chapter, judge, target} descriptor for the upcoming round.
+function describeNextRound() {
+  const nextRound = S.run.round + 1;
+  if (nextRound > 24) return null;
+  const judge   = S.run.currentJudge(nextRound);
+  const tEntry  = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
+  const diff    = S.run.diffMult || 1.0;
+  const target  = tEntry ? {
+    normalBase:    tEntry.target,
+    preferredBase: tEntry.preferredTarget,
+    isCritique:    !!tEntry.isCritique,
+    diffMult:      diff,
+    normal:        Math.round(tEntry.target * diff),
+    preferred:     tEntry.preferredTarget != null ? Math.round(tEntry.preferredTarget * diff) : null,
+  } : null;
+  return {
+    round:   nextRound,
+    chapter: S.run.chapterFor(nextRound),
+    judge,
+    target,
+  };
+}
 
 // ── Rules modal ───────────────────────────────────────────────────────────────
 function showRulesModal() {
@@ -145,7 +200,8 @@ function updateHUDDifficulty() {
 // ── New game ──────────────────────────────────────────────────────────────────
 function newGame({ deferred = false } = {}) {
   const tier = RANKING ? RANKING.getActiveTier() : { mult: 1.0 };
-  const rng  = mulberry32(Date.now() | 0);
+  const seed = Date.now() | 0;
+  const rng  = mulberry32(seed);
   S.run      = new Run(rng, tier.mult);
   S.human    = S.run.player;
   S.human.isHuman = true;
@@ -156,6 +212,14 @@ function newGame({ deferred = false } = {}) {
   S.curatorOffer   = null;
   S.attachItem     = null;
   S.archetypeOrder = [];
+  S.seed           = seed;
+  if (runLog.instance) {
+    runLog.instance.startGame({
+      version:    GAME_VERSION,
+      seed:       seed,
+      difficulty: { id: tier.id || 'standard', label: tier.label || 'Standard', mult: tier.mult },
+    });
+  }
   // Re-wire continue button (game-over handler overrides it).
   qs('#btn-continue').onclick = onContinue;
   if (!deferred) startRound();
@@ -329,6 +393,10 @@ function showGrandFinaleReveal() {
 
 function startRound() {
   const nextRound = S.run.round + 1;
+  // Open a new round entry in the run log.
+  if (runLog.instance && nextRound <= 24) {
+    runLog.instance.startRound(describeNextRound());
+  }
   if (nextRound === 1 || nextRound === 9 || nextRound === 17) {
     const chapter = S.run.chapterFor(nextRound);
     const judge   = S.run.currentJudge(nextRound);
@@ -342,6 +410,7 @@ function startRound() {
   if (augOffer) {
     S.phase = 'augment';
     S.augmentOffer = augOffer;
+    rlog({ t: 'augment_offered', offers: augOffer.slice() });
     render();
     return;
   }
@@ -349,6 +418,7 @@ function startRound() {
   if (itemOffer) {
     S.phase = 'item';
     S.itemOffer = itemOffer;
+    rlog({ t: 'item_offered', offers: itemOffer.slice() });
     render();
     return;
   }
@@ -357,17 +427,53 @@ function startRound() {
 
 // Called after augment pick (or immediately if no pick pending).
 function finishRoundSetup() {
+  const goldBefore = S.human.gold;
+  const breakdown  = S.human.incomeBreakdown ? S.human.incomeBreakdown() : null;
   S.human.earnIncome();
   S.human.shop.refresh();
   S.phase    = 'shop';
   S.sellMode = false;
+  rlog({
+    t: 'income',
+    goldBefore,
+    goldAfter: S.human.gold,
+    breakdown: breakdown,
+  });
+  rlog({
+    t: 'shop_refresh',
+    cause: 'round_start',
+    offers: (S.human.shop.offers || []).slice(),
+    locked: !!S.human.shop.locked,
+  });
   render();
 }
 
 function onReady() {
   Sound.play('roundStart');
+  // Capture board state at the moment the player commits.
+  if (runLog.instance) {
+    try { runLog.instance.setReadyState(buildReadyState()); }
+    catch (e) { console.warn('runLog readyState failed', e); }
+  }
   S.result = S.run.runBattle();
   S.phase  = 'scoring';
+  if (runLog.instance && S.result) {
+    try {
+      runLog.instance.setRoundResult({
+        round:           S.result.round,
+        playerScore:     S.result.playerScore,
+        target:          S.result.target,
+        normalTarget:    S.result.normalTarget,
+        preferredTarget: S.result.preferredTarget,
+        isCritique:      S.result.isCritique,
+        judgeId:         S.result.judgeId,
+        qualified:       S.result.qualified,
+        passed:          S.result.passed,
+        livesAfter:      S.result.livesAfter,
+        lifeGained:      !!S.result.lifeGained,
+      });
+    } catch (e) { console.warn('runLog roundResult failed', e); }
+  }
   render();
 }
 
@@ -381,6 +487,14 @@ function onContinue() {
   if (curatorOffer) {
     S.phase = 'curator';
     S.curatorOffer = curatorOffer;
+    rlog({
+      t: 'curator_offered',
+      gift: {
+        type:   curatorOffer.type,
+        id:     curatorOffer.id || null,
+        offers: curatorOffer.offers ? curatorOffer.offers.slice() : null,
+      },
+    });
     render();
     return;
   }
@@ -388,10 +502,21 @@ function onContinue() {
 }
 
 function onPickCurator(idx) {
+  const offerSnapshot = S.curatorOffer ? {
+    type:   S.curatorOffer.type,
+    offers: S.curatorOffer.offers ? S.curatorOffer.offers.slice() : null,
+  } : null;
   const result = S.run.pickCurator(idx);
   if (!result) return;
   S.phase = 'shop';
   S.curatorOffer = null;
+  rlog({
+    t: 'curator_picked',
+    pickedType: result.type,
+    pickedId:   result.id,
+    idx:        idx,
+    offered:    offerSnapshot,
+  });
   if (result.type === 'augment') {
     Sound.play('pickAugment');
     finishRoundSetup();
@@ -407,8 +532,10 @@ function onPickAugment(idx) {
   Sound.play('pickAugment');
   const scoresBefore = captureScores();
   const tiersBefore  = captureSynergyTiers();
+  const offerSnapshot = S.augmentOffer ? S.augmentOffer.slice() : null;
   const chosenId = S.run.pickAugment(idx);
   if (!chosenId) return;
+  rlog({ t: 'augment_picked', id: chosenId, idx, offered: offerSnapshot });
   if (chosenId === 'Shapeshifter') {
     S.phase = 'shapeshifter';
     render();
@@ -425,7 +552,9 @@ function onPickAugment(idx) {
 // Item pick: user chose card at index idx.
 function onPickItem(idx) {
   Sound.play('pickItem');
-  S.run.pickItem(idx);
+  const offerSnapshot = S.itemOffer ? S.itemOffer.slice() : null;
+  const chosenId = S.run.pickItem(idx);
+  rlog({ t: 'item_picked', id: chosenId, idx, offered: offerSnapshot });
   S.phase = 'shop';
   S.itemOffer = null;
   finishRoundSetup();
@@ -436,6 +565,7 @@ function onPickShapeshifter(cardId, species) {
   const card = S.human.board.allCards.find(c => c._id === cardId);
   if (card && species) {
     S.run.applyShapeshifter(card.name, species);
+    rlog({ t: 'shapeshifter_pick', cardName: card.name, cardId, species });
   }
   finishRoundSetup();
 }
@@ -555,11 +685,24 @@ function onBuyShop(slotIdx) {
   if (S.human.board.isFull()) return;
   const scoresBefore = captureScores();
   const tiersBefore  = captureSynergyTiers();
+  const offers       = (S.human.shop.offers || []).slice();
+  const goldBefore   = S.human.gold;
+  const cardsBefore  = new Set(S.human.board.allCards.map(c => c._id));
   const card = S.human.shop.buy(slotIdx);
   if (!card) return;
   Sound.play('buy');
   S.human.board.addCard(card);
+  rlog({
+    t:           'buy',
+    card:        card.name,
+    slotIdx,
+    offers,
+    cost:        goldBefore - S.human.gold,
+    goldBefore,
+    goldAfter:   S.human.gold,
+  });
   const upgraded = runCombinesWithEffect();
+  if (upgraded.length) logCombines(upgraded, cardsBefore);
   render();
   animateRankUps(upgraded);
   requestAnimationFrame(() => {
@@ -570,20 +713,47 @@ function onBuyShop(slotIdx) {
 
 function onReroll() {
   Sound.play('reroll');
+  const goldBefore = S.human.gold;
+  const cost = S.human.shop.rerollCost ? S.human.shop.rerollCost() : 2;
   S.human.shop.reroll();
+  rlog({
+    t:           'reroll',
+    cost,
+    goldBefore,
+    goldAfter:   S.human.gold,
+    newOffers:   (S.human.shop.offers || []).slice(),
+  });
   render();
 }
 
 function onLock() {
-  if (S.human.shop.locked) S.human.shop.unlock();
-  else { Sound.play('lockMarket'); S.human.shop.lock(); }
+  if (S.human.shop.locked) {
+    S.human.shop.unlock();
+    rlog({ t: 'unlock_shop' });
+  } else {
+    Sound.play('lockMarket');
+    S.human.shop.lock();
+    rlog({ t: 'lock_shop', offers: (S.human.shop.offers || []).slice() });
+  }
   render();
 }
 
 function onAddPlinth() {
   Sound.play('plinth');
-  const prevMax = S.human.board.maxActive;
+  const prevMax    = S.human.board.maxActive;
+  const goldBefore = S.human.gold;
+  const lvlBefore  = S.human.level;
   S.human.addPlinth();
+  if (S.human.level !== lvlBefore) {
+    rlog({
+      t:          'plinth',
+      cost:       goldBefore - S.human.gold,
+      levelFrom:  lvlBefore,
+      levelTo:    S.human.level,
+      goldBefore,
+      goldAfter:  S.human.gold,
+    });
+  }
   render();
   const activeEl = qs('#active-slots');
   const newSlot = activeEl.children[prevMax];
@@ -599,6 +769,20 @@ function onToggleSell() {
   render();
 }
 
+// Helper: detect cards produced by a combine and log them.
+function logCombines(upgradedIds, cardsBefore) {
+  for (const id of upgradedIds) {
+    const card = S.human.board.allCards.find(c => c._id === id);
+    if (!card) continue;
+    rlog({
+      t:     'combine',
+      card:  card.name,
+      stars: card.stars,
+      items: (card.items || []).map(e => e.id),
+    });
+  }
+}
+
 function onCardClick(cardId) {
   if (S.attachItem) {
     const card = S.human.board.allCards.find(c => c._id === cardId);
@@ -608,6 +792,12 @@ function onCardClick(cardId) {
       if (idx !== -1 && attachItem(card, S.attachItem)) {
         S.human.itemBag.splice(idx, 1);
         Sound.play('equipItem');
+        rlog({
+          t:        'item_attach',
+          itemId:   S.attachItem,
+          cardName: card.name,
+          cardId,
+        });
       }
       S.attachItem = null;
       render();
@@ -623,16 +813,34 @@ function onCardClick(cardId) {
   let upgraded = [];
   if (S.sellMode) {
     Sound.play('sell');
+    const card       = S.human.board.allCards.find(c => c._id === cardId);
+    const cardName   = card ? card.name : null;
+    const cardStars  = card ? card.stars : null;
+    const goldBefore = S.human.gold;
     S.human.sell(cardId);
+    rlog({
+      t:          'sell',
+      card:       cardName,
+      cardId,
+      stars:      cardStars,
+      refund:     S.human.gold - goldBefore,
+      goldAfter:  S.human.gold,
+    });
     S.human.runCombines();
   } else {
+    const card = S.human.board.allCards.find(c => c._id === cardId);
+    const wasActive = card && S.human.board.active.some(c => c._id === cardId);
+    const cardsBefore = new Set(S.human.board.allCards.map(c => c._id));
     if (!S.human.board.moveToActive(cardId)) {
       Sound.play('cardBench');
       S.human.board.moveToBench(cardId);
+      rlog({ t: 'move', card: card ? card.name : null, cardId, from: 'active', to: 'bench' });
     } else {
       Sound.play('cardActive');
+      rlog({ t: 'move', card: card ? card.name : null, cardId, from: wasActive ? 'active' : 'bench', to: 'active' });
     }
     upgraded = runCombinesWithEffect();
+    if (upgraded.length) logCombines(upgraded, cardsBefore);
   }
   render();
   animateRankUps(upgraded);
@@ -1180,6 +1388,22 @@ function showGameOverModal() {
   Sound.play(survived ? 'gameWin' : 'gameLoss');
 
   const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
+
+  if (runLog.instance) {
+    try {
+      runLog.instance.endGame({
+        survived,
+        roundsCompleted:  run.round,
+        livesRemaining:   run.lives,
+        peakScore:        run.peakScore,
+        exhibitionRating: ratingRes ? ratingRes.rating : null,
+        isNewBest:        ratingRes ? !!ratingRes.isNewBest : null,
+        finalLevel:       h.level,
+        augmentsTaken:    (run.augments || []).slice(),
+        unlocksThisRun:   (run.newlyUnlocked || []).map(a => a.id),
+      });
+    } catch (e) { console.warn('runLog endGame failed', e); }
+  }
   // Try to unlock the next difficulty tier when player clears all 24 rounds.
   const newTierUnlock = (survived && RANKING) ? RANKING.tryUnlockNextTier(RANKING.getActiveTier().id) : null;
   const newUnlocks = run.newlyUnlocked || [];
@@ -1257,6 +1481,11 @@ function showGameOverModal() {
     <button class="btn-view-coll" id="btn-view-coll">View Collection →</button>
   </div>`;
 
+  html += `<div class="runlog-row">
+    <button class="btn-download-log" id="btn-modal-download-log">📥 Download Run Log (JSON)</button>
+    <span class="stat-dim runlog-hint">Share this file for analysis — captures every round, decision, and score.</span>
+  </div>`;
+
   html += `<div class="area-label" style="margin-top:14px;margin-bottom:6px">Next Run Difficulty</div>`;
   html += `<div id="modal-diff-picker"></div>`;
 
@@ -1264,6 +1493,8 @@ function showGameOverModal() {
   renderDifficultyPicker(qs('#modal-diff-picker'));
   const vcBtn = qs('#btn-view-coll');
   if (vcBtn) vcBtn.onclick = showCollectionModal;
+  const dlBtn = qs('#btn-modal-download-log');
+  if (dlBtn) dlBtn.onclick = onDownloadLog;
   qs('#modal-actions').classList.remove('hidden');
   qs('#btn-continue').textContent = 'Play Again';
   qs('#btn-continue').onclick = () => { newGame(); };
@@ -1448,6 +1679,7 @@ function makeCard(card, context, shopCost, bd) {
           if (detachItem(card, capturedId)) {
             Sound.play('unequipItem');
             S.human.itemBag.push(capturedId);
+            rlog({ t: 'item_detach', itemId: capturedId, cardName: card.name, cardId: card._id });
           }
           render();
           requestAnimationFrame(() => animatePlanningDeltas(scoresBefore));

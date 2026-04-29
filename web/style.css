@@ -957,3 +957,19 @@ button:disabled { opacity: 0.4; cursor: default; }
   color: #79c0ff; font-size: 12px; padding: 3px 10px; cursor: pointer;
 }
 .btn-view-coll:hover { border-color: #79c0ff; background: rgba(121,192,255,0.08); }
+
+/* ── Run log download (HUD + game-over modal) ── */
+#btn-download-log {
+  font-size: 13px; padding: 2px 8px; line-height: 1;
+}
+.runlog-row {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.btn-download-log {
+  background: none; border: 1px solid #79c0ff; border-radius: 5px;
+  color: #79c0ff; font-size: 13px; padding: 6px 12px; cursor: pointer;
+  align-self: flex-start;
+}
+.btn-download-log:hover { background: rgba(121,192,255,0.10); }
+.runlog-hint { font-size: 11px; opacity: 0.7; }
