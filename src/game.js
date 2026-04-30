@@ -157,6 +157,8 @@ class Player {
     // augments is wired to run.augments by Run constructor (shared reference).
     this.augments  = [];
     this.itemBag   = [];
+    // Phase 26: { cardName: roundsRemaining } — excluded from shop draws while > 0.
+    this.rivalCooldowns = {};
   }
 
   // Tycoon doubles the interest component only (not base or streak).
@@ -496,6 +498,26 @@ class Run {
       scoreBreakdown,
     };
     this.battleHistory.push(entry);
+
+    // Phase 26: rival-claim bookkeeping.
+    // 1. Tick down existing cooldowns (entries reaching 0 are dropped).
+    // 2. Any rival-flagged shop slot still holding a card (= unbought) → claim
+    //    that card for 2 rounds. Player must compete next time it appears.
+    const cd = this.player.rivalCooldowns;
+    for (const name of Object.keys(cd)) {
+      cd[name]--;
+      if (cd[name] <= 0) delete cd[name];
+    }
+    const shop = this.player.shop;
+    if (shop && shop.rivalFlags) {
+      for (let i = 0; i < shop.offers.length; i++) {
+        if (shop.rivalFlags[i] && shop.offers[i]) {
+          cd[shop.offers[i]] = 2;
+        }
+      }
+    }
+    entry.rivalClaimed = Object.keys(cd).slice();
+
     return entry;
   }
 

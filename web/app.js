@@ -999,6 +999,16 @@ function renderShopOffers() {
     const el   = makeCard({ ...def, stars: 1, _id: -1 }, 'shop', cost);
     if (S.human.gold < cost || S.human.board.isFull()) el.classList.add('unaffordable');
 
+    // Phase 26: rival exhibitor wants this card. If unbought, it's gone for 2 rounds.
+    if (S.human.shop.rivalFlags && S.human.shop.rivalFlags[i]) {
+      el.classList.add('rival-claimed');
+      const tag = document.createElement('div');
+      tag.className = 'rival-tag';
+      tag.textContent = '👁 Wanted';
+      tag.title = 'Another exhibitor wants this. Pass on it and they\'ll take it — unavailable to you for 2 rounds.';
+      el.appendChild(tag);
+    }
+
     // Owned-copy counter: teaches the "3-of-a-kind upgrades" rule implicitly.
     const ownedCopies = owned.filter(c => c.name === name && c.stars === 1).length;
     if (ownedCopies > 0) {

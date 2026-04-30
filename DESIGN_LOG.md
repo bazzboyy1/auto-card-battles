@@ -6,9 +6,26 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Elite target recalibration v0.43 (2026-04-29). Graduated per-round Elite multiplier shipped based on 5 human Elite run logs.
+**Phase:** Phase 26 core mechanic shipped (v0.44, 2026-04-30). Rival market scarcity wired through Shop/Run/UI. Browser-verified end-to-end. Awaiting playtest data.
 
-**Next action:** Player plays 2–3 Elite Circuit runs with v0.43 and reports whether the late-game comfort window (R19-R24) now feels pressured. If E3-style builds (7000–8000 R24 scores) feel tight rather than automatic, recalibration is done and production plan step 5 (new species cards) can resume. If not, iterate on the R19-R24 mults in `src/ranking.js` (elite tier `mults` array, indices 18-23).
+**Next action:** Playtest v0.44. Capture 4–6 Elite Circuit runs and check: (a) does the shop phase feel more contested? (b) does the coasting loop break? (c) is 1 flag/round + 2-round cooldown the right tuning, or punish/loosen? Then iterate on targeting heuristic (random → dominant-species 40/60) and rival cap.
+
+**Phase 26 v0.44 (2026-04-30):**
+- **`src/shop.js`:** `Shop.rivalFlags[]` parallel to `offers[]`, set per-refresh and per-reroll. `_flagRival()` picks 1 random non-null offer using `player.rng`. `drawOffers()` accepts `excludeSet` of names under cooldown. `buy()` clears the flag on the bought slot.
+- **`src/game.js`:** `Player.rivalCooldowns = { cardName: roundsRemaining }`. End of `Run.runBattle()`: tick existing entries down (drop ≤0), then for each rival-flagged-but-unbought offer, set cooldown=2. Yields 2-round exclusion (R+1 and R+2 shops skip the name; R+3 it's back).
+- **`web/app.js`:** rival flag renders as `.rival-tag` (👁 Wanted) + `.card.rival-claimed` outline on the shop card. Tooltip explains the consequence.
+- **`web/style.css`:** pink outline + corner badge for claimed cards.
+- **Sim impact:** greedy n=300 — 30.3% → 30.7% survival, within noise. AI is unaware of flags so it competes as before; mechanic only bites human play that was actively *wanting* a flagged card. This is correct behavior, but means the sim won't reflect the playtest pressure — measure feel via runs, not survival deltas.
+- **Dead-species hypothesis confirmed (2026-04-30):** `avoid-chitinous` (28.0%), `avoid-crystalline` (31.0%), `avoid-both` (29.0%) all within ~1pp of greedy baseline (30.3%) at n=300. Skipping those species costs nothing — they really are dead picks under sim heuristics. Phase 26 mechanic doesn't depend on fixing this; rival can claim dead-species cards harmlessly. Buff/redesign deferred.
+
+**v0.43 playtesting findings (2026-04-30):**
+- Graduated R19–R24 Elite mults confirmed working: R21 (×1.40) is the consistent pressure point (138–234 margin), R24 (×1.50) caused one genuine failure. The late-game comfort window is closing.
+- 8 Elite Circuit runs total: 5 survived, 3 died (R6, R20, R24). Surviving peaks: 7200–14881. Healthy spread.
+- HeroicResolve + TimeDilation stacking is a high outlier (14881 peak vs. 7200–8820 for other winning builds) — worth monitoring but not alarming at n=2.
+- **Core design diagnosis:** The game is a score execution game wearing the skin of a strategy game. Once a build is identified, the player executes it without contest. The autochess "musical chairs" tension (shared pool scarcity, opposing demand) is absent — this is the primary engagement problem. More content does not fix it.
+- **Player meta-knowledge solidified after ~10 runs:** Abyssal and Sporal are dominant; Chitinous/Crystalline avoided (needs sim validation); coasting loop (score well → hoard gold → earn interest → deploy → repeat) runs R4–R18 unchallenged; global multiplier cards can be stacked as 1★ aura sources (potential abuse case).
+- **Proposed fix:** Simulated rival demand on shop cards — 1–2 cards per round flagged as also wanted; skipping them makes them unavailable for 2 rounds. Creates buy-or-save tension without real opponents. Full spec in `design_log/phase_26_plan.md`.
+- **What stays:** Scoring, lives, graduated Elite targets, judges, augments, items — all working or close.
 
 **Elite target recalibration (2026-04-29):** v0.43.
 - **Analysis basis:** 5 Elite Circuit run logs — 3 survived (peak 7180–12741), 2 died (R6, R23). Pattern: early game (R4-R8) is already a genuine danger zone under ×1.25; late game (R19-R24) was trivial after gold dump (~L9 unlock between R14-R19 causes score spike from ~4000 to 8000-12000+).
@@ -520,6 +537,7 @@ Class synergy values (final):
 - **`design_log/phase_23_plan.md`** — Phase 23 plan: Unlock system. Run achievements gate 5 new content pieces (2 augments, 1 judge, 2 items). Full spec: data structures, achievement conditions, pool filtering, UI, implementation phases.
 - **`design_log/balance_principles.md`** — Design philosophy: viable diversity target, numeric survival targets, dead-ends vs. commitment paths, species/class synergy calibration rules, asymmetric balance limitations. Read before any design work.
 - **`design_log/phase_25_plan.md`** — Phase 25 plan: 9 new achievement/reward slots (plasmic_master, pompous_devotee, emotional_virtuoso, patient_master, star_curator, late_game_collector, discerning_graduate, elite_curator, grand_survivor). Full implementation spec including board.js hooks, ctx arg extension, unit tests, balance checks.
+- **`design_log/phase_26_plan.md`** — Phase 26 plan: Simulated Market Scarcity. Core design diagnosis (score execution game, autochess tension void), proposed rival demand mechanic, secondary issues (dead species validation, global multiplier stacking, Murborg passive), implementation order, open questions.
 
 ---
 

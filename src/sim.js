@@ -265,6 +265,9 @@ function scoreBuyCandidate(def, player, round, bias) {
       if (!uniqueSpecies.has(def.species)) score += 18;
       if (sameSpecies >= 3) score -= 12;
     }
+    // avoidSpecies: heavy penalty so the AI only buys these if nothing else is on offer.
+    // Models the player meta of skipping Chitinous/Crystalline whenever an alternative exists.
+    if (bias.avoidSpecies && bias.avoidSpecies.includes(def.species)) score -= 100;
   }
 
   return score;
@@ -386,6 +389,12 @@ function pompousStackPolicy(player, round = 1) { greedyCore(player, round, { cls
 // a dominant build not caught by single-species commits.
 function abyssalSporalMixPolicy(player, round = 1) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }); }
 
+// Dead-species avoidance: validates the Phase 26 hypothesis that skipping
+// Chitinous/Crystalline is at-or-better than the greedy baseline.
+function avoidChitinousPolicy(player, round = 1)   { greedyCore(player, round, { avoidSpecies: ['Chitinous'] }); }
+function avoidCrystallinePolicy(player, round = 1) { greedyCore(player, round, { avoidSpecies: ['Crystalline'] }); }
+function avoidBothPolicy(player, round = 1)        { greedyCore(player, round, { avoidSpecies: ['Chitinous', 'Crystalline'] }); }
+
 // Score of the current board in the context of an upcoming round.
 function boardScore(player, round, run) {
   const ctx = { round, player, augments: run ? run.augments : (player.augments || []) };
@@ -506,6 +515,9 @@ const POLICIES = {
   'pompous-stack':     pompousStackPolicy,
   'abyssal-sporal':    abyssalSporalMixPolicy,
   'economy-stack':     economyStackPolicy,
+  'avoid-chitinous':   avoidChitinousPolicy,
+  'avoid-crystalline': avoidCrystallinePolicy,
+  'avoid-both':        avoidBothPolicy,
 };
 
 // ── Game Runner ───────────────────────────────────────────────────────────────
