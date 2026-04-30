@@ -3,6 +3,7 @@
 // ── Module refs ───────────────────────────────────────────────────────────────
 let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
 let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS;
+let TASTES, getTaste;
 let ITEM_DEFS, attachItem, detachItem;
 let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
@@ -36,6 +37,7 @@ document.addEventListener('acb-ready', () => {
   ({ mulberry32 }                                  = window.ACB.utils);
   ({ CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT } = window.ACB.cards);
   ({ Run, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS } = window.ACB.game);
+  ({ TASTES, getTaste } = window.ACB.judges);
   ({ POLICIES }                                    = window.ACB.sim);
   ({ ITEM_DEFS, attachItem, detachItem }           = window.ACB.items);
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
@@ -101,21 +103,21 @@ function buildReadyState() {
 function describeNextRound() {
   const nextRound = S.run.round + 1;
   if (nextRound > 24) return null;
-  const judge   = S.run.currentJudge(nextRound);
-  const tEntry  = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
-  const diff    = (S.run.diffMults && S.run.diffMults[nextRound - 1]) || S.run.diffMult || 1.0;
-  const target  = tEntry ? {
-    normalBase:    tEntry.target,
-    preferredBase: tEntry.preferredTarget,
-    isCritique:    !!tEntry.isCritique,
-    diffMult:      diff,
-    normal:        Math.round(tEntry.target * diff),
-    preferred:     tEntry.preferredTarget != null ? Math.round(tEntry.preferredTarget * diff) : null,
+  const judge      = S.run.currentJudge(nextRound);
+  const tEntry     = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
+  const diff       = (S.run.diffMults && S.run.diffMults[nextRound - 1]) || S.run.diffMult || 1.0;
+  const judgeScale = S.run && S.run.useJudgeScoring ? 0.68 : 1.0;
+  const target = tEntry ? {
+    normalBase: tEntry.target,
+    isCritique: !!tEntry.isCritique,
+    diffMult:   diff,
+    judgeScale,
+    normal:     Math.round(tEntry.target * diff * judgeScale),
   } : null;
   return {
     round:   nextRound,
     chapter: S.run.chapterFor(nextRound),
-    judge,
+    judge:   judge ? { id: judge.id, name: judge.name, taste: judge.taste, flavor: judge.flavor } : null,
     target,
   };
 }
@@ -238,20 +240,60 @@ function showAttentionToast(msg) {
 
 function showChapterReveal(chapter, judge) {
   const label = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
+  const taste = judge && judge.taste && getTaste ? getTaste(judge.taste) : null;
+  const tasteName = taste ? taste.name : '';
+  const flavor = (judge && judge.flavor) || (taste && taste.flavor) || '';
+  const hint = taste ? taste.hint : '';
   const el = document.createElement('div');
   el.className = 'chapter-reveal';
   el.innerHTML = `
     <div class="chapter-reveal-label">Chapter ${chapter}</div>
     <div class="chapter-reveal-chapter">${label}</div>
-    <div class="chapter-reveal-judge">${judge.name}</div>
-    <div class="chapter-reveal-pref">${judge.preference}</div>
+    <div class="chapter-reveal-judge">${judge.name}${tasteName ? ` <span class="chapter-reveal-taste">· ${tasteName}</span>` : ''}</div>
+    <div class="chapter-reveal-pref">"${flavor}"</div>
+    ${hint ? `<div class="chapter-reveal-hint">${hint}</div>` : ''}
   `;
   document.body.appendChild(el);
   setTimeout(() => {
     el.style.transition = 'opacity 0.4s';
     el.style.opacity = '0';
     setTimeout(() => el.remove(), 420);
-  }, 2200);
+  }, 2400);
+}
+
+// Phase 27: run-start judge slate reveal — shows the full 4-judge lineup so
+// the player can plan ahead.
+function showJudgeSlateReveal() {
+  if (!S.run || !S.run.headJudges) return;
+  const slateIds = S.run.headJudges;
+  const items = slateIds.map((id, i) => {
+    const judge = HEAD_JUDGES.find(j => j.id === id);
+    if (!judge) return '';
+    const taste = getTaste ? getTaste(judge.taste) : null;
+    const chapterLabel = CHAPTER_LABELS[i] || `Chapter ${i + 1}`;
+    return `
+      <div class="slate-row">
+        <div class="slate-chapter">${chapterLabel}</div>
+        <div class="slate-judge">${judge.name}</div>
+        <div class="slate-taste">${taste ? taste.name : ''}</div>
+        <div class="slate-hint">${taste ? taste.hint : ''}</div>
+      </div>
+    `;
+  }).join('');
+  const overlay = document.createElement('div');
+  overlay.className = 'slate-overlay';
+  overlay.innerHTML = `
+    <div class="slate-box">
+      <div class="slate-title">Tonight's Salon</div>
+      <div class="slate-sub">Four judges will assess your collection.</div>
+      ${items}
+      <button class="btn-primary slate-dismiss">Begin</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const dismiss = () => overlay.remove();
+  overlay.querySelector('.slate-dismiss').onclick = dismiss;
+  overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
 }
 
 // Render the judge panel below the HUD sub-row.
@@ -266,45 +308,34 @@ function renderJudgePanel() {
   if (!judge) { panel.classList.add('hidden'); return; }
 
   const chapterLabel = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
-  const qualifying   = !judge.isNeutral && judge.qualifies(S.human.board, S.run.augments);
+  const taste        = getTaste ? getTaste(judge.taste) : null;
   const tEntry       = ROUND_TARGETS && ROUND_TARGETS[nextRound - 1];
-  const normalTarget    = tEntry ? tEntry.target : null;
-  const preferredTarget = tEntry ? tEntry.preferredTarget : null;
-  const isCritiqueNext  = tEntry ? tEntry.isCritique : false;
-  const critiqueTag     = isCritiqueNext ? ' <span class="judge-critique-tag">★ Critique</span>' : '';
+  const diff         = (S.run.diffMults && S.run.diffMults[nextRound - 1]) || S.run.diffMult || 1.0;
+  // Phase 27: targets are scaled at scoring time when useJudgeScoring is on.
+  const judgeScale   = S.run.useJudgeScoring ? 0.68 : 1.0;
+  const normalTarget = tEntry ? Math.round(tEntry.target * diff * judgeScale) : null;
+  const isCritiqueNext = tEntry ? tEntry.isCritique : false;
+  const critiqueTag    = isCritiqueNext ? ' <span class="judge-critique-tag">★ Critique</span>' : '';
 
-  let statusHtml;
-  if (judge.isNeutral) {
-    const tStr = normalTarget !== null ? ` · Target: <strong>${normalTarget}</strong>` : '';
-    statusHtml = `<span class="judge-not-qualifying">All equally scored${tStr}</span>`;
-  } else if (qualifying) {
-    const tStr = preferredTarget !== null ? `<strong>${preferredTarget}</strong>` : '−15%';
-    const hint = judge.qualifyingHint ? `${judge.qualifyingHint} → ` : '';
-    statusHtml = `<span class="judge-qualifying">✓ ${hint}Target: ${tStr}</span>`;
-  } else {
-    const tNorm = normalTarget !== null ? `<strong>${normalTarget}</strong>` : '';
-    const tPref = preferredTarget !== null ? ` <span class="judge-pref-hint">(${preferredTarget} if met)</span>` : '';
-    statusHtml = `<span class="judge-not-qualifying">${judge.qualifyingHint} → ${tNorm}${tPref}</span>`;
-  }
+  const tasteName = taste ? taste.name : '';
+  const tasteHint = taste ? taste.hint : '';
+  const flavor    = judge.flavor || (taste && taste.flavor) || '';
+  const tStr      = normalTarget !== null ? ` · Target: <strong>${normalTarget}</strong>` : '';
 
   panel.innerHTML = `
     <span class="judge-chapter">Ch.${chapter} · ${chapterLabel}${critiqueTag}</span>
     <span class="judge-divider">|</span>
     <span class="judge-name">${judge.name}</span>
-    <span class="judge-pref">"${judge.preference}"</span>
-    ${statusHtml}
+    <span class="judge-taste-tag">${tasteName}</span>
+    <span class="judge-pref">"${flavor}"</span>
+    <span class="judge-hint">${tasteHint}${tStr}</span>
   `;
   panel.classList.remove('hidden');
 
-  // Keep target visible in the persistent HUD sub-row.
   const targetPreviewEl = qs('#target-preview');
   if (targetPreviewEl && normalTarget !== null) {
-    const showTarget = (qualifying && preferredTarget) ? preferredTarget : normalTarget;
-    const label = (qualifying && preferredTarget)
-      ? `Target: ${showTarget} (preferred)`
-      : `Target: ${showTarget}`;
-    targetPreviewEl.textContent = label;
-    targetPreviewEl.className = qualifying ? 'qualifying' : '';
+    targetPreviewEl.textContent = `Target: ${normalTarget}`;
+    targetPreviewEl.className = '';
   } else if (targetPreviewEl) {
     targetPreviewEl.textContent = '';
     targetPreviewEl.className = '';
@@ -381,7 +412,7 @@ function showGrandFinaleReveal() {
   el.innerHTML = `
     <div class="chapter-reveal-label">Round 24</div>
     <div class="chapter-reveal-chapter">Grand Finale</div>
-    <div class="chapter-reveal-pref">All judges present · Final score</div>
+    <div class="chapter-reveal-pref">The final judge takes their seat</div>
   `;
   document.body.appendChild(el);
   setTimeout(() => {
@@ -397,13 +428,20 @@ function startRound() {
   if (runLog.instance && nextRound <= 24) {
     runLog.instance.startRound(describeNextRound());
   }
-  if (nextRound === 1 || nextRound === 9 || nextRound === 17) {
+  if (nextRound === 1) {
+    // Phase 27: run-start slate reveal subsumes the chapter-1 chapter reveal.
+    setTimeout(() => showJudgeSlateReveal(), 150);
+  } else if (nextRound === 9 || nextRound === 17) {
     const chapter = S.run.chapterFor(nextRound);
     const judge   = S.run.currentJudge(nextRound);
     if (judge) setTimeout(() => showChapterReveal(chapter, judge), 150);
   }
   if (nextRound === 24) {
-    setTimeout(() => showGrandFinaleReveal(), 150);
+    const finaleJudge = S.run.currentJudge(24);
+    setTimeout(() => {
+      showGrandFinaleReveal();
+      if (finaleJudge) setTimeout(() => showChapterReveal(4, finaleJudge), 1800);
+    }, 150);
   }
 
   const augOffer = S.run.pendingAugment();
@@ -1791,12 +1829,12 @@ function showScoringModal() {
 
   const judge = HEAD_JUDGES.find(j => j.id === r.judgeId);
   const judgeName = judge ? judge.name : 'The Judges';
+  const taste     = judge && getTaste ? getTaste(judge.taste) : null;
+  const tasteTag  = taste ? ` · ${taste.name}` : '';
   const heading = r.isCritique
-    ? `Critique Session — ${judgeName}`
-    : `Round ${r.round} — ${judgeName}`;
-  const preferredNote = (r.qualified && judge && !judge.isNeutral)
-    ? `<div style="font-size:11px;color:#3fb950;margin-top:2px">✓ Preferred (−15% applied)</div>`
-    : '';
+    ? `Critique Session — ${judgeName}${tasteTag}`
+    : `Round ${r.round} — ${judgeName}${tasteTag}`;
+  const preferredNote = '';
   if (r.isCritique) {
     qs('#modal').classList.add('critique-round');
   } else {

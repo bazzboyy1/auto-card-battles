@@ -6,6 +6,7 @@ const { CARD_COSTS, CARD_DEFS, createCard, CLASS_SYNERGIES } = require('./cards'
 const { attachItem, ITEM_DEFS, getAvailableItems } = require('./items');
 const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
 const { isUnlocked, incrementAchievementCounters } = require('./achievements');
+const { JUDGES, getJudge, getTaste, drawJudgeSlate } = require('./judges');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -20,96 +21,19 @@ const STARTING_LIVES = 3;
 
 const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20, 7: 24, 8: 28 };
 
-// Six judges — one drawn per chapter per run (no repeats).
-// preferredTarget on ROUND_TARGETS applies when the board meets a judge's qualifying condition.
-const HEAD_JUDGES = [
-  {
-    id: 'vlorb',
-    name: 'Judge Vlorb',
-    preference: 'Fascinated by Void specimens',
-    qualifyingHint: '2+ Abyssal active',
-    qualifies: (board) => board.active.filter(c => c.species === 'Abyssal').length >= 2,
-  },
-  {
-    id: 'praxis',
-    name: 'Curator Praxis',
-    preference: 'Values long-term commitment',
-    qualifyingHint: '3+ cards held 8+ rounds',
-    qualifies: (board) => board.active.filter(c => (c.roundsSinceBought || 0) >= 8).length >= 3,
-  },
-  {
-    id: 'shen_nax',
-    name: 'Critic Shen-Nax',
-    preference: 'Demands only the finest specimens',
-    qualifyingHint: '2+ T3 cards active',
-    qualifies: (board) => board.active.filter(c => c.tier === 3).length >= 2,
-  },
-  {
-    id: 'yorzal',
-    name: 'Judge Yorzal',
-    preference: 'Expects emotional coherence',
-    qualifyingHint: '2+ class synergies active',
-    qualifies: (board) => {
-      const { counts } = effectiveClassCounts(board);
-      return Object.keys(counts).filter(cls => {
-        const syn = CLASS_SYNERGIES[cls];
-        return syn && syn.getBonus(counts[cls]);
-      }).length >= 2;
-    },
-  },
-  {
-    id: 'collective',
-    name: 'The Collective',
-    preference: 'Rewards breadth of collection',
-    qualifyingHint: '4+ distinct species active',
-    qualifies: (board) => new Set(board.active.map(c => c.species)).size >= 4,
-  },
-  {
-    id: 'assembly',
-    name: 'The Assembly',
-    preference: 'Pure exhibition merit',
-    qualifyingHint: null,  // no preference bonus — target is always base
-    isNeutral: true,
-    qualifies: () => false,
-  },
-  {
-    id: 'vrethix',
-    name: 'Appraiser Vrethix',
-    preference: 'Appreciates emotional range in a collection',
-    qualifyingHint: '3+ class synergies active',
-    locked: true,
-    qualifies: (board) => {
-      const { counts } = effectiveClassCounts(board);
-      return Object.keys(counts).filter(cls => {
-        const syn = CLASS_SYNERGIES[cls];
-        return syn && syn.getBonus(counts[cls]);
-      }).length >= 3;
-    },
-  },
-  {
-    id: 'sormax',
-    name: 'Appraiser Sormax',
-    preference: 'Rewards long-term dedication to specimens',
-    qualifyingHint: '4+ cards held 10+ rounds',
-    locked: true,
-    qualifies: (board) => board.active.filter(c => (c.roundsSinceBought || 0) >= 10).length >= 4,
-  },
-];
+// Phase 27: judges + tastes live in src/judges.js. Re-exported below as
+// HEAD_JUDGES for back-compat with web/app.js. Each judge now has:
+//   { id, name, taste, chapter, flavor }
+// where `taste` is a key into TASTES; the score function lives there.
+// `preference`, `qualifyingHint`, `qualifies`, `isNeutral` from the legacy
+// shape are stubbed via UI-side handling — the qualify/preferred-target
+// mechanic was retired together with species/class %-mults.
+const HEAD_JUDGES = JUDGES;
 
-// Curated gift for each judge's critique round.
-// 'item' → item pushed to player.itemBag; 'augment' → applied immediately;
-// 'augment-pick' → 3-choice free augment offer (The Assembly only).
-// The Assembly's Shapeshifter is filtered out of its pool to avoid nested sub-picks.
-const CURATOR_SELECTIONS = {
-  vlorb:      { type: 'item',         id: 'Emblem of Abyssal' },    // Taxonomy Badge: Abyssal
-  praxis:     { type: 'item',         id: "Guinsoo's Rageblade" },   // Acclimatisation Log
-  shen_nax:   { type: 'item',         id: "Giant's Belt" },          // Rarity Certificate
-  yorzal:     { type: 'augment',      id: 'CrossTraining' },         // Cross-Pollination
-  collective: { type: 'augment',      id: 'Varietal' },              // Diverse Portfolio
-  assembly:   { type: 'augment-pick' },                              // free 3-choice pick
-  vrethix:    { type: 'augment', id: 'CrossTraining' },             // Cross-Pollination
-  sormax:     { type: 'item',   id: "Guinsoo's Rageblade" },        // Acclimatisation Log
-};
+// Phase 27: curator gifts retired pending the judge-personality rework
+// (plan: rolled into judge personalities in a later phase). For now, no
+// judge has a CURATOR_SELECTIONS entry, so pendingCurator() returns null.
+const CURATOR_SELECTIONS = {};
 
 // Score targets for each of the 24 rounds.
 // preferredTarget = base × 0.85 (rounded). Applied when board meets current judge's condition.
@@ -287,7 +211,7 @@ class Player {
 //   (random from unpicked augments) and returns it. The caller (sim loop or
 //   browser) must call pickAugment(idx) before earnIncome + shop phase that
 //   round, so Midas/Tycoon effects apply immediately.
-const CHAPTER_LABELS = ['Opening Exhibition', 'Main Exhibition', 'Grand Exhibition'];
+const CHAPTER_LABELS = ['Opening Exhibition', 'Main Exhibition', 'Grand Exhibition', 'Grand Finale'];
 
 class Run {
   constructor(rng, diffMult = 1.0, diffMults = null) {
@@ -308,41 +232,29 @@ class Run {
     this.peakScore        = 0;
     this.battleHistory    = [];
     this.newlyUnlocked    = [];
-    this.headJudges       = this._assignJudges(); // [ch1Id, ch2Id, ch3Id]
+    // Phase 27: 4-judge slate = 3 chapters + 1 Grand Finale.
+    this.headJudges       = drawJudgeSlate(this.rng);
+    // Default to taste-driven scoring; LEGACY_SCORING=1 (Node only) flips it
+    // off for ad-hoc A/B during calibration. Browser path doesn't see env.
+    this.useJudgeScoring  = !(typeof process !== 'undefined' && process.env && process.env.LEGACY_SCORING === '1');
     this._curatorsPicked  = new Set();
     this.curatorOffers    = {};
   }
 
-  // Draw 3 judges without repeats. Shen-Nax (requires 2+ T3 active) is excluded
-  // from Ch1 (rounds 1-8) where T3 cards are nearly impossible to field.
-  _assignJudges() {
-    const allIds  = HEAD_JUDGES.filter(j => !j.locked || isUnlocked(j.id)).map(j => j.id);
-    const ch1Pool = allIds.filter(id => id !== 'shen_nax');
-    const rest    = allIds.slice();
-    const chosen  = [];
-
-    const i1 = Math.floor(this.rng() * ch1Pool.length);
-    const ch1 = ch1Pool[i1];
-    chosen.push(ch1);
-    rest.splice(rest.indexOf(ch1), 1);
-
-    while (chosen.length < 3) {
-      const idx = Math.floor(this.rng() * rest.length);
-      chosen.push(rest.splice(idx, 1)[0]);
-    }
-    return chosen;
-  }
-
-  // Chapter number (1–3) for a given round (1–24).
+  // Chapter number for a round.
+  // R1-8 → 1, R9-16 → 2, R17-23 → 3, R24 → 4 (Grand Finale).
   chapterFor(round) {
-    return Math.min(3, Math.ceil(Math.max(1, round) / 8));
+    const r = Math.max(1, round);
+    if (r >= 24) return 4;
+    return Math.min(3, Math.ceil(r / 8));
   }
 
   // Head judge object for a given round (defaults to this.round).
   currentJudge(round) {
-    const r = round !== undefined ? round : this.round;
-    const chIdx = Math.min(2, Math.floor((Math.max(1, r) - 1) / 8));
-    return HEAD_JUDGES.find(j => j.id === this.headJudges[chIdx]) || null;
+    const r   = round !== undefined ? round : this.round;
+    const ch  = this.chapterFor(Math.max(1, r));
+    const id  = this.headJudges[ch - 1];
+    return id ? (getJudge(id) || null) : null;
   }
 
   // Returns the 3-id offer for the upcoming round if a pick is pending,
@@ -423,19 +335,54 @@ class Run {
       player:   this.player,
       augments: this.augments,
     };
-    const scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
-    const playerScore    = scoreBreakdown.total;
+
+    const judge = this.currentJudge(this.round);
+    let playerScore;
+    let scoreBreakdown;
+
+    if (this.useJudgeScoring) {
+      // Phase 27 path: per-card baseScores from Stages 0–2 only, then the
+      // current judge's taste rule produces the appraisal.
+      const baseBd = this.player.board.calcBaseBreakdown(ctx);
+      const taste  = judge ? getTaste(judge.taste) : null;
+      const baseScores = baseBd.perCard.map(e => e.baseScore);
+      const tasteCtx = {
+        firedPassives: baseBd.firedPassives,
+        maxActive:     this.player.board.maxActive,
+        round:         this.round,
+      };
+      playerScore = taste
+        ? taste.score(this.player.board.active, baseScores, tasteCtx)
+        : baseScores.reduce((s, v) => s + v, 0);
+      // Reshape into the legacy { total, perCard } the scoring modal expects.
+      scoreBreakdown = {
+        total:   playerScore,
+        perCard: baseBd.perCard.map(e => ({
+          card:    e.card,
+          rawBase: e.card.baseScore,
+          final:   e.baseScore,
+          lines:   e.lines,
+        })),
+      };
+    } else {
+      scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
+      playerScore    = scoreBreakdown.total;
+    }
 
     const { counts: classCounts } = effectiveClassCounts(this.player.board);
 
-    const { target: baseNormal, preferredTarget: basePref, isCritique } = ROUND_TARGETS[this.round - 1];
-    const roundMult       = (this.diffMults && this.diffMults[this.round - 1]) || this.diffMult;
-    const normalTarget    = Math.round(baseNormal * roundMult);
-    const preferredTarget = Math.round(basePref   * roundMult);
-    const judge     = this.currentJudge(this.round);
-    const qualified = judge ? judge.qualifies(this.player.board, this.augments) : false;
-    const target    = (qualified && preferredTarget != null) ? preferredTarget : normalTarget;
-    const passed    = playerScore >= target;
+    const { target: baseNormal, isCritique } = ROUND_TARGETS[this.round - 1];
+    const roundMult     = (this.diffMults && this.diffMults[this.round - 1]) || this.diffMult;
+    // Phase 27: scoring magnitudes shrank with the species/class %-mult cut,
+    // so flat-curve targets are scaled here. Phase 31+ replaces this with
+    // explicit per-judge thresholds.
+    const judgeScale    = this.useJudgeScoring ? 0.68 : 1.0;
+    const normalTarget  = Math.round(baseNormal * roundMult * judgeScale);
+    // Phase 27: qualify/preferredTarget mechanic retired with species/class %-mults.
+    const preferredTarget = null;
+    const qualified       = false;
+    const target          = normalTarget;
+    const passed          = playerScore >= target;
 
     if (playerScore > this.peakScore) this.peakScore = playerScore;
     if (!passed) this.lives = Math.max(0, this.lives - 1);

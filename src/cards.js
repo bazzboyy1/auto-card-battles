@@ -34,6 +34,7 @@ const CARD_DEFS = [
   // Tier 1 — cost 3g
   {
     name: 'Blorpax', species: 'Plasmic', class: 'Sullen', tier: 1, baseScore: 50,
+    tags: ['Bizarre', 'Ostentatious'],
     flavor: 'Blorpaxes ooze a translucent slime that other Plasmics instinctively bathe in. The cluster effect is, frankly, more impressive than any of them alone.',
     passive: {
       description: '+20 per other Plasmic on board',
@@ -46,6 +47,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Slurvin', species: 'Plasmic', class: 'Livid', tier: 1, baseScore: 55,
+    tags: ['Ostentatious'],
     flavor: 'Slurvins become visibly furious in the presence of superior specimens. Judges find their seething plasma glow striking. They do not take this well.',
     passive: {
       description: '+25% score per 2★+ unit on board (self counts)',
@@ -58,6 +60,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Sporvik', species: 'Sporal', class: 'Sullen', tier: 1, baseScore: 52,
+    tags: ['Quaint'],
     flavor: 'Sporviks continuously weep a glistening amber fluid of significant pharmaceutical value. You pocket the proceeds. Sporviks don\'t notice.',
     passive: {
       description: '+3 gold per round while on board',
@@ -67,6 +70,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Skraxle', species: 'Chitinous', class: 'Shy', tier: 1, baseScore: 45,
+    tags: ['Grotesque'],
     flavor: 'Skraxles shed their carapace regularly. Each new shell is more grotesque than the last. Give them time.',
     passive: {
       description: '+10 per round since bought',
@@ -76,6 +80,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Vexborg', species: 'Chitinous', class: 'Giddy', tier: 1, baseScore: 42,
+    tags: ['Bizarre', 'Restrained'],
     flavor: 'In the presence of their own kind, Vexborgs enter a frenzied clicking display that gets louder and more elaborate with every additional Chitinous. Earplugs are provided.',
     passive: {
       description: '+18 per other Chitinous on board',
@@ -88,6 +93,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Krombax', species: 'Crystalline', class: 'Shy', tier: 1, baseScore: 62,
+    tags: ['Elegant'],
     flavor: 'Krombaxes refract light to project a perfect crystal duplicate of themselves at all times. Judges count both. Krombaxes find this mortifying.',
     passive: {
       description: 'Counts as 2 Crystallines for synergy',
@@ -97,6 +103,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Sharzak', species: 'Crystalline', class: 'Giddy', tier: 1, baseScore: 62,
+    tags: ['Elegant', 'Ostentatious'],
     flavor: 'Sharzaks continuously shed gem-quality crystal fragments. Whoever buys one always finds a few lodged in their pockets afterwards.',
     passive: {
       description: '+14 per other Giddy specimen on board',
@@ -109,6 +116,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Vorzak', species: 'Abyssal', class: 'Livid', tier: 1, baseScore: 50,
+    tags: ['Grotesque'],
     flavor: 'Vorzaks are deeply territorial and reach peak menace when they have no competition for the title of most horrifying thing in the room.',
     passive: {
       description: '×1.5 score if only Abyssal on board',
@@ -121,6 +129,7 @@ const CARD_DEFS = [
 
   {
     name: 'Phlorbex', species: 'Sporal', class: 'Shy', tier: 1, baseScore: 54,
+    tags: ['Quaint'],
     flavor: 'Phlorbexes shed microscopic spore clouds that cause nearby Sporals to flourish aggressively. Exhibitors report that Phlorbexes seem genuinely embarrassed by the effect.',
     passive: {
       description: 'Other Sporal specimens on board +10 flat score',
@@ -132,6 +141,7 @@ const CARD_DEFS = [
   // Tier 2 — cost 4g
   {
     name: 'Gloopir', species: 'Plasmic', class: 'Shy', tier: 2, baseScore: 80,
+    tags: ['Bizarre'],
     flavor: 'Gloopirs are technically two Plasmics that never successfully separated. Both are embarrassed about it. Judges count them as two.',
     passive: {
       description: 'Counts as 2 Plasmics for synergy',
@@ -141,6 +151,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Murborg', species: 'Plasmic', class: 'Giddy', tier: 2, baseScore: 85,
+    tags: ['Ostentatious'],
     flavor: 'When Murborgs sense they are the most impressive Plasmic on display, they inflate their plasma sacs to roughly twice their normal size. Nobody asked them to do this.',
     passive: {
       description: '+80 if highest-scoring Plasmic on board',
@@ -156,6 +167,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Puffzak', species: 'Sporal', class: 'Shy', tier: 2, baseScore: 82,
+    tags: ['Quaint'],
     flavor: 'Puffzaks constantly shed enhancement spores that cause nearby Sporals to bloom more aggressively. They have absolutely no idea they\'re doing this.',
     passive: {
       description: 'All other Sporals +15% score',
@@ -165,6 +177,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Molborg', species: 'Sporal', class: 'Livid', tier: 2, baseScore: 88,
+    tags: ['Grotesque', 'Bizarre'],
     flavor: 'Molborgs feed on ambient spore clouds. In a room full of Sporals they gorge themselves to a truly unpleasant size, which judges score very favourably.',
     passive: {
       description: '×1.5 score while Sporal synergy (2+) is active',
@@ -176,6 +189,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Clattorb', species: 'Chitinous', class: 'Giddy', tier: 2, baseScore: 78,
+    tags: ['Restrained', 'Ostentatious'],
     flavor: 'Clattorbs\' exoskeletons need time to dry after transport. Once fully hardened they achieve a glossy sheen that commands serious scores. The wait is non-negotiable.',
     passive: {
       description: 'Inactive rounds 1–5. +50% score from round 6+',
@@ -188,6 +202,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Lithvorn', species: 'Crystalline', class: 'Sullen', tier: 2, baseScore: 76,
+    tags: ['Elegant', 'Bizarre'],
     flavor: 'Lithvorns\' crystal networks resonate when surrounded by enough of their kind, producing a frequency that makes judges deeply uncomfortable and score them very highly.',
     passive: {
       description: '×1.5 score if 4+ Crystallines on board',
@@ -199,6 +214,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Blinxorp', species: 'Abyssal', class: 'Sullen', tier: 2, baseScore: 82,
+    tags: ['Grotesque'],
     flavor: 'Blinxorps take a while to fully emerge from their transport containers. By round ten, most of the exhibition staff have filed formal complaints.',
     passive: {
       description: '+25 per round since bought (max +300)',
@@ -210,6 +226,7 @@ const CARD_DEFS = [
 
   {
     name: 'Grazwick', species: 'Abyssal', class: 'Sullen', tier: 2, baseScore: 82, locked: true, id: 'grazwick',
+    tags: ['Grotesque', 'Quaint'],
     flavor: 'Grazwicks spend the first seven rounds in a state of profound withdrawal. By round eight, something shifts. Judges are advised not to comment on this.',
     passive: {
       description: 'Inactive rounds 1–7. From round 8: ×1.8 score',
@@ -222,6 +239,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Morblax', species: 'Chitinous', class: 'Giddy', tier: 2, baseScore: 83, locked: true, id: 'morblax',
+    tags: ['Bizarre', 'Restrained'],
     flavor: 'Morblaxes are impossible to calm down when surrounded by emotionally elevated specimens. The clicking gets faster. Nobody is quite sure what it means.',
     passive: {
       description: '+15 per Giddy specimen on board (including self)',
@@ -234,6 +252,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Zorbrath', species: 'Crystalline', class: 'Livid', tier: 2, baseScore: 90, locked: true, id: 'zorbrath',
+    tags: ['Ostentatious', 'Bizarre'],
     flavor: 'Zorbrath crystal matrices are uniquely reactive to emotional frequencies. In the presence of both Crystalline resonance and Livid energy they achieve a threat level that judges find extremely compelling.',
     passive: {
       description: '×1.4 score if both Crystalline-2 and Livid-2 synergies are active',
@@ -249,6 +268,7 @@ const CARD_DEFS = [
   // Tier 3 — cost 5g
   {
     name: 'Fluxnob', species: 'Plasmic', class: 'Pompous', tier: 3, baseScore: 130,
+    tags: ['Ostentatious'],
     flavor: 'Fluxnobs emit a plasma pulse that forces nearby Plasmics to sync their oscillation patterns. They consider themselves very important. The other Plasmics resent this but do glow better.',
     passive: {
       description: 'All other Plasmics +20% score',
@@ -258,6 +278,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Sprangus', species: 'Sporal', class: 'Pompous', tier: 3, baseScore: 132,
+    tags: ['Quaint', 'Grotesque'],
     flavor: 'Spranguses release so many enhancement spores that they have nothing left for themselves. They stand on their pedestals looking frankly deflated while everything around them thrives.',
     passive: {
       description: 'All Sporals +30% score. Sprangus\'s own base score becomes 0.',
@@ -267,6 +288,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Scrithnab', species: 'Chitinous', class: 'Sullen', tier: 3, baseScore: 125,
+    tags: ['Grotesque', 'Restrained'],
     flavor: 'Scrithnabs moult continuously, each shell more elaborate than the last, until further growth becomes structurally inadvisable.',
     passive: {
       description: '+15 per round since bought (max +300)',
@@ -279,6 +301,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Geodorb', species: 'Crystalline', class: 'Pompous', tier: 3, baseScore: 122,
+    tags: ['Elegant', 'Bizarre'],
     flavor: 'Geodorbs have no fixed crystal structure. They slowly reconfigure their lattice to match whatever they\'re surrounded by most. They do this in their sleep, which is somehow worse.',
     passive: {
       description: 'Counts as +1 of any one species you have 3+ of (alphabetical tiebreak)',
@@ -288,6 +311,7 @@ const CARD_DEFS = [
   },
   {
     name: 'Squorble', species: 'Abyssal', class: 'Pompous', tier: 3, baseScore: 135,
+    tags: ['Grotesque', 'Ostentatious'],
     flavor: 'Squorbles spend the first nine rounds looking like something that washed up on a beach. Then, without warning, they do something the judges will not describe in their official notes but award maximum marks for.',
     passive: {
       description: 'Rounds 1–9: ×0.5 score. Round 10+: ×2 score.',
@@ -302,6 +326,7 @@ const CARD_DEFS = [
   {
     id: 'vornix',
     name: 'Vornix', species: 'Abyssal', class: 'Livid', tier: 1, baseScore: 50, locked: true,
+    tags: ['Grotesque'],
     flavor: 'Vornixes establish dominance through sustained atmospheric menace. With four or more Abyssals competing, the hostility reaches measurable levels. Judges wear protective lenses.',
     passive: {
       description: '+24 per other Abyssal on board',
@@ -315,6 +340,7 @@ const CARD_DEFS = [
   {
     id: 'zephrix',
     name: 'Zephrix', species: 'Sporal', class: 'Giddy', tier: 2, baseScore: 82, locked: true,
+    tags: ['Quaint', 'Ostentatious'],
     flavor: 'Zephrixae are natural sycophants who perform best in the presence of perceived wealth. Provide adequate funding and they will put on a show. Do not ask how they know about your finances.',
     passive: {
       description: '+3g per round while on board; +40 flat score if holding 20+ gold at judging',
@@ -328,6 +354,7 @@ const CARD_DEFS = [
   {
     id: 'prismora',
     name: 'Prismora', species: 'Crystalline', class: 'Shy', tier: 3, baseScore: 124, locked: true,
+    tags: ['Elegant'],
     flavor: 'Prismoras refract light differently depending on how many exceptional specimens share their space. With three or more Tier 3 exhibits present they produce a spectrum that has not yet been formally classified.',
     passive: {
       description: '×(1 + 0.15 per T3 card on board, including self)',
@@ -341,6 +368,7 @@ const CARD_DEFS = [
   {
     id: 'klothrix',
     name: 'Klothrix', species: 'Chitinous', class: 'Shy', tier: 3, baseScore: 120, locked: true,
+    tags: ['Restrained', 'Quaint'],
     flavor: 'Klothrixae do not open their outer carapace for judges they have not met. Given sufficient time in the same exhibition, something remarkable is revealed. It takes a while.',
     passive: {
       description: '+30 per round since bought (max +450)',
@@ -352,6 +380,7 @@ const CARD_DEFS = [
   {
     id: 'stellorb',
     name: 'Stellorb', species: 'Abyssal', class: 'Pompous', tier: 3, baseScore: 126, locked: true,
+    tags: ['Grotesque', 'Ostentatious'],
     flavor: 'Stellorbs carry themselves with an air of inevitability. In the sixteenth round, surrounded by sufficient Abyssal company, they begin radiating something that fills three pages of the exhibition incident log.',
     passive: {
       description: '×1.5 score if Abyssal-4 synergy active and round 16+',
@@ -367,6 +396,7 @@ const CARD_DEFS = [
   {
     id: 'vorbex',
     name: 'Vorbex', species: 'Plasmic', class: 'Sullen', tier: 2, baseScore: 84, locked: true,
+    tags: ['Bizarre'],
     flavor: "Vorbexes are essentially very confident plasma. Individually they do little. Surrounded by enough of their kin, something extraordinary — and frankly unsettling — occurs.",
     passive: {
       description: '×1.5 score if Plasmic-4 synergy active',
@@ -379,6 +409,7 @@ const CARD_DEFS = [
   {
     id: 'omnorb',
     name: 'Omnorb', species: 'Abyssal', class: 'Shy', tier: 3, baseScore: 128, locked: true,
+    tags: ['Grotesque', 'Bizarre'],
     flavor: 'Omnorbs have adapted to survive in any atmospheric condition. Judges describe their presence as "a reminder that the galaxy does not care about your strategy."',
     passive: {
       description: '×1.8 score if 4+ unique species on active board',

@@ -466,6 +466,133 @@ class Board {
     return this.calcScoreBreakdown(ctx).total;
   }
 
+  // Phase 27 — judge-mode base breakdown.
+  // Runs only Stages 0–2 (per-card flats from base × stars, Axis 3 scaling
+  // flats / item flats, and Axis 2 conditional flats). Skips species/class
+  // synergy flats and all multiplicative stages — those are bypassed under
+  // judge-driven scoring.
+  // Returns { perCard: [{ card, baseScore, lines }], firedPassives: [bool] }.
+  calcBaseBreakdown(ctx = {}) {
+    if (this.active.length === 0) return { perCard: [], firedPassives: [] };
+
+    const round    = ctx.round    || 0;
+    const player   = ctx.player   || null;
+    const augments = ctx.augments || (player && player.augments) || [];
+    const hasAug   = id => hasAugment(augments, id);
+
+    const { counts: speciesCounts } = effectiveSpeciesCounts(this, { ...ctx, augments });
+    const { counts: classCounts }   = effectiveClassCounts(this);
+    const combinedActive    = this.active.filter(c => c.stars > 1).length;
+    const activeClassSynCount = Object.keys(classCounts).filter(cls => {
+      const syn = CLASS_SYNERGIES[cls];
+      return syn && syn.getBonus(classCounts[cls]);
+    }).length;
+    const hasEarlyBird = hasAug('EarlyBird');
+
+    const results = this.active.map(card => {
+      if (!card.passive || typeof card.passive.eval !== 'function') return {};
+      const ax = card.passive.axis;
+      let evalFn    = card.passive.eval;
+      let evalRound = round;
+      if (hasEarlyBird && (ax === 6 || ax === '6+4')) {
+        const origP = card._originalPassive || card.passive;
+        evalFn    = origP.eval;
+        evalRound = round + 3;
+      }
+      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments };
+      try { return evalFn(card, selfCtx) || {}; } catch (_) { return {}; }
+    });
+
+    const scores = new Array(this.active.length).fill(0);
+    const lines  = this.active.map(() => []);
+    const fired  = new Array(this.active.length).fill(false);
+
+    // Stage 0 — base × stars + Claymore + Heroic Resolve + grand_specimen.
+    for (let i = 0; i < this.active.length; i++) {
+      const c = this.active[i];
+      if (results[i].baseOverride !== undefined) {
+        scores[i] = results[i].baseOverride;
+        lines[i].push({ label: 'Invoker base', add: scores[i] });
+        fired[i] = true;
+      } else {
+        let base = c.baseScore;
+        const extras = [];
+        if (hasItem(c, 'Claymore'))  { base += 40; extras.push('+Claymore'); }
+        if (hasAug('HeroicResolve')) { base += 25; extras.push('+Heroic'); }
+        if (hasAug('grand_specimen') && c.tier === 3) { base += 30; extras.push('+GrandSpec'); }
+        scores[i] = Math.round(base * STAR_MULT[c.stars]);
+        const starLabel = c.stars === 2 ? '2★' : c.stars === 3 ? '3★' : '1★';
+        const extStr = extras.length ? ` (${extras.join(', ')})` : '';
+        lines[i].push({ label: `base ${c.baseScore}${extStr} × ${starLabel}`, add: scores[i] });
+      }
+    }
+
+    // Stage 1 — Axis 3 flat scaling + Guinsoo's + Time Dilation + Prestige Tag + Collector's Mark.
+    for (let i = 0; i < this.active.length; i++) {
+      const card = this.active[i];
+      if (card.passive && card.passive.axis === 3 && typeof results[i].flat === 'number' && results[i].flat !== 0) {
+        let v = results[i].flat;
+        const origPassive = card._originalPassive || card.passive;
+        if (typeof origPassive.cap === 'number') v = Math.min(origPassive.cap, v);
+        scores[i] += v;
+        lines[i].push({ label: card.passive.description || 'passive', add: v });
+        fired[i] = true;
+      }
+      if (hasItem(card, "Guinsoo's Rageblade") && card.roundsSinceBought) {
+        const v = 18 * card.roundsSinceBought;
+        scores[i] += v;
+        lines[i].push({ label: "Guinsoo's Rageblade", add: v });
+      }
+      if (hasAug('TimeDilation') && card.roundsSinceBought) {
+        const v = 4 * card.roundsSinceBought;
+        scores[i] += v;
+        lines[i].push({ label: 'Time Dilation', add: v });
+      }
+      if (hasItem(card, 'prestige_tag') && activeClassSynCount > 0) {
+        const v = 12 * activeClassSynCount;
+        scores[i] += v;
+        lines[i].push({ label: `Prestige Tag (${activeClassSynCount} class syn)`, add: v });
+      }
+      if (hasItem(card, 'collectors_mark') && combinedActive > 0) {
+        const v = 8 * combinedActive;
+        scores[i] += v;
+        lines[i].push({ label: `Collector's Mark (${combinedActive} combined)`, add: v });
+      }
+    }
+
+    // Stage 2 — Axis 2 flat conditional (IronWill doubles, Warmog's not stacked).
+    for (let i = 0; i < this.active.length; i++) {
+      const card = this.active[i];
+      if (card.passive && card.passive.axis === 2 && typeof results[i].flat === 'number' && results[i].flat !== 0) {
+        let flat = results[i].flat;
+        if (hasAug('IronWill') && !hasItem(card, "Warmog's Armor")) flat *= 2;
+        scores[i] += flat;
+        lines[i].push({ label: card.passive.description || 'passive', add: flat });
+        fired[i] = true;
+      }
+    }
+
+    // Mark "fired" for any other axis (4/6/8) whose passive returned a non-trivial result.
+    // Used by the Eccentricity taste; bonuses themselves are bypassed under judge mode.
+    for (let i = 0; i < this.active.length; i++) {
+      if (fired[i]) continue;
+      const r = results[i];
+      if (!r) continue;
+      if ((typeof r.flat     === 'number' && r.flat     !== 0) ||
+          (typeof r.mult     === 'number' && r.mult     !== 1) ||
+          (typeof r.auraMult === 'number' && r.auraMult !== 1) ||
+          (typeof r.auraFlat === 'number' && r.auraFlat !== 0) ||
+          (typeof r.tickGold === 'number' && r.tickGold !== 0)) {
+        fired[i] = true;
+      }
+    }
+
+    const perCard = this.active.map((card, i) => ({
+      card, baseScore: scores[i], lines: lines[i],
+    }));
+    return { perCard, firedPassives: fired };
+  }
+
   get allCards() { return [...this.active, ...this.bench]; }
 
   canAddToActive() { return this.active.length < this.maxActive; }
