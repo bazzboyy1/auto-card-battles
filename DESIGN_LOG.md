@@ -6,15 +6,32 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 29 "Visible Rival" shipped (v0.47, 2026-05-01). 6-phase "Living Exhibition" redesign in motion. Phase 26 hidden-rival flags removed (superseded).
+**Phase:** Phase 30 "Plinth Composition" shipped (v0.48, 2026-05-01). 6-phase "Living Exhibition" redesign on track. Phase 26 hidden-rival flags removed (superseded).
 
-**Direction:** Game is being re-framed from *score execution game* to **curation under shifting judge tastes.** Judges are the scoring spine; aesthetic tags drive 4 of the 10 tastes; a visible AI rival now competes for cards on a shared 8-slot persistent shop.
+**Direction:** Game is being re-framed from *score execution game* to **curation under shifting judge tastes.** Judges are the scoring spine; aesthetic tags drive 4 of the 10 tastes; a visible AI rival competes for cards on a shared 8-slot persistent shop; the plinth is now a *composition* (cap 6, adjacency-aware, pair-combos, live recalc on drag).
 
-**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival ✅ → 30 Plinth Composition → 31 Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
+**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival ✅ → 30 Plinth Composition ✅ → 31 Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
 
-**Next action:** Begin Phase 30 — Plinth Composition. Per `phase_27_plan.md`: rewrite passives so the *order/adjacency* of cards on the plinth matters. Convert the legacy %-mult species/class passives (currently bypassed under judge mode — see Phase 28 "Known follow-up") into adjacency or pair-combo effects that read position. The plinth must feel like a curated arrangement, not an unordered set. Live appraisal-while-reordering is the moment-to-moment fun loop the redesign vision named as critical.
+**Next action:** Begin Phase 31 — Run Modifiers + Economy fix. **Hard prerequisite:** recalibrate the per-round flat target curve. Phase 30 dropped board cap 10→6 and greedy survival fell from Phase 28's 26.3% to 19.7% (vs the 30–45% target band the curve was tuned for). Without this fix, novice players will die in mid-game before they reach the late rounds where adjacency stacking + pair-combos pay off, and the *arrange* sub-verb the redesign was built on never gets the spotlight. Then layer on the modifier deck (12 modifiers, draw 1/run), interest cap (max 5g/round), Exhibition Refit gold sink, and tag-granting items per `phase_27_plan.md`.
 
 **Skill usage rule:** Continue using `game-design-skills` proactively for design decisions. Reference audit in `phase_27_plan.md` Appendix flags which references to load per phase.
+
+**Phase 30 v0.48 (2026-05-01):** Plinth Composition shipped.
+- **`src/game.js`:** `MAX_BOARD` 10 → 6. Spec originally targeted cap=5 (Hick's Law optimum band 3–6); calibration sweep (cap=5 → 12.3% greedy survival, cap=6 → 19.7%, cap=7 → 31%) showed cap=5 dropped the curve too far below the 30–45% target band the per-round flats were tuned for. Cap=6 keeps the design intent (40% reduction from 10, still in the Hick's optimum band) while leaving Phase 31's target-curve recalibration with a tractable gap to close. `PLINTH_COST` truncated to slots 3–6; `addPlinth()` and `plinthCost()` now gate on the cap.
+- **`src/combos.js` (new):** 6 pair-combos. Vorzak↔Slurvin (+40 each, "Twin Fury"), Lithvorn↔Geodorb (+60, "Crystal Resonance"), Molborg↔Sporvik (+50, "Spore Feast"), Vexborg↔Clattorb (+50, "Carapace Lattice"), Squorble↔Stellorb (+120 at R10+, "Abyssal Coronation"), Blorpax↔Vorbex (+35, "Plasma Loop"). Each pair fires at most once per round; bonus is a flat added to *each* participant. Combos are flats only — no mults (the Phase 28 deprecation line).
+- **`src/board.js`:** new module-level `applyAdjacencyStage()` runs as Stage 2.5 in both `calcScoreBreakdown` (legacy) and `calcBaseBreakdown` (judge mode). Reads `passive.axis === 'adjacency'` passives via `evalAdjacent(self, leftNeighbor, rightNeighbor, ctx)` (no wrap-around — slot 0's left and slot N's right are null) and pair-combos via `findCombosOnBoard()`. Adjacency + combo fires set `firedPassives[i] = true` so the Eccentricity taste reads them.
+- **`src/cards.js`:** the 7 legacy %-mult passives (bypassed since Phase 28) converted to adjacency-axis flats:
+  - **Vorzak** (Abyssal T1): solo menace +20 if no adjacent Abyssal.
+  - **Slurvin** (Plasmic T1): rage +12 per neighbor (any species).
+  - **Molborg** (Sporal T2): spore feast +20 if any adjacent Sporal.
+  - **Lithvorn** (Crystalline T2): crystal harmonics +25 per adjacent Crystalline.
+  - **Vorbex** (Plasmic T2 locked): plasma confluence +18 if both neighbors Plasmic.
+  - **Squorble** (Abyssal T3): −30 R1–9 ("dormant"); R10+ +50 if any adjacent Abyssal ("awakened").
+  - **Stellorb** (Abyssal T3 locked): R16+ +30 per adjacent Abyssal ("inevitability"). Pair-combo with Squorble at R10+ is the big payout.
+- **`web/app.js` + `style.css`:** drag-and-drop on the active row. Filled slots are `draggable=true`; every slot is a drop target. On `dragover` of a slot, `runPreviewRecalc()` (rAF-debounced) builds a proposed-arrangement scratch board, runs `calcScoreBreakdown`, and writes the projected total to a "Live: N" pill in the HUD-sub bar. On `drop`, `swapActiveSlots()` commits and re-renders. `web/loader.js` registers `combos`; `web/index.html` cache-busts loader to v0.48 and adds the `#live-preview` span.
+- **Calibration (n=300 seed=1):** greedy survival 19.7% (below the 30–45% band, accepted; Phase 31 target recalibration is the prerequisite remediation flagged in the next-action). Per-round winRate 85.3%. Permutation-gap test on a 5-card composition (Vorzak/Slurvin/Lithvorn/Geodorb/Sharzak) shows best-vs-worst ordering differs by 60–112% across all 10 tastes — far above the plan's ≥8% "position matters" threshold.
+- **Browser-verified:** v0.48 loads with `combos` module + 6 entries. 3-card board [Vorzak, Sharzak, Slurvin] scores 210; dragging Vorzak's slot over slot 1 (proposed [Sharzak, Vorzak, Slurvin]) shows live preview "Live: 297" (Twin Fury combo +40 each = +87); dragging over slot 2 shows "Live: 210" (no combo). Drop commits the reorder. Drop-target outline + `.dragging` opacity render correctly.
+- **Known follow-ups (deferred to Phase 31):** target-curve recalibration; live-preview is mouse-only (touch/keyboard a future polish). 66 unit tests still broken from Phase 27 (rewrite remains a Phase 32 chore).
 
 **Phase 29 v0.47 (2026-05-01):** Visible Rival + persistent shared shop shipped.
 - **`src/rival.js` (new):** `Rival` class with 4 personalities (Hoarder, Magpie, Specialist, Mimic). `pickFromShop(shop, ctx)` runs after the player's ready commit; returns the slot indices the rival claimed so the shop can null them. `updateAggression(chapterRecord)` applies Buster-principle DDA at chapter boundaries: ≤10% sub-perception score-bias on candidates whose species matches the player's dominant species (`AGGRO_HIGH=+0.10`, `AGGRO_LOW=-0.10`).
