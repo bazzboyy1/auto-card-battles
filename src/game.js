@@ -9,6 +9,7 @@ const { isUnlocked, incrementAchievementCounters } = require('./achievements');
 const { JUDGES, getJudge, getTaste, drawJudgeSlate } = require('./judges');
 const { Rival, pickPersonalityId } = require('./rival');
 const { pickModifier } = require('./modifiers');
+const { RefitState, REFIT_ROUNDS } = require('./refit');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -290,6 +291,10 @@ class Run {
     this.modifierState = this.modifier && typeof this.modifier.init === 'function'
       ? this.modifier.init(this)
       : {};
+    // Phase 31-B.2: Exhibition Refit. Set after R8/R16/R23 scoring; consumed
+    // by the UI (or skipped by sim) before the next round's earnIncome runs.
+    this._refitState   = null;
+    this._refitRoundsResolved = new Set();
   }
 
   // Chapter number for a round.
@@ -554,6 +559,13 @@ class Run {
         : [];
     }
 
+    // Phase 31-B.2: Exhibition Refit fires at R8/R16/R23 (not R24 — run is
+    // over). The UI sees pendingRefit() return non-null and renders the
+    // modal; sim path simply doesn't consult it (greedy AI skips).
+    if (REFIT_ROUNDS.includes(this.round) && !this._refitRoundsResolved.has(this.round)) {
+      this._refitState = new RefitState(this);
+    }
+
     // Phase 29: Buster-principle DDA — update rival aggressiveness at each
     // chapter boundary based on chapter performance.
     const isChapterEnd = (this.round === 8 || this.round === 16 || this.round === 23 || this.round === 24);
@@ -629,6 +641,22 @@ class Run {
       return { type: 'augment', id: chosen };
     }
     return null;
+  }
+
+  // Phase 31-B.2: returns the active RefitState if a Refit is pending after
+  // the most recent chapter-end scoring, else null. The UI calls this each
+  // render tick; sim ignores it.
+  pendingRefit() {
+    return this._refitState || null;
+  }
+
+  // Player clicks "Continue" in the Refit modal. Marks this round as resolved
+  // so reopening (e.g. after a reload) doesn't re-fire, and clears the state.
+  closeRefit() {
+    if (this._refitState) {
+      this._refitRoundsResolved.add(this._refitState.round);
+      this._refitState = null;
+    }
   }
 
   isOver() {

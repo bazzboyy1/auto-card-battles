@@ -364,6 +364,253 @@ function showRivalReveal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
 }
 
+// Phase 31-B.2: Exhibition Refit modal — between-chapter gold sink.
+// Renders an overlay with three actions (Peek, Swap, Promote) and an
+// in-place sub-view that updates as the player commits actions.
+//
+// `refit` is a RefitState (from src/refit.js); `onDone` is fired when the
+// player clicks Continue.
+function showRefitModal(refit, onDone) {
+  const overlay = document.createElement('div');
+  overlay.className = 'refit-overlay';
+  document.body.appendChild(overlay);
+
+  let subView = 'home';   // 'home' | 'swap' | 'promote'
+  let pendingDismissId = null; // selected dismiss target during swap
+  let lastResult = null;
+
+  const nextJudge = refit.nextJudge();
+  const nextTaste = nextJudge && getTaste ? getTaste(nextJudge.taste) : null;
+
+  function chapterEndedLabel() {
+    const ch = refit.chapterEnded;
+    return CHAPTER_LABELS[ch - 1] || `Chapter ${ch}`;
+  }
+  function nextChapterLabel() {
+    const ch = (refit.chapterEnded || 0) + 1;
+    return CHAPTER_LABELS[ch - 1] || `Chapter ${ch}`;
+  }
+
+  function rerender() {
+    const gold = S.run.player.gold;
+    const peekCost = refit.peekCost();
+    const swapCost = refit.swapCost();
+
+    const peekDisabled = refit.peeked || gold < peekCost;
+    const swapDisabled = gold < swapCost;
+    // Promote: enabled if any board card can be promoted within budget AND
+    // the per-Refit promote cap hasn't been hit.
+    const allPlayerCards = [...S.run.player.board.active, ...S.run.player.board.bench];
+    const canAffordAnyPromote = !refit.promotedThisRefit && allPlayerCards.some(c => {
+      if (c.stars >= 3) return false;
+      return gold >= refit.promoteCost(c.stars);
+    });
+    const promoteDisabled = !canAffordAnyPromote;
+
+    overlay.innerHTML = `
+      <div class="refit-box">
+        <div class="refit-header">
+          <div class="refit-tag">${chapterEndedLabel()} concludes</div>
+          <div class="refit-judge">
+            ${nextJudge ? `<span class="refit-judge-label">Next: ${nextChapterLabel()} —</span> <strong>${nextJudge.name}</strong>` : ''}
+          </div>
+          <div class="refit-flavor">${nextJudge ? `"${nextJudge.flavor || ''}"` : ''}</div>
+          ${refit.peeked && nextTaste
+              ? `<div class="refit-peek-revealed">
+                   <div class="refit-peek-taste">Taste · <strong>${nextTaste.name}</strong></div>
+                   <div class="refit-peek-hint">${nextTaste.hint}</div>
+                 </div>`
+              : ''}
+          <div class="refit-gold">Gold: <strong>${gold}g</strong></div>
+        </div>
+
+        <div class="refit-actions">
+          <button class="refit-action ${peekDisabled ? 'disabled' : ''}" data-act="peek" ${peekDisabled ? 'disabled' : ''}>
+            <div class="refit-action-name">Peek</div>
+            <div class="refit-action-desc">Reveal next judge's taste rule</div>
+            <div class="refit-action-cost">${refit.peeked ? 'revealed' : `${peekCost}g`}</div>
+          </button>
+          <button class="refit-action ${swapDisabled ? 'disabled' : ''} ${subView === 'swap' ? 'active' : ''}" data-act="swap" ${swapDisabled ? 'disabled' : ''}>
+            <div class="refit-action-name">Swap</div>
+            <div class="refit-action-desc">Acquire from a curated 3-card draft</div>
+            <div class="refit-action-cost">${swapCost}g</div>
+          </button>
+          <button class="refit-action ${promoteDisabled ? 'disabled' : ''} ${subView === 'promote' ? 'active' : ''}" data-act="promote" ${promoteDisabled ? 'disabled' : ''}>
+            <div class="refit-action-name">Promote</div>
+            <div class="refit-action-desc">Upgrade a card by 1★ ${refit.promotedThisRefit ? '(used this refit)' : '(once per refit)'}</div>
+            <div class="refit-action-cost">${refit.promotedThisRefit ? '—' : '25g · 60g'}</div>
+          </button>
+        </div>
+
+        <div class="refit-subview">${renderSubview()}</div>
+
+        ${lastResult ? `<div class="refit-toast">${lastResult}</div>` : ''}
+
+        <div class="refit-footer">
+          <button class="btn-primary refit-continue">Continue to ${nextChapterLabel()}</button>
+        </div>
+      </div>
+    `;
+
+    // Wire actions.
+    const acts = overlay.querySelectorAll('.refit-action');
+    acts.forEach(btn => {
+      btn.onclick = () => {
+        const act = btn.getAttribute('data-act');
+        if (act === 'peek') {
+          if (refit.payPeek()) {
+            lastResult = `Peeked: ${nextTaste ? nextTaste.name : ''}`;
+            rlog({ t: 'refit_peek', round: refit.round });
+          }
+          subView = 'home';
+          rerender();
+        } else if (act === 'swap') {
+          subView = (subView === 'swap') ? 'home' : 'swap';
+          rerender();
+        } else if (act === 'promote') {
+          subView = (subView === 'promote') ? 'home' : 'promote';
+          rerender();
+        }
+      };
+    });
+
+    overlay.querySelector('.refit-continue').onclick = () => {
+      Sound.play && Sound.play('uiClick');
+      overlay.remove();
+      onDone();
+    };
+
+    // Wire subview interactions.
+    if (subView === 'swap') wireSwapView();
+    if (subView === 'promote') wirePromoteView();
+  }
+
+  function renderSubview() {
+    if (subView === 'swap')    return renderSwapView();
+    if (subView === 'promote') return renderPromoteView();
+    return '';
+  }
+
+  function renderSwapView() {
+    const candidates = refit.openSwapDrawer();
+    const cards = candidates.map((def, i) => {
+      if (!def) return `<div class="refit-cand refit-cand-spent">claimed</div>`;
+      const tags = (def.tags || []).map(t => `<span class="tag tag-${t.toLowerCase()}">${t}</span>`).join(' ');
+      return `
+        <button class="refit-cand species-${def.species.toLowerCase()}" data-cand-idx="${i}">
+          <div class="refit-cand-name">${def.name}</div>
+          <div class="refit-cand-meta">${def.species} · T${def.tier} · base ${def.baseScore}</div>
+          <div class="refit-cand-tags">${tags}</div>
+        </button>
+      `;
+    }).join('');
+
+    const dismissList = renderDismissList();
+    return `
+      <div class="refit-swap">
+        <div class="refit-swap-step">1. Choose a candidate</div>
+        <div class="refit-swap-cands">${cards}</div>
+        <div class="refit-swap-step">2. Choose a card to dismiss (refunds standard sell value)</div>
+        <div class="refit-swap-dismiss">${dismissList}</div>
+        <div class="refit-swap-confirm">
+          <button class="btn-primary refit-swap-go" disabled>Confirm Swap (${refit.swapCost()}g)</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDismissList() {
+    const all = [...S.run.player.board.active, ...S.run.player.board.bench];
+    if (!all.length) return `<div class="refit-empty">No cards to dismiss.</div>`;
+    return all.map(c => {
+      const sel = (pendingDismissId === c._id) ? 'selected' : '';
+      const stars = '★'.repeat(c.stars);
+      return `
+        <button class="refit-dismiss-card ${sel} species-${c.species.toLowerCase()}" data-dismiss-id="${c._id}">
+          <div class="refit-dismiss-name">${c.name} <span class="refit-dismiss-stars">${stars}</span></div>
+          <div class="refit-dismiss-meta">${c.species} · T${c.tier}</div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  let pendingCandIdx = null;
+  function wireSwapView() {
+    const candBtns = overlay.querySelectorAll('.refit-cand[data-cand-idx]');
+    candBtns.forEach(b => b.onclick = () => {
+      pendingCandIdx = parseInt(b.getAttribute('data-cand-idx'), 10);
+      candBtns.forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      updateSwapGo();
+    });
+    const dismissBtns = overlay.querySelectorAll('.refit-dismiss-card[data-dismiss-id]');
+    dismissBtns.forEach(b => b.onclick = () => {
+      pendingDismissId = parseInt(b.getAttribute('data-dismiss-id'), 10);
+      dismissBtns.forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      updateSwapGo();
+    });
+    const goBtn = overlay.querySelector('.refit-swap-go');
+    goBtn.onclick = () => {
+      if (pendingCandIdx === null || pendingDismissId === null) return;
+      const r = refit.commitSwap(pendingCandIdx, pendingDismissId);
+      if (r) {
+        lastResult = `Swapped: dismissed ${r.dismissed} (+${r.refund}g) · acquired ${r.acquired}`;
+        rlog({ t: 'refit_swap', round: refit.round, acquired: r.acquired, refund: r.refund });
+        pendingCandIdx = null;
+        pendingDismissId = null;
+        subView = 'home';
+        rerender();
+      }
+    };
+    updateSwapGo();
+  }
+
+  function updateSwapGo() {
+    const goBtn = overlay.querySelector('.refit-swap-go');
+    if (!goBtn) return;
+    const enough = S.run.player.gold >= refit.swapCost();
+    goBtn.disabled = !(pendingCandIdx !== null && pendingDismissId !== null && enough);
+  }
+
+  function renderPromoteView() {
+    if (refit.promotedThisRefit) {
+      return `<div class="refit-empty">Promotion already used this refit.</div>`;
+    }
+    const all = [...S.run.player.board.active, ...S.run.player.board.bench];
+    const eligible = all.filter(c => c.stars < 3);
+    if (!eligible.length) return `<div class="refit-empty">No promotable cards.</div>`;
+    const items = eligible.map(c => {
+      const cost = refit.promoteCost(c.stars);
+      const can  = S.run.player.gold >= cost;
+      const stars = '★'.repeat(c.stars);
+      return `
+        <button class="refit-promote-card species-${c.species.toLowerCase()} ${can ? '' : 'disabled'}" data-promote-id="${c._id}" ${can ? '' : 'disabled'}>
+          <div class="refit-promote-name">${c.name} <span class="refit-promote-stars">${stars}</span> → ${'★'.repeat(c.stars + 1)}</div>
+          <div class="refit-promote-meta">${c.species} · T${c.tier} · cost ${cost}g</div>
+        </button>
+      `;
+    }).join('');
+    return `<div class="refit-promote">${items}</div>`;
+  }
+
+  function wirePromoteView() {
+    const btns = overlay.querySelectorAll('.refit-promote-card[data-promote-id]');
+    btns.forEach(b => b.onclick = () => {
+      const id = parseInt(b.getAttribute('data-promote-id'), 10);
+      const r = refit.commitPromote(id);
+      if (r) {
+        lastResult = `Promoted ${r.upgraded}: ${r.fromStars}★ → ${r.toStars}★`;
+        rlog({ t: 'refit_promote', round: refit.round, name: r.upgraded, toStars: r.toStars });
+        subView = 'home';
+        rerender();
+      }
+    });
+  }
+
+  rerender();
+}
+
 // Phase 29: visible rival panel — personality nameplate + collected board.
 function renderRivalPanel() {
   const section = qs('#rival-section');
@@ -673,6 +920,18 @@ function onContinue() {
       },
     });
     render();
+    return;
+  }
+  // Phase 31-B.2: Exhibition Refit between chapters.
+  const refit = S.run.pendingRefit();
+  if (refit) {
+    rlog({ t: 'refit_offered', round: refit.round, chapterEnded: refit.chapterEnded });
+    showRefitModal(refit, () => {
+      const log = { t: 'refit_closed', round: refit.round, spent: refit.spentTotal, peeked: refit.peeked, promoted: refit.promotedThisRefit };
+      S.run.closeRefit();
+      rlog(log);
+      startRound();
+    });
     return;
   }
   startRound();

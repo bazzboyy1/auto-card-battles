@@ -598,4 +598,4 @@ function batchSim(n, policyName = 'greedy', seedStart = 1) {
   return { n, avgRoundsSurvived, winRate, results };
 }
 
-module.exports = { runGame, batchSim, POLICIES, ROUND_CAP };
+module.exports = { runGame, batchSim, POLICIES, ROUND_CAP, resolveAugmentPick, resolveItemPick };
