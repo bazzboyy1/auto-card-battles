@@ -145,12 +145,16 @@ const TASTES = {
   // means the harshest tastes — Refinement and Architecture — force genuine
   // re-tooling. By design.
 
+  // Phase 31-B.1: tag-reading tastes consume ctx.tagAmplify (default 1.0).
+  // amp = 1.5 spreads each per-card mult away from 1.0 — so 1.85 -> 2.275 and
+  // 0.75 -> 0.625. The Discerning Eye modifier sets amp = 1.5.
   grotesquerie: {
     name: 'Grotesquerie',
     flavor: 'Ugliness, but with conviction.',
     hint: 'Grotesque ×1.85 · Bizarre ×1.55 · Elegant ×0.75 · default ×1.4',
     score(active, baseScores, ctx) {
       if (!active.length) return 0;
+      const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
       let total = 0;
       for (let i = 0; i < active.length; i++) {
         const c = active[i];
@@ -158,7 +162,8 @@ const TASTES = {
         if (cardHasTag(c, 'Grotesque')) m = Math.max(m, 1.85);
         if (cardHasTag(c, 'Bizarre'))   m = Math.max(m, 1.55);
         if (cardHasTag(c, 'Elegant'))   m = Math.min(m, 0.75);
-        total += baseScores[i] * m;
+        const mAmp = 1 + (m - 1) * amp;
+        total += baseScores[i] * mAmp;
       }
       return Math.round(total);
     },
@@ -170,6 +175,7 @@ const TASTES = {
     hint: 'Elegant ×2.2 · Restrained ×1.9 · Grotesque ×0.75 · default ×1.55',
     score(active, baseScores, ctx) {
       if (!active.length) return 0;
+      const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
       let total = 0;
       for (let i = 0; i < active.length; i++) {
         const c = active[i];
@@ -177,7 +183,8 @@ const TASTES = {
         if (cardHasTag(c, 'Elegant'))    m = Math.max(m, 2.2);
         if (cardHasTag(c, 'Restrained')) m = Math.max(m, 1.9);
         if (cardHasTag(c, 'Grotesque'))  m = Math.min(m, 0.75);
-        total += baseScores[i] * m;
+        const mAmp = 1 + (m - 1) * amp;
+        total += baseScores[i] * mAmp;
       }
       return Math.round(total);
     },
@@ -189,6 +196,7 @@ const TASTES = {
     hint: 'Restrained ×2.4 · Quaint ×1.7 · Bizarre ×0.85 · default ×1.45',
     score(active, baseScores, ctx) {
       if (!active.length) return 0;
+      const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
       let total = 0;
       for (let i = 0; i < active.length; i++) {
         const c = active[i];
@@ -196,7 +204,8 @@ const TASTES = {
         if (cardHasTag(c, 'Restrained')) m = Math.max(m, 2.4);
         if (cardHasTag(c, 'Quaint'))     m = Math.max(m, 1.7);
         if (cardHasTag(c, 'Bizarre'))    m = Math.min(m, 0.85);
-        total += baseScores[i] * m;
+        const mAmp = 1 + (m - 1) * amp;
+        total += baseScores[i] * mAmp;
       }
       return Math.round(total);
     },
@@ -208,6 +217,7 @@ const TASTES = {
     hint: 'T1 ×1.05 · T2 ×1.3 · T3 ×1.6; Ostentatious ×1.5 · Quaint ×0.7',
     score(active, baseScores, ctx) {
       if (!active.length) return 0;
+      const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
       let total = 0;
       for (let i = 0; i < active.length; i++) {
         const c = active[i];
@@ -216,7 +226,8 @@ const TASTES = {
         let tagMult = 1.2;
         if (cardHasTag(c, 'Ostentatious')) tagMult = Math.max(tagMult, 1.5);
         if (cardHasTag(c, 'Quaint'))       tagMult = Math.min(tagMult, 0.7);
-        total += baseScores[i] * tierMult * tagMult;
+        const tagMultAmp = 1 + (tagMult - 1) * amp;
+        total += baseScores[i] * tierMult * tagMultAmp;
       }
       return Math.round(total);
     },

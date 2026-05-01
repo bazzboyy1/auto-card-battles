@@ -8,6 +8,7 @@ const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
 const { isUnlocked, incrementAchievementCounters } = require('./achievements');
 const { JUDGES, getJudge, getTaste, drawJudgeSlate } = require('./judges');
 const { Rival, pickPersonalityId } = require('./rival');
+const { pickModifier } = require('./modifiers');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -97,24 +98,44 @@ class Player {
   }
 
   // Tycoon doubles the interest component only (not base or streak).
+  // Modifier hooks (Phase 31-B): noInterest, incomePerRound, chapterStipend.
   earnIncome() {
-    const interest    = Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
+    const mod = this.run && this.run.modifier;
+    const interest    = (mod && mod.noInterest) ? 0
+                      : Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
     const streakBonus = this._streakBonus();
     const interestMult = this.augments.includes('Tycoon') ? 2 : 1;
-    this.gold += BASE_INCOME + interest * interestMult + streakBonus;
+    let total = BASE_INCOME + interest * interestMult + streakBonus;
+    if (mod && typeof mod.incomePerRound === 'number') total += mod.incomePerRound;
+    if (mod && typeof mod.chapterStipend === 'number'
+            && Array.isArray(mod.chapterStipendRounds)
+            && this.run
+            && mod.chapterStipendRounds.includes(this.run.round + 1)) {
+      total += mod.chapterStipend;
+    }
+    this.gold += total;
   }
 
   incomeBreakdown() {
-    const interest     = Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
+    const mod = this.run && this.run.modifier;
+    const interest     = (mod && mod.noInterest) ? 0
+                       : Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
     const streakBonus  = this._streakBonus();
     const interestMult = this.augments.includes('Tycoon') ? 2 : 1;
     const effectiveInterest = interest * interestMult;
+    const flatBonus    = (mod && typeof mod.incomePerRound === 'number') ? mod.incomePerRound : 0;
+    const stipend      = (mod && typeof mod.chapterStipend === 'number'
+                              && Array.isArray(mod.chapterStipendRounds)
+                              && this.run
+                              && mod.chapterStipendRounds.includes(this.run.round + 1))
+                         ? mod.chapterStipend : 0;
     return {
       base:     BASE_INCOME,
       interest: effectiveInterest,
       streak:   streakBonus,
-      total:    BASE_INCOME + effectiveInterest + streakBonus,
+      total:    BASE_INCOME + effectiveInterest + streakBonus + flatBonus + stipend,
       tycoon:   interestMult === 2,
+      modBonus: flatBonus + stipend,
     };
   }
 
@@ -128,8 +149,8 @@ class Player {
 
   addPlinth() {
     if (this.level >= MAX_LEVEL || this.level >= MAX_BOARD) return false;
-    const cost = PLINTH_COST[this.level];
-    if (cost == null || this.gold < cost) return false;
+    const cost = this.plinthCost();
+    if (cost == null || cost === 0 || this.gold < cost) return false;
     this.gold -= cost;
     this.level++;
     this.board.maxActive = Math.min(MAX_BOARD, this.level);
@@ -138,7 +159,12 @@ class Player {
 
   plinthCost() {
     if (this.level >= MAX_LEVEL || this.level >= MAX_BOARD) return 0;
-    return PLINTH_COST[this.level] || 0;
+    let cost = PLINTH_COST[this.level] || 0;
+    const mod = this.run && this.run.modifier;
+    if (mod && typeof mod.plinthDiscount === 'number') {
+      cost = Math.max(1, cost - mod.plinthDiscount);
+    }
+    return cost;
   }
 
   applyResult(passed) {
@@ -256,6 +282,14 @@ class Run {
     this.rival            = new Rival(pickPersonalityId(this.rng), this.rng);
     // Track player buys per round for Mimic personality + DDA dominant-species lookup.
     this._playerLastSpeciesCounts = {};
+    // Phase 31-B.1: draw run modifier. Player needs back-ref so income/plinth
+    // hooks can read it. modifierState holds per-run randomized state (e.g.
+    // Curator's Pet's favored/scorned species).
+    this.player.run    = this;
+    this.modifier      = pickModifier(this.rng);
+    this.modifierState = this.modifier && typeof this.modifier.init === 'function'
+      ? this.modifier.init(this)
+      : {};
   }
 
   // Chapter number for a round.
@@ -347,10 +381,20 @@ class Run {
 
   runBattle() {
     this.round++;
+
+    // Phase 31-B.1: Late Reveal modifier — re-draw the finale judge at its
+    // designated round. Done before currentJudge() so the new judge applies.
+    if (this.modifier && this.modifier.redrawFinaleAtRound === this.round) {
+      const newSlate = drawJudgeSlate(this.rng);
+      this.headJudges = [this.headJudges[0], this.headJudges[1], this.headJudges[2], newSlate[3]];
+    }
+
     const ctx = {
       round:    this.round,
       player:   this.player,
       augments: this.augments,
+      modifier: this.modifier,
+      modifierState: this.modifierState,
     };
 
     const judge = this.currentJudge(this.round);
@@ -367,6 +411,8 @@ class Run {
         firedPassives: baseBd.firedPassives,
         maxActive:     this.player.board.maxActive,
         round:         this.round,
+        tagAmplify:    (this.modifier && typeof this.modifier.tagAmplify === 'number')
+                       ? this.modifier.tagAmplify : 1.0,
       };
       playerScore = taste
         ? taste.score(this.player.board.active, baseScores, tasteCtx)
@@ -462,6 +508,29 @@ class Run {
       scoreBreakdown,
     };
     this.battleHistory.push(entry);
+
+    // Phase 31-B.1: Brutal Curation — at end of designated rounds, the
+    // lowest-scoring active card is dismissed for 0g. Bag any items so they
+    // don't vaporize.
+    if (this.modifier && Array.isArray(this.modifier.autoSellRounds)
+        && this.modifier.autoSellRounds.includes(this.round)
+        && this.player.board.active.length > 0) {
+      let lowIdx = 0;
+      let lowScore = Infinity;
+      const perCard = scoreBreakdown && scoreBreakdown.perCard;
+      if (perCard && perCard.length === this.player.board.active.length) {
+        for (let i = 0; i < perCard.length; i++) {
+          const s = perCard[i].final !== undefined ? perCard[i].final : perCard[i].baseScore;
+          if (s < lowScore) { lowScore = s; lowIdx = i; }
+        }
+      }
+      const dismissed = this.player.board.active[lowIdx];
+      if (dismissed) {
+        for (const item of (dismissed.items || [])) this.player.itemBag.push(item.id);
+        this.player.board.active.splice(lowIdx, 1);
+        entry.dismissed = { name: dismissed.name, score: lowScore };
+      }
+    }
 
     // Phase 29: rival picks AFTER the player commits, BEFORE the next shop
     // refresh. The rival reads the player's just-committed board to figure

@@ -633,6 +633,22 @@ class Board {
       }
     }
 
+    // Phase 31-B.1: per-card score multiplier from the run modifier
+    // (Hothouse, Curator's Pet). Applied after passives so the modifier
+    // affects the entire base scoring sum, not just stage 0.
+    const mod = ctx.modifier;
+    const modState = ctx.modifierState;
+    if (mod && typeof mod.cardScoreMult === 'function') {
+      for (let i = 0; i < this.active.length; i++) {
+        const m = mod.cardScoreMult(this.active[i], modState);
+        if (typeof m === 'number' && m !== 1) {
+          const before = scores[i];
+          scores[i] = Math.round(scores[i] * m);
+          lines[i].push({ label: `${mod.name} × ${m}`, add: scores[i] - before });
+        }
+      }
+    }
+
     const perCard = this.active.map((card, i) => ({
       card, baseScore: scores[i], lines: lines[i],
     }));

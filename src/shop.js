@@ -72,9 +72,18 @@ class Shop {
   }
 
   rerollCost() {
+    const mod = this.player.run && this.player.run.modifier;
+    if (mod && mod.rerollFree) return 0;
     const augments = this.player.augments || [];
     const base = this.player.level >= 6 ? 3 : REROLL_COST;
     return augments.includes('MidasTouch') ? base - 1 : base;
+  }
+
+  // Phase 31-B.1: Pop-up Salon caps shop size from the modifier.
+  size() {
+    const mod = this.player.run && this.player.run.modifier;
+    if (mod && typeof mod.shopSize === 'number') return mod.shopSize;
+    return SHOP_SIZE;
   }
 
   // Round-start refresh.
@@ -82,15 +91,20 @@ class Shop {
   // Subsequent calls: refills any null (bought) slots first, then rotates
   // ROTATE_PER_ROUND of the remaining filled slots out.
   refresh() {
+    const sz = this.size();
     if (!this._inited) {
-      this.offers  = drawOffers(this.player.level, this.player.rng, SHOP_SIZE);
+      this.offers  = drawOffers(this.player.level, this.player.rng, sz);
       this._inited = true;
       return;
     }
 
+    // If modifier shrank the shop, drop trailing slots first.
+    if (this.offers.length > sz) this.offers.length = sz;
+    while (this.offers.length < sz) this.offers.push(null);
+
     // Refill empty slots first.
     const filled = new Set(this.offers.filter(Boolean));
-    for (let i = 0; i < SHOP_SIZE; i++) {
+    for (let i = 0; i < sz; i++) {
       if (!this.offers[i]) {
         const pick = drawOne(this.player.level, this.player.rng, filled);
         if (pick) { this.offers[i] = pick; filled.add(pick); }
@@ -101,7 +115,7 @@ class Shop {
     const rotateCount = Math.min(ROTATE_PER_ROUND, this.offers.filter(Boolean).length);
     const rotateIdxs = [];
     const candidates = [];
-    for (let i = 0; i < SHOP_SIZE; i++) if (this.offers[i]) candidates.push(i);
+    for (let i = 0; i < sz; i++) if (this.offers[i]) candidates.push(i);
     // pick rotateCount distinct indices using player rng
     for (let k = 0; k < rotateCount; k++) {
       if (!candidates.length) break;
@@ -123,7 +137,7 @@ class Shop {
     const cost = this.rerollCost();
     if (this.player.gold < cost) return false;
     this.player.gold -= cost;
-    this.offers  = drawOffers(this.player.level, this.player.rng, SHOP_SIZE);
+    this.offers  = drawOffers(this.player.level, this.player.rng, this.size());
     this._inited = true;
     return true;
   }

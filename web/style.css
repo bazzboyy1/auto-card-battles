@@ -289,6 +289,38 @@ button:disabled { opacity: 0.4; cursor: default; }
 .rival-reveal-flavor { opacity: 0.85; margin-bottom: 10px; }
 .rival-reveal-tell  { opacity: 0.7; font-size: 12px; font-style: italic; margin-bottom: 18px; }
 
+/* Phase 31-B.1 — modifier reveal + persistent HUD badge */
+.modifier-reveal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9100;
+}
+.modifier-reveal-box {
+  background: #1a1820;
+  border: 1px solid rgba(220,180,80,0.55);
+  border-radius: 8px;
+  padding: 26px 30px;
+  max-width: 460px;
+  text-align: center;
+}
+.modifier-reveal-tag    { font-size: 12px; letter-spacing: 0.16em; opacity: 0.65; text-transform: uppercase; color: #d8b860; }
+.modifier-reveal-name   { font-size: 24px; font-weight: 700; margin: 8px 0 10px; color: #f0d680; }
+.modifier-reveal-flavor { opacity: 0.85; margin-bottom: 12px; font-style: italic; }
+.modifier-reveal-desc   { opacity: 0.95; margin-bottom: 16px; }
+.modifier-extra         { opacity: 0.85; font-size: 13px; margin-bottom: 14px; }
+
+.hud-modifier {
+  background: rgba(220,180,80,0.12);
+  border: 1px solid rgba(220,180,80,0.35);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: #e8c870;
+  margin-right: 10px;
+  cursor: help;
+}
+
 /* ── Card tooltip ── */
 .card-tooltip {
   position: absolute;

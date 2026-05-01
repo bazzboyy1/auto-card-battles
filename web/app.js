@@ -4,6 +4,7 @@
 let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
 let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS;
 let TASTES, getTaste;
+let MODIFIERS;
 let ITEM_DEFS, attachItem, detachItem;
 let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
@@ -38,6 +39,7 @@ document.addEventListener('acb-ready', () => {
   ({ CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT } = window.ACB.cards);
   ({ Run, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS } = window.ACB.game);
   ({ TASTES, getTaste } = window.ACB.judges);
+  ({ MODIFIERS } = window.ACB.modifiers);
   ({ POLICIES }                                    = window.ACB.sim);
   ({ ITEM_DEFS, attachItem, detachItem }           = window.ACB.items);
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
@@ -295,6 +297,51 @@ function showJudgeSlateReveal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
 }
 
+// Phase 31-B.1: persistent modifier badge in the HUD sub-row. Shown for the
+// duration of the run as a reminder of the active variance lever.
+function renderModifierBadge() {
+  const el = qs('#hud-modifier');
+  if (!el) return;
+  const mod = S.run && S.run.modifier;
+  if (!mod) { el.classList.add('hidden'); el.textContent = ''; return; }
+  let extra = '';
+  if (mod.id === 'curators_pet' && S.run.modifierState) {
+    const st = S.run.modifierState;
+    extra = ` (♥${st.favored} ♦${st.scorned})`;
+  }
+  el.textContent = `⚙ ${mod.name}${extra}`;
+  el.title = mod.description;
+  el.classList.remove('hidden');
+}
+
+// Phase 31-B.1: run-start reveal of the run modifier. The modifier is the
+// roguelike-variance lever — the player sees it once, must adapt for 24 rounds.
+function showModifierReveal() {
+  const mod = S.run && S.run.modifier;
+  if (!mod) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modifier-reveal';
+  let extra = '';
+  if (mod.id === 'curators_pet' && S.run.modifierState) {
+    const st = S.run.modifierState;
+    extra = `<div class="modifier-extra">Favored: <strong>${st.favored}</strong> · Scorned: <strong>${st.scorned}</strong></div>`;
+  }
+  overlay.innerHTML = `
+    <div class="modifier-reveal-box">
+      <div class="modifier-reveal-tag">Tonight's Twist</div>
+      <div class="modifier-reveal-name">${mod.name}</div>
+      <div class="modifier-reveal-flavor">"${mod.flavor || ''}"</div>
+      <div class="modifier-reveal-desc">${mod.description}</div>
+      ${extra}
+      <button class="btn-primary slate-dismiss">Acknowledge</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const dismiss = () => overlay.remove();
+  overlay.querySelector('.slate-dismiss').onclick = dismiss;
+  overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
+}
+
 // Phase 29: run-start reveal of the rival exhibitor.
 function showRivalReveal() {
   const rival = S.run && S.run.rival;
@@ -512,8 +559,18 @@ function startRound() {
   if (nextRound === 1) {
     // Phase 27: run-start slate reveal subsumes the chapter-1 chapter reveal.
     // Phase 29: rival reveal follows the slate so the player meets both at once.
-    setTimeout(() => showJudgeSlateReveal(), 150);
-    setTimeout(() => showRivalReveal(), 1800);
+    // Phase 31-B.1: modifier reveal first; slate skipped if modifier.hideSlate
+    // (Blind Tasting). When slate is hidden, only the chapter-1 judge is
+    // revealed — the rest of the slate is teased per chapter as it begins.
+    const hideSlate = S.run.modifier && S.run.modifier.hideSlate;
+    setTimeout(() => showModifierReveal(), 150);
+    if (hideSlate) {
+      const judge = S.run.currentJudge(1);
+      if (judge) setTimeout(() => showChapterReveal(1, judge), 1800);
+    } else {
+      setTimeout(() => showJudgeSlateReveal(), 1800);
+    }
+    setTimeout(() => showRivalReveal(), 3300);
   } else if (nextRound === 9 || nextRound === 17) {
     const chapter = S.run.chapterFor(nextRound);
     const judge   = S.run.currentJudge(nextRound);
@@ -961,6 +1018,7 @@ function onCardClick(cardId) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
   updateHUD();
+  renderModifierBadge();
 
   if (S.phase === 'augment') {
     qs('#modal').classList.add('hidden');

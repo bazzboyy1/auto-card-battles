@@ -537,6 +537,19 @@ function applyGrants(player, pending) {
 function runGame(seed, policyName = 'greedy', opts = {}) {
   const rng    = mulberry32(seed);
   const run    = new Run(rng, opts.diffMult || 1.0);
+  // Phase 31-B.1: opts.modifier (id) pins a specific modifier for calibration.
+  // opts.noModifier (bool) clears the modifier — used to baseline a "no twist" run.
+  if (opts.noModifier) {
+    run.modifier = null;
+    run.modifierState = {};
+  } else if (opts.modifier) {
+    const { getModifier } = require('./modifiers');
+    const m = getModifier(opts.modifier);
+    if (m) {
+      run.modifier = m;
+      run.modifierState = typeof m.init === 'function' ? m.init(run) : {};
+    }
+  }
   const policy = POLICIES[policyName] || POLICIES.greedy;
   const pending = opts.grants ? opts.grants.slice() : null;
   const picks   = opts.picks  || {};

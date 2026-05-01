@@ -43,12 +43,13 @@
     const shop         = await req('../src/shop.js');
     const judges       = await req('../src/judges.js');
     const rival        = await req('../src/rival.js');
+    const modifiers    = await req('../src/modifiers.js');
     const game         = await req('../src/game.js');
     const sim          = await req('../src/sim.js');
     const ranking      = await req('../src/ranking.js');
     const runlog       = await req('../src/runlog.js');
 
-    window.ACB = { utils, cards, augments, items, achievements, combos, board, shop, judges, rival, game, sim, ranking, runlog };
+    window.ACB = { utils, cards, augments, items, achievements, combos, board, shop, judges, rival, modifiers, game, sim, ranking, runlog };
     document.dispatchEvent(new CustomEvent('acb-ready'));
   } catch (e) {
     console.error('ACB loader failed:', e);
