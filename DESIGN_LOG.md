@@ -6,15 +6,25 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 28 "Aesthetic Tags" shipped (v0.46, 2026-05-01). 6-phase "Living Exhibition" redesign in motion. Phase 26 hidden-rival flags remain in code (superseded; replaced by visible rival in Phase 29).
+**Phase:** Phase 29 "Visible Rival" shipped (v0.47, 2026-05-01). 6-phase "Living Exhibition" redesign in motion. Phase 26 hidden-rival flags removed (superseded).
 
-**Direction:** Game is being re-framed from *score execution game* to **curation under shifting judge tastes.** Judges are the scoring spine; cards now also carry aesthetic tags that 4 of the 10 tastes read. Different runs reward different species — Crystalline/Chitinous become situationally dominant as the spec promised.
+**Direction:** Game is being re-framed from *score execution game* to **curation under shifting judge tastes.** Judges are the scoring spine; aesthetic tags drive 4 of the 10 tastes; a visible AI rival now competes for cards on a shared 8-slot persistent shop.
 
-**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival → 30 Plinth Composition → 31 Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
+**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival ✅ → 30 Plinth Composition → 31 Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
 
-**Next action:** Begin Phase 29 — Visible Rival. Per `phase_27_plan.md`: replace the Phase 26 hidden-rival flags with a public-board AI exhibitor on a shared 8-card shop (player picks first, rival second). 4 personalities (Hoarder, Magpie, Specialist, Mimic). Buster-principle aggressiveness scaling (≤10% perception threshold) responding to player chapter performance. Cut the existing `rivalCooldowns`/`rivalFlags` plumbing in shop/game/app.js.
+**Next action:** Begin Phase 30 — Plinth Composition. Per `phase_27_plan.md`: rewrite passives so the *order/adjacency* of cards on the plinth matters. Convert the legacy %-mult species/class passives (currently bypassed under judge mode — see Phase 28 "Known follow-up") into adjacency or pair-combo effects that read position. The plinth must feel like a curated arrangement, not an unordered set. Live appraisal-while-reordering is the moment-to-moment fun loop the redesign vision named as critical.
 
 **Skill usage rule:** Continue using `game-design-skills` proactively for design decisions. Reference audit in `phase_27_plan.md` Appendix flags which references to load per phase.
+
+**Phase 29 v0.47 (2026-05-01):** Visible Rival + persistent shared shop shipped.
+- **`src/rival.js` (new):** `Rival` class with 4 personalities (Hoarder, Magpie, Specialist, Mimic). `pickFromShop(shop, ctx)` runs after the player's ready commit; returns the slot indices the rival claimed so the shop can null them. `updateAggression(chapterRecord)` applies Buster-principle DDA at chapter boundaries: ≤10% sub-perception score-bias on candidates whose species matches the player's dominant species (`AGGRO_HIGH=+0.10`, `AGGRO_LOW=-0.10`).
+- **Specialist hard-commit:** locks species on first pick; off-species candidates filtered thereafter. **Bug fix during Phase 29:** the locking round is capped to 1 pick (otherwise the lock-setting first pick could be followed by an off-species second pick before the filter applied — caught in browser snapshot, fixed at [rival.js:148-154](src/rival.js#L148)).
+- **`src/shop.js`:** SHOP_SIZE 5 → 8. Shop is now persistent across rounds; 2 cheapest unbought offers rotate per round (`ROTATE_PER_ROUND=2`). Lock toggle retired — persistence-by-default replaces it. `drawOne()` helper extracted; `drawOffers()` only used for initial fill. Rival cooldown/excludeSet plumbing removed.
+- **`src/game.js`:** `Run` owns `this.rival = new Rival(pickPersonalityId(this.rng), this.rng)`. After `runBattle()`'s scoring resolves, the rival earns income (+5g/round, starts at 5) and picks. Per-round `history[].rivalPicks` records the names taken. Chapter-end hook builds a `chapterRecord` (passed + scoreOverTarget per round) and calls `rival.updateAggression()`.
+- **`web/app.js` + `style.css` + `loader.js`:** `showRivalReveal()` modal at run start (1.8s after judge slate). `renderRivalPanel()` shows personality nameplate, tell, gold, aggro indicator, and mini-board. Shop renders 8 slots. `rival` module added to ACB bootstrap.
+- **Phase 26 plumbing cut:** `rivalCooldowns`/`rivalFlags` removed from shop/game/app. The visible rival on a shared shop is the structurally correct version of "market scarcity."
+- **Browser-verified:** R1 Specialist locks Crystalline (Sharzak, 1 pick); R2 picks 1 more Crystalline (Krombax) — only 1 because shop offered no other on-species candidate. Rival panel renders glyph + name + tell + gold + species-tinted card chips. All 4 personalities behaved per spec across smoke tests.
+- **Known follow-ups:** Live appraisal-while-reordering and adjacency/pair-combo passives are the Phase 30 deliverables and remain open (the legacy %-mult passives are still bypassed under judge mode).
 
 **Phase 28 v0.46 (2026-05-01):** Aesthetic Tags shipped.
 - **`src/cards.js`:** every card def now carries `tags: [...]` with 1–2 of {Grotesque, Elegant, Bizarre, Restrained, Ostentatious, Quaint}. 31 cards tagged. Distribution (full pool incl. locked): Grotesque 11, Bizarre 10, Ostentatious 10, Quaint 7, Elegant 5, Restrained 5. Restrained and Elegant intentionally scarcer — that's what makes Refinement/Architecture genuinely tight tastes.
