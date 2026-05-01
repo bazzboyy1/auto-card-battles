@@ -6,15 +6,26 @@ Living index. Detail is split across `design_log/` sub-files to keep this entryp
 
 ## Current state (update this block every pass)
 
-**Phase:** Phase 30 "Plinth Composition" shipped (v0.48, 2026-05-01). 6-phase "Living Exhibition" redesign on track. Phase 26 hidden-rival flags removed (superseded).
+**Phase:** Phase 31-A "Target Curve Recalibration" shipped (v0.49, 2026-05-01). 6-phase "Living Exhibition" redesign on track. Phase 26 hidden-rival flags removed (superseded).
 
 **Direction:** Game is being re-framed from *score execution game* to **curation under shifting judge tastes.** Judges are the scoring spine; aesthetic tags drive 4 of the 10 tastes; a visible AI rival competes for cards on a shared 8-slot persistent shop; the plinth is now a *composition* (cap 6, adjacency-aware, pair-combos, live recalc on drag).
 
-**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival ✅ → 30 Plinth Composition ✅ → 31 Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
+**6-phase rollout:** 27 Judge Spine ✅ → 28 Aesthetic Tags ✅ → 29 Visible Rival ✅ → 30 Plinth Composition ✅ → **31-A Target curve recalibration ✅** → 31-B Run Modifiers + Economy fix → 32 Theme Pass. Each phase shippable independently.
 
-**Next action:** Begin Phase 31 — Run Modifiers + Economy fix. **Hard prerequisite:** recalibrate the per-round flat target curve. Phase 30 dropped board cap 10→6 and greedy survival fell from Phase 28's 26.3% to 19.7% (vs the 30–45% target band the curve was tuned for). Without this fix, novice players will die in mid-game before they reach the late rounds where adjacency stacking + pair-combos pay off, and the *arrange* sub-verb the redesign was built on never gets the spotlight. Then layer on the modifier deck (12 modifiers, draw 1/run), interest cap (max 5g/round), Exhibition Refit gold sink, and tag-granting items per `phase_27_plan.md`.
+**Next action:** Begin Phase 31-B — Run Modifiers + Economy fix. With the target curve restored to the 30–45% greedy-survival band, layer on the modifier deck (12 modifiers, draw 1/run), interest cap (max 5g/round), Exhibition Refit gold sink, and tag-granting items per `phase_27_plan.md`.
 
 **Skill usage rule:** Continue using `game-design-skills` proactively for design decisions. Reference audit in `phase_27_plan.md` Appendix flags which references to load per phase.
+
+**Phase 31-A v0.49 (2026-05-01):** Target curve recalibration shipped (Phase 31's hard prerequisite).
+- **`src/game.js` `ROUND_TARGETS`:** R1–R9 unchanged (early game already paced). R10–R12 unchanged (cap=6 transition is healthy through R12). R13–R24 cut to match cap=6 score growth: R13 1950→1850 (−5%), R14 2250→2050 (−9%), R15 2600→2250 (−13%), R16 critique 2800→2400 (−14%), R17 3000→2600 (−13%), R18 3200→2800 (−12.5%), R19 3500→3000 (−14%), R20 3850→3300 (−14%), R21 4100→3500 (−15%), R22 4350→3700 (−15%), R23 4650→3900 (−16%), R24 finale 5000→4200 (−16%). New curve grows ~10%/round R8–R12, ~7–8%/round R12–R24, matching observed greedy median score trajectory under cap=6.
+- **Diagnosis basis:** Per-round profile (n=300 seed=1) at v0.48 curve showed median Score/Target ratio collapsing from 1.40 at R12 → 1.04 at R19 → 0.87 at R24. R17–R19 were the kill zone (pass rate 56–66%) where players were eliminated *before* adjacency/pair-combos paid off. With cap=6, median greedy boards plateau in score growth ~+150–200 per round late, while old targets grew ~+374/round R14–R16 and ~+442/round R18–R20.
+- **Calibration (n=300 seed=1):** greedy survival 35.7% (was 19.7%, target band 30–45% ✓). Per-round pass rate 88.7% (was 85.3%). New kill zone: R17–R19 70%, R23 85%, R24 51% (Grand Finale appropriately the toughest gate). Multi-seed stability: seeds 2/7/42/100/999 → 35.5/36.0/35.5/36.0/42.5% — comfortably in band.
+- **Per-taste pass rates (n=500 seed=1):** Diversity 97.9, Narrative 97.0, Harmony 90.2, Grotesquerie 89.6, Spectacle 89.1, Eccentricity 88.8, Architecture 87.2, Ostentation 82.3, Refinement 75.0, Restraint 72.9. Hard tastes still hardest (Refinement and Restraint as designed); spread 73–98% within the engagement band.
+- **Build dominance (n=200 seed=1):** greedy 35.5%, smart-greedy 34.0%, wide 37.0%, abyssal-stack 41.0% (+5.5pp), chitinous-stack 38.0% (+2.5pp), crystalline-stack 31.0% (−4.5pp), plasmic-stack 30.0% (−5.5pp), sporal-stack 19.0% (−16.5pp). Sporal underperforming under tag/judge regime — flagged for Phase 32 species/tag rebalance, not blocking. No runaway dominance.
+- **`scripts/profile_targets.js` + `scripts/profile_tastes.js` (new):** calibration helpers used to diagnose the kill zone and verify the recalibration. Kept in repo for future curve passes.
+- **Browser-verified:** `ACB.game.ROUND_TARGETS` reflects new values; v0.49 displayed in HUD; loader cache-busted.
+- **66/66 unit tests pass.**
+- **Known follow-ups (Phase 31-B):** modifier deck, interest cap, Exhibition Refit gold sink, tag-granting items.
 
 **Phase 30 v0.48 (2026-05-01):** Plinth Composition shipped.
 - **`src/game.js`:** `MAX_BOARD` 10 → 6. Spec originally targeted cap=5 (Hick's Law optimum band 3–6); calibration sweep (cap=5 → 12.3% greedy survival, cap=6 → 19.7%, cap=7 → 31%) showed cap=5 dropped the curve too far below the 30–45% target band the per-round flats were tuned for. Cap=6 keeps the design intent (40% reduction from 10, still in the Hick's optimum band) while leaving Phase 31's target-curve recalibration with a tractable gap to close. `PLINTH_COST` truncated to slots 3–6; `addPlinth()` and `plinthCost()` now gate on the cap.

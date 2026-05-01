@@ -45,8 +45,12 @@ const HEAD_JUDGES = JUDGES;
 const CURATOR_SELECTIONS = {};
 
 // Score targets for each of the 24 rounds.
-// preferredTarget = base × 0.85 (rounded). Applied when board meets current judge's condition.
-// The Assembly (isNeutral) never grants the reduction — preferredTarget is unused for them.
+// Phase 31 recalibration: cap=6 plinth caps board growth in mid-late game,
+// so the previous +15–17%/round curve outran what greedy boards could produce
+// from R12 onward. New curve grows ~10%/round R8–R12 and ~7–8%/round R12–R24,
+// matching observed greedy score trajectory under Phase 30 plinth composition.
+// preferredTarget kept (×0.85) but unused under judge mode — Phase 27 retired
+// the qualify mechanic; the field is left in place for legacy ad-hoc Node A/B.
 const ROUND_TARGETS = [
   { target: 100,  preferredTarget:  85,  isCritique: false }, // R1
   { target: 135,  preferredTarget: 115,  isCritique: false }, // R2
@@ -60,18 +64,18 @@ const ROUND_TARGETS = [
   { target: 1280, preferredTarget: 1088, isCritique: false }, // R10
   { target: 1480, preferredTarget: 1258, isCritique: false }, // R11
   { target: 1700, preferredTarget: 1445, isCritique: false }, // R12
-  { target: 1950, preferredTarget: 1658, isCritique: false }, // R13
-  { target: 2250, preferredTarget: 1913, isCritique: false }, // R14
-  { target: 2600, preferredTarget: 2210, isCritique: false }, // R15
-  { target: 2800, preferredTarget: 2380, isCritique: true  }, // R16 — Critique 2
-  { target: 3000, preferredTarget: 2550, isCritique: false }, // R17
-  { target: 3200, preferredTarget: 2720, isCritique: false }, // R18
-  { target: 3500, preferredTarget: 2975, isCritique: false }, // R19
-  { target: 3850, preferredTarget: 3273, isCritique: false }, // R20
-  { target: 4100, preferredTarget: 3485, isCritique: false }, // R21
-  { target: 4350, preferredTarget: 3698, isCritique: false }, // R22
-  { target: 4650, preferredTarget: 3953, isCritique: false }, // R23
-  { target: 5000, preferredTarget: 4250, isCritique: true  }, // R24 — Grand Finale
+  { target: 1850, preferredTarget: 1573, isCritique: false }, // R13
+  { target: 2050, preferredTarget: 1743, isCritique: false }, // R14
+  { target: 2250, preferredTarget: 1913, isCritique: false }, // R15
+  { target: 2400, preferredTarget: 2040, isCritique: true  }, // R16 — Critique 2
+  { target: 2600, preferredTarget: 2210, isCritique: false }, // R17
+  { target: 2800, preferredTarget: 2380, isCritique: false }, // R18
+  { target: 3000, preferredTarget: 2550, isCritique: false }, // R19
+  { target: 3300, preferredTarget: 2805, isCritique: false }, // R20
+  { target: 3500, preferredTarget: 2975, isCritique: false }, // R21
+  { target: 3700, preferredTarget: 3145, isCritique: false }, // R22
+  { target: 3900, preferredTarget: 3315, isCritique: false }, // R23
+  { target: 4200, preferredTarget: 3570, isCritique: true  }, // R24 — Grand Finale
 ];
 
 class Player {
