@@ -3,6 +3,7 @@
 const { STAR_MULT, SYNERGIES, CLASS_SYNERGIES } = require('./cards');
 const { hasItem, giantsBeltMult } = require('./items');
 const { hasAugment } = require('./augments');
+const { findCombosOnBoard } = require('./combos');
 
 const MAX_BENCH = 8;
 const SPECIES_ALPHA = ['Abyssal', 'Chitinous', 'Crystalline', 'Plasmic', 'Sporal'];
@@ -145,6 +146,43 @@ function auraMatches(target, srcIdx, tgtIdx, active) {
   return false;
 }
 
+// Phase 30 — Stage 2.5. Adds two flat sources to the per-card scores:
+//   1. axis:'adjacency' passives (read left/right neighbors)
+//   2. pair-combos from src/combos.js
+// Mutates `scores`, `lines` (per-card breakdown rows), and `fired` (Eccentricity
+// readout) in-place. `fired` may be null in legacy mode where it isn't tracked.
+function applyAdjacencyStage(active, scores, lines, fired, ctx) {
+  // 1. Per-card adjacency passives.
+  for (let i = 0; i < active.length; i++) {
+    const card = active[i];
+    if (!card.passive || card.passive.axis !== 'adjacency') continue;
+    if (typeof card.passive.evalAdjacent !== 'function') continue;
+    const left  = i > 0 ? active[i - 1] : null;
+    const right = i < active.length - 1 ? active[i + 1] : null;
+    let r;
+    try { r = card.passive.evalAdjacent(card, left, right, ctx) || {}; }
+    catch (_) { r = {}; }
+    if (typeof r.flat === 'number' && r.flat !== 0) {
+      scores[i] += r.flat;
+      lines[i].push({ label: r.label || card.passive.description || 'adjacency', add: r.flat });
+      if (fired) fired[i] = true;
+    }
+  }
+
+  // 2. Pair-combos. Each fires on both participant slots.
+  const combos = findCombosOnBoard(active, ctx);
+  for (const hit of combos) {
+    scores[hit.leftIdx]  += hit.bonus;
+    scores[hit.rightIdx] += hit.bonus;
+    lines[hit.leftIdx].push({  label: `${hit.combo.label} (combo)`, add: hit.bonus });
+    lines[hit.rightIdx].push({ label: `${hit.combo.label} (combo)`, add: hit.bonus });
+    if (fired) {
+      fired[hit.leftIdx]  = true;
+      fired[hit.rightIdx] = true;
+    }
+  }
+}
+
 class Board {
   constructor(maxActive = 1) {
     this.maxActive = maxActive;
@@ -277,6 +315,9 @@ class Board {
         lines[i].push({ label: card.passive.description || 'passive', add: flat });
       }
     }
+
+    // Stage 2.5 — Phase 30: adjacency + pair-combos. See src/combos.js.
+    applyAdjacencyStage(this.active, scores, lines, null, { round, player, augments });
 
     // Stage 3 — synergy flats
     for (const [species, count] of Object.entries(speciesCounts)) {
@@ -571,6 +612,11 @@ class Board {
         fired[i] = true;
       }
     }
+
+    // Stage 2.5 — Phase 30: adjacency + pair-combos. Sets fired[i] for both
+    // adjacency-axis passives that pay out and pair-combo participants, so
+    // the Eccentricity taste reads them.
+    applyAdjacencyStage(this.active, scores, lines, fired, { round, player, augments });
 
     // Mark "fired" for any other axis (4/6/8) whose passive returned a non-trivial result.
     // Used by the Eccentricity taste; bonuses themselves are bypassed under judge mode.

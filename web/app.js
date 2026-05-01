@@ -1082,8 +1082,12 @@ function renderBoard() {
   activeEl.innerHTML = '';
   for (let i = 0; i < board.maxActive; i++) {
     const card = board.active[i];
-    if (card) activeEl.appendChild(makeCard(card, 'board', null, bdMap.get(card._id)));
-    else      activeEl.appendChild(makeEmptySlot());
+    const slotEl = card
+      ? makeCard(card, 'board', null, bdMap.get(card._id))
+      : makeEmptySlot();
+    slotEl.dataset.activeSlot = String(i);
+    wireActiveSlotDnD(slotEl, i, card);
+    activeEl.appendChild(slotEl);
   }
 
   const benchEl = qs('#bench-slots');
@@ -1095,6 +1099,129 @@ function renderBoard() {
   }
 
   updateArchetypeDisplay();
+}
+
+// Phase 30 — drag-and-drop on active row.
+//
+// Drag a card to another active slot to swap (or move into an empty slot).
+// While dragging, the live target preview in the HUD shows the projected
+// total score for the proposed arrangement — this is the direct-feedback
+// hook for the *arrange* sub-verb.
+//
+// Only fires during the shop phase. Other phases (scoring/augment/item) get
+// no draggable attribute so the UI stays inert.
+function wireActiveSlotDnD(slotEl, slotIdx, card) {
+  if (S.phase !== 'shop') return;
+
+  if (card) {
+    slotEl.draggable = true;
+    slotEl.addEventListener('dragstart', (ev) => {
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', String(slotIdx));
+      slotEl.classList.add('dragging');
+    });
+    slotEl.addEventListener('dragend', () => {
+      slotEl.classList.remove('dragging');
+      hideLivePreview();
+      // Re-run a normal render so any stale class state from preview clears.
+      document.querySelectorAll('#active-slots .drop-target').forEach(el => el.classList.remove('drop-target'));
+    });
+  }
+
+  slotEl.addEventListener('dragover', (ev) => {
+    if (!ev.dataTransfer.types.includes('text/plain')) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'move';
+    slotEl.classList.add('drop-target');
+    schedulePreviewRecalc(slotIdx);
+  });
+  slotEl.addEventListener('dragleave', () => {
+    slotEl.classList.remove('drop-target');
+  });
+  slotEl.addEventListener('drop', (ev) => {
+    ev.preventDefault();
+    slotEl.classList.remove('drop-target');
+    const fromIdx = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+    if (Number.isNaN(fromIdx) || fromIdx === slotIdx) {
+      hideLivePreview();
+      return;
+    }
+    swapActiveSlots(fromIdx, slotIdx);
+    hideLivePreview();
+    rlog({ t: 'reorder', from: fromIdx, to: slotIdx });
+    render();
+  });
+}
+
+let _previewRafScheduled = false;
+let _pendingPreviewTarget = -1;
+let _dragSourceIdx        = -1;
+
+function schedulePreviewRecalc(targetIdx) {
+  _pendingPreviewTarget = targetIdx;
+  if (_previewRafScheduled) return;
+  _previewRafScheduled = true;
+  requestAnimationFrame(() => {
+    _previewRafScheduled = false;
+    runPreviewRecalc(_pendingPreviewTarget);
+  });
+}
+
+function runPreviewRecalc(targetIdx) {
+  // Find the dragged source slot — it's the one with the .dragging class.
+  const draggingEl = document.querySelector('#active-slots .dragging');
+  if (!draggingEl) return;
+  const fromIdx = parseInt(draggingEl.dataset.activeSlot, 10);
+  if (Number.isNaN(fromIdx) || fromIdx === targetIdx) {
+    hideLivePreview();
+    return;
+  }
+
+  // Build the proposed arrangement without mutating the live board.
+  const board    = S.human.board;
+  const proposed = board.active.slice();
+  // Pad to maxActive for index access; trim back when assigning.
+  while (proposed.length < board.maxActive) proposed.push(undefined);
+  const moving = proposed[fromIdx];
+  proposed[fromIdx] = proposed[targetIdx];
+  proposed[targetIdx] = moving;
+
+  const tempBoard = Object.create(board);
+  tempBoard.active = proposed.filter(c => c);
+
+  const previewRound = S.run.round + 1;
+  const bd = tempBoard.calcScoreBreakdown({ round: previewRound, augments: S.run.augments });
+  showLivePreview(bd.total);
+}
+
+function showLivePreview(total) {
+  const el = qs('#live-preview');
+  if (!el) return;
+  el.textContent = `Live: ${total}`;
+  el.classList.remove('hidden');
+}
+function hideLivePreview() {
+  const el = qs('#live-preview');
+  if (el) { el.textContent = ''; el.classList.add('hidden'); }
+}
+
+function swapActiveSlots(fromIdx, toIdx) {
+  const board = S.human.board;
+  const a = board.active[fromIdx];
+  const b = board.active[toIdx];
+  if (!a) return;
+  if (b) {
+    board.active[fromIdx] = b;
+    board.active[toIdx]   = a;
+  } else {
+    // Move a to toIdx (which is past the end of active.length OR an empty
+    // hole in a sparse-rendered row). Since active is dense, this means
+    // appending or shifting; simplest is to remove from fromIdx and insert
+    // at min(toIdx, length).
+    board.active.splice(fromIdx, 1);
+    const insertAt = Math.min(toIdx, board.active.length);
+    board.active.splice(insertAt, 0, a);
+  }
 }
 
 function renderShopOffers() {

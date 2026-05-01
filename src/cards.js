@@ -50,11 +50,13 @@ const CARD_DEFS = [
     tags: ['Ostentatious'],
     flavor: 'Slurvins become visibly furious in the presence of superior specimens. Judges find their seething plasma glow striking. They do not take this well.',
     passive: {
-      description: '+25% score per 2★+ unit on board (self counts)',
-      axis: 4,
-      eval(card, ctx) {
-        const n = ctx.boardState.active.filter(c => c.stars >= 2).length;
-        return { mult: 1 + 0.25 * n };
+      description: 'Pair with Vorzak (+40 each). Else +12 per adjacent neighbor.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right) {
+        let bonus = 0;
+        if (left)  bonus += 12;
+        if (right) bonus += 12;
+        return { flat: bonus, label: 'rage feeds on attention' };
       },
     },
   },
@@ -119,10 +121,11 @@ const CARD_DEFS = [
     tags: ['Grotesque'],
     flavor: 'Vorzaks are deeply territorial and reach peak menace when they have no competition for the title of most horrifying thing in the room.',
     passive: {
-      description: '×1.5 score if only Abyssal on board',
-      axis: 4,
-      eval(card, ctx) {
-        return { mult: (ctx.speciesCounts.Abyssal || 0) === 1 ? 1.5 : 1 };
+      description: 'Pair with Slurvin (+40 each). Else +20 if no adjacent Abyssal (solo menace).',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right) {
+        const adjAbyssal = (left && left.species === 'Abyssal') || (right && right.species === 'Abyssal');
+        return adjAbyssal ? {} : { flat: 20, label: 'solo menace' };
       },
     },
   },
@@ -180,10 +183,11 @@ const CARD_DEFS = [
     tags: ['Grotesque', 'Bizarre'],
     flavor: 'Molborgs feed on ambient spore clouds. In a room full of Sporals they gorge themselves to a truly unpleasant size, which judges score very favourably.',
     passive: {
-      description: '×1.5 score while Sporal synergy (2+) is active',
-      axis: 4,
-      eval(card, ctx) {
-        return { mult: (ctx.speciesCounts.Sporal || 0) >= 2 ? 1.5 : 1 };
+      description: 'Pair with Sporvik (+50 each). Else +20 if any adjacent Sporal.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right) {
+        const adj = (left && left.species === 'Sporal') || (right && right.species === 'Sporal');
+        return adj ? { flat: 20, label: 'spore feast' } : {};
       },
     },
   },
@@ -205,10 +209,13 @@ const CARD_DEFS = [
     tags: ['Elegant', 'Bizarre'],
     flavor: 'Lithvorns\' crystal networks resonate when surrounded by enough of their kind, producing a frequency that makes judges deeply uncomfortable and score them very highly.',
     passive: {
-      description: '×1.5 score if 4+ Crystallines on board',
-      axis: 4,
-      eval(card, ctx) {
-        return { mult: (ctx.speciesCounts.Crystalline || 0) >= 4 ? 1.5 : 1 };
+      description: 'Pair with Geodorb (+60 each). Else +25 per adjacent Crystalline.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right) {
+        let bonus = 0;
+        if (left  && left.species  === 'Crystalline') bonus += 25;
+        if (right && right.species === 'Crystalline') bonus += 25;
+        return { flat: bonus, label: 'crystal harmonics' };
       },
     },
   },
@@ -314,10 +321,13 @@ const CARD_DEFS = [
     tags: ['Grotesque', 'Ostentatious'],
     flavor: 'Squorbles spend the first nine rounds looking like something that washed up on a beach. Then, without warning, they do something the judges will not describe in their official notes but award maximum marks for.',
     passive: {
-      description: 'Rounds 1–9: ×0.5 score. Round 10+: ×2 score.',
-      axis: '6+4',
-      eval(card, ctx) {
-        return { mult: (ctx.round || 0) >= 10 ? 2.0 : 0.5 };
+      description: 'R1–9: −30 (dormant). R10+: pair with Stellorb (+120 each), else +50 if any adjacent Abyssal.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right, ctx) {
+        const round = ctx.round || 0;
+        if (round < 10) return { flat: -30, label: 'dormant' };
+        const adj = (left && left.species === 'Abyssal') || (right && right.species === 'Abyssal');
+        return adj ? { flat: 50, label: 'awakened' } : {};
       },
     },
   },
@@ -383,11 +393,15 @@ const CARD_DEFS = [
     tags: ['Grotesque', 'Ostentatious'],
     flavor: 'Stellorbs carry themselves with an air of inevitability. In the sixteenth round, surrounded by sufficient Abyssal company, they begin radiating something that fills three pages of the exhibition incident log.',
     passive: {
-      description: '×1.5 score if Abyssal-4 synergy active and round 16+',
-      axis: '6+4',
-      eval(card, ctx) {
-        const abyssal = (ctx.speciesCounts || {}).Abyssal || 0;
-        return { mult: (abyssal >= 4 && (ctx.round || 0) >= 16) ? 1.5 : 1 };
+      description: 'R10+ pair with Squorble (+120 each). Else from R16+: +30 per adjacent Abyssal.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right, ctx) {
+        const round = ctx.round || 0;
+        if (round < 16) return {};
+        let bonus = 0;
+        if (left  && left.species  === 'Abyssal') bonus += 30;
+        if (right && right.species === 'Abyssal') bonus += 30;
+        return { flat: bonus, label: 'inevitability' };
       },
     },
   },
@@ -399,10 +413,11 @@ const CARD_DEFS = [
     tags: ['Bizarre'],
     flavor: "Vorbexes are essentially very confident plasma. Individually they do little. Surrounded by enough of their kin, something extraordinary — and frankly unsettling — occurs.",
     passive: {
-      description: '×1.5 score if Plasmic-4 synergy active',
-      axis: 4,
-      eval(card, ctx) {
-        return { mult: (ctx.speciesCounts.Plasmic || 0) >= 4 ? 1.5 : 1 };
+      description: 'Pair with Blorpax (+35 each). Else +18 if both neighbors are Plasmic.',
+      axis: 'adjacency',
+      evalAdjacent(self, left, right) {
+        const both = left && right && left.species === 'Plasmic' && right.species === 'Plasmic';
+        return both ? { flat: 18, label: 'plasma confluence' } : {};
       },
     },
   },

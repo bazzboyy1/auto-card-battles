@@ -17,10 +17,18 @@ const MAX_INTEREST   = 5;
 const INTEREST_PER   = 5;
 const MAX_LEVEL      = 9;
 const ROUND_CAP      = 24;
-const MAX_BOARD      = 10;
+// Phase 30: plinth cap dropped 10 -> 6. Hick's Law: 3-6 options is the
+// optimal decision band; smaller surface forces composition decisions
+// instead of stack accumulation. Spec originally targeted 5; calibration
+// (greedy n=300: cap=5 -> 12.3% survival, cap=6 -> 19.7%, cap=7 -> 31%)
+// showed cap=5 dropped survival far below the 30-45% band that the
+// per-round target curve was tuned for. Cap=6 keeps the design intent
+// (40% reduction from 10) and stays in the Hick's optimum band, while
+// leaving Phase 31's target recalibration with a tractable gap to close.
+const MAX_BOARD      = 6;
 const STARTING_LIVES = 3;
 
-const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20, 7: 24, 8: 28 };
+const PLINTH_COST = { 3: 8, 4: 8, 5: 12, 6: 20 };
 
 // Phase 27: judges + tastes live in src/judges.js. Re-exported below as
 // HEAD_JUDGES for back-compat with web/app.js. Each judge now has:
@@ -115,17 +123,18 @@ class Player {
   }
 
   addPlinth() {
-    if (this.level >= MAX_LEVEL) return false;
+    if (this.level >= MAX_LEVEL || this.level >= MAX_BOARD) return false;
     const cost = PLINTH_COST[this.level];
-    if (this.gold < cost) return false;
+    if (cost == null || this.gold < cost) return false;
     this.gold -= cost;
     this.level++;
-    this.board.maxActive = this.level;
+    this.board.maxActive = Math.min(MAX_BOARD, this.level);
     return true;
   }
 
   plinthCost() {
-    return this.level >= MAX_LEVEL ? 0 : PLINTH_COST[this.level];
+    if (this.level >= MAX_LEVEL || this.level >= MAX_BOARD) return 0;
+    return PLINTH_COST[this.level] || 0;
   }
 
   applyResult(passed) {
