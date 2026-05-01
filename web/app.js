@@ -51,7 +51,6 @@ document.addEventListener('acb-ready', () => {
   qs('#btn-ready').onclick    = onReady;
   qs('#btn-continue').onclick = onContinue;
   qs('#btn-reroll').onclick   = onReroll;
-  qs('#btn-lock').onclick     = onLock;
   qs('#btn-plinth').onclick   = onAddPlinth;
   qs('#btn-mute').onclick     = () => {
     const m = Sound.toggleMute();
@@ -296,6 +295,88 @@ function showJudgeSlateReveal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
 }
 
+// Phase 29: run-start reveal of the rival exhibitor.
+function showRivalReveal() {
+  const rival = S.run && S.run.rival;
+  if (!rival) return;
+  const p = rival.personality;
+  const overlay = document.createElement('div');
+  overlay.className = 'rival-reveal';
+  overlay.innerHTML = `
+    <div class="rival-reveal-box">
+      <div class="rival-reveal-title">Your Rival This Salon</div>
+      <div class="rival-reveal-name">${p.glyph || ''} ${p.name}</div>
+      <div class="rival-reveal-flavor">"${p.flavor}"</div>
+      <div class="rival-reveal-tell">Tell: ${p.tell}</div>
+      <button class="btn-primary slate-dismiss">Onward</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const dismiss = () => overlay.remove();
+  overlay.querySelector('.slate-dismiss').onclick = dismiss;
+  overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
+}
+
+// Phase 29: visible rival panel — personality nameplate + collected board.
+function renderRivalPanel() {
+  const section = qs('#rival-section');
+  if (!section) return;
+  const rival = S.run && S.run.rival;
+  if (!rival) { section.classList.add('hidden'); return; }
+
+  const p = rival.personality;
+  qs('#rival-name').innerHTML = `${p.glyph || ''} <strong>${p.name}</strong>`;
+  qs('#rival-tell').textContent = p.tell || p.flavor || '';
+  qs('#rival-gold').textContent = `${rival.gold}g`;
+
+  // Aggro indicator — only show when non-zero so it stays sub-perception by default.
+  const aggroEl = qs('#rival-aggro');
+  if (aggroEl) {
+    if (rival.aggressiveness > 0.001) {
+      aggroEl.textContent = '↑ keen';
+      aggroEl.title = 'Reading you closely — biased toward your dominant species.';
+      aggroEl.style.color = '#cc6080';
+    } else if (rival.aggressiveness < -0.001) {
+      aggroEl.textContent = '↓ distracted';
+      aggroEl.title = 'Off your scent — slightly less aggressive on your species.';
+      aggroEl.style.color = '#6090cc';
+    } else {
+      aggroEl.textContent = '';
+      aggroEl.title = '';
+    }
+  }
+
+  const boardEl = qs('#rival-board');
+  boardEl.innerHTML = '';
+  if (!rival.board.length) {
+    const empty = document.createElement('div');
+    empty.className = 'rival-empty';
+    empty.textContent = 'Has not picked yet.';
+    boardEl.appendChild(empty);
+  } else {
+    // Aggregate identical names with a count badge — same convention as the player's board would
+    // for upgrades, but the rival doesn't combine, so this is purely visual compactness.
+    const grouped = {};
+    for (const c of rival.board) {
+      const k = c.name;
+      if (!grouped[k]) grouped[k] = { ...c, n: 0 };
+      grouped[k].n++;
+    }
+    for (const k of Object.keys(grouped)) {
+      const c = grouped[k];
+      const chip = document.createElement('div');
+      chip.className = `rival-card species-${c.species.toLowerCase()}`;
+      chip.innerHTML = `
+        <div class="rival-card-name">${c.name}${c.n > 1 ? ` <span class="rival-count">×${c.n}</span>` : ''}</div>
+        <div class="rival-card-meta"><span class="card-species">${c.species}</span> · T${c.tier}</div>
+      `;
+      boardEl.appendChild(chip);
+    }
+  }
+
+  section.classList.remove('hidden');
+}
+
 // Render the judge panel below the HUD sub-row.
 function renderJudgePanel() {
   const panel = qs('#judge-panel');
@@ -430,7 +511,9 @@ function startRound() {
   }
   if (nextRound === 1) {
     // Phase 27: run-start slate reveal subsumes the chapter-1 chapter reveal.
+    // Phase 29: rival reveal follows the slate so the player meets both at once.
     setTimeout(() => showJudgeSlateReveal(), 150);
+    setTimeout(() => showRivalReveal(), 1800);
   } else if (nextRound === 9 || nextRound === 17) {
     const chapter = S.run.chapterFor(nextRound);
     const judge   = S.run.currentJudge(nextRound);
@@ -481,7 +564,6 @@ function finishRoundSetup() {
     t: 'shop_refresh',
     cause: 'round_start',
     offers: (S.human.shop.offers || []).slice(),
-    locked: !!S.human.shop.locked,
   });
   render();
 }
@@ -764,18 +846,6 @@ function onReroll() {
   render();
 }
 
-function onLock() {
-  if (S.human.shop.locked) {
-    S.human.shop.unlock();
-    rlog({ t: 'unlock_shop' });
-  } else {
-    Sound.play('lockMarket');
-    S.human.shop.lock();
-    rlog({ t: 'lock_shop', offers: (S.human.shop.offers || []).slice() });
-  }
-  render();
-}
-
 function onAddPlinth() {
   Sound.play('plinth');
   const prevMax    = S.human.board.maxActive;
@@ -901,6 +971,7 @@ function render() {
     renderItemBag();
     renderAugmentOffer();
     renderJudgePanel();
+    renderRivalPanel();
   } else if (S.phase === 'shapeshifter') {
     qs('#shop-section').classList.add('hidden');
     showShapeshifterModal();
@@ -913,6 +984,7 @@ function render() {
     renderItemBag();
     renderItemOffer();
     renderJudgePanel();
+    renderRivalPanel();
   } else if (S.phase === 'curator') {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
@@ -922,6 +994,7 @@ function render() {
     renderItemBag();
     renderCuratorOffer();
     renderJudgePanel();
+    renderRivalPanel();
   } else if (S.phase === 'shop') {
     qs('#modal').classList.add('hidden');
     qs('#shop-section').classList.remove('hidden');
@@ -938,6 +1011,7 @@ function render() {
     renderDevPanel();
     updateShopControls();
     renderJudgePanel();
+    renderRivalPanel();
   } else if (S.phase === 'scoring') {
     qs('#shop-section').classList.add('hidden');
     showScoringModal();
@@ -1028,7 +1102,8 @@ function renderShopOffers() {
   shopEl.innerHTML = '';
   const offers = S.human.shop.offers;
   const owned = S.human.board.allCards;
-  for (let i = 0; i < 5; i++) {
+  const SHOP_SLOTS = (window.ACB && window.ACB.shop && window.ACB.shop.SHOP_SIZE) || 8;
+  for (let i = 0; i < SHOP_SLOTS; i++) {
     const name = offers[i];
     if (!name) { shopEl.appendChild(makeEmptySlot()); continue; }
     const def  = CARD_DEFS.find(d => d.name === name);
@@ -1036,16 +1111,6 @@ function renderShopOffers() {
     const cost = CARD_COSTS[def.tier];
     const el   = makeCard({ ...def, stars: 1, _id: -1 }, 'shop', cost);
     if (S.human.gold < cost || S.human.board.isFull()) el.classList.add('unaffordable');
-
-    // Phase 26: rival exhibitor wants this card. If unbought, it's gone for 2 rounds.
-    if (S.human.shop.rivalFlags && S.human.shop.rivalFlags[i]) {
-      el.classList.add('rival-claimed');
-      const tag = document.createElement('div');
-      tag.className = 'rival-tag';
-      tag.textContent = '👁 Wanted';
-      tag.title = 'Another exhibitor wants this. Pass on it and they\'ll take it — unavailable to you for 2 rounds.';
-      el.appendChild(tag);
-    }
 
     // Owned-copy counter: teaches the "3-of-a-kind upgrades" rule implicitly.
     const ownedCopies = owned.filter(c => c.name === name && c.stars === 1).length;
@@ -1060,7 +1125,6 @@ function renderShopOffers() {
     el.onclick = () => onBuyShop(i);
     shopEl.appendChild(el);
   }
-  qs('#shop-lock-tag').classList.toggle('hidden', !S.human.shop.locked);
 }
 
 function renderSynergyBar() {
@@ -1230,7 +1294,6 @@ function updateShopControls() {
   const cost = S.human.shop.rerollCost ? S.human.shop.rerollCost() : 2;
   qs('#btn-reroll').textContent  = `Re-roll (${cost}g)`;
   qs('#btn-reroll').disabled     = S.human.gold < cost;
-  qs('#btn-lock').textContent    = S.human.shop.locked ? 'Unlock Market' : 'Lock Market';
   const plinthBtn = qs('#btn-plinth');
   const exhibitTip = qs('#exhibit-info-tooltip');
   if (S.human.level >= 9) {

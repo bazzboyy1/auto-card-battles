@@ -7,6 +7,7 @@ const { attachItem, ITEM_DEFS, getAvailableItems } = require('./items');
 const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
 const { isUnlocked, incrementAchievementCounters } = require('./achievements');
 const { JUDGES, getJudge, getTaste, drawJudgeSlate } = require('./judges');
+const { Rival, pickPersonalityId } = require('./rival');
 
 const STARTING_GOLD  = 9;
 const STARTING_LEVEL = 3;
@@ -81,8 +82,6 @@ class Player {
     // augments is wired to run.augments by Run constructor (shared reference).
     this.augments  = [];
     this.itemBag   = [];
-    // Phase 26: { cardName: roundsRemaining } — excluded from shop draws while > 0.
-    this.rivalCooldowns = {};
   }
 
   // Tycoon doubles the interest component only (not base or streak).
@@ -239,6 +238,11 @@ class Run {
     this.useJudgeScoring  = !(typeof process !== 'undefined' && process.env && process.env.LEGACY_SCORING === '1');
     this._curatorsPicked  = new Set();
     this.curatorOffers    = {};
+    // Phase 29: visible rival on a shared shop. Personality is drawn once
+    // per run; the rival's board persists for the duration.
+    this.rival            = new Rival(pickPersonalityId(this.rng), this.rng);
+    // Track player buys per round for Mimic personality + DDA dominant-species lookup.
+    this._playerLastSpeciesCounts = {};
   }
 
   // Chapter number for a round.
@@ -446,24 +450,44 @@ class Run {
     };
     this.battleHistory.push(entry);
 
-    // Phase 26: rival-claim bookkeeping.
-    // 1. Tick down existing cooldowns (entries reaching 0 are dropped).
-    // 2. Any rival-flagged shop slot still holding a card (= unbought) → claim
-    //    that card for 2 rounds. Player must compete next time it appears.
-    const cd = this.player.rivalCooldowns;
-    for (const name of Object.keys(cd)) {
-      cd[name]--;
-      if (cd[name] <= 0) delete cd[name];
-    }
-    const shop = this.player.shop;
-    if (shop && shop.rivalFlags) {
-      for (let i = 0; i < shop.offers.length; i++) {
-        if (shop.rivalFlags[i] && shop.offers[i]) {
-          cd[shop.offers[i]] = 2;
-        }
+    // Phase 29: rival picks AFTER the player commits, BEFORE the next shop
+    // refresh. The rival reads the player's just-committed board to figure
+    // out the dominant species (Mimic + Buster-principle aggro both use it).
+    if (this.rival) {
+      const playerSpeciesCounts = {};
+      for (const c of this.player.board.active) {
+        if (c && c.species) playerSpeciesCounts[c.species] = (playerSpeciesCounts[c.species] || 0) + 1;
       }
+      this._playerLastSpeciesCounts = playerSpeciesCounts;
+      this.rival.earnIncome();
+      const rivalCtx = { playerLastSpecies: playerSpeciesCounts };
+      const claimed  = this.rival.pickFromShop(this.player.shop, rivalCtx);
+      for (const idx of claimed) this.player.shop.removeSlot(idx);
+      entry.rivalPicks = claimed.map(idx => null).filter(() => false); // filled below
+      // Capture what the rival actually took (after removeSlot, names are gone).
+      // Use the rival's last N additions.
+      const newCount = claimed.length;
+      entry.rivalPicks = newCount > 0
+        ? this.rival.board.slice(-newCount).map(b => b.name)
+        : [];
     }
-    entry.rivalClaimed = Object.keys(cd).slice();
+
+    // Phase 29: Buster-principle DDA — update rival aggressiveness at each
+    // chapter boundary based on chapter performance.
+    const isChapterEnd = (this.round === 8 || this.round === 16 || this.round === 23 || this.round === 24);
+    if (isChapterEnd && this.rival) {
+      const chapterStart = this.round === 8  ? 1
+                         : this.round === 16 ? 9
+                         : this.round === 23 ? 17
+                         : 24;
+      const chapterRecord = this.battleHistory
+        .filter(h => h.round >= chapterStart && h.round <= this.round)
+        .map(h => ({
+          passed: h.passed,
+          scoreOverTarget: h.target > 0 ? (h.playerScore - h.target) / h.target : 0,
+        }));
+      this.rival.updateAggression(chapterRecord);
+    }
 
     return entry;
   }

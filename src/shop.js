@@ -2,8 +2,12 @@
 
 const { CARD_DEFS, CARD_COSTS, createCard, getAvailableCards } = require('./cards');
 
-const SHOP_SIZE   = 5;
-const REROLL_COST = 2; // default; Midas Touch reduces to 1
+// Phase 29: shared persistent shop. 8 slots; 2 rotate per round; no lock.
+// The lock mechanic was retired because persistence-by-default replaces it —
+// cards already carry over, so a "preserve all 5" toggle has no role.
+const SHOP_SIZE        = 8;
+const ROTATE_PER_ROUND = 2;
+const REROLL_COST      = 2; // default; Midas Touch reduces to 1
 
 // Tier probability weights by player level.
 // Each entry: [tier1, tier2, tier3] must sum to 1.
@@ -19,89 +23,108 @@ const LEVEL_WEIGHTS = {
   9: [0.05, 0.30, 0.65],
 };
 
-// Per-player weighted shop draw. No shared inventory, no depletion.
-// Picks a tier by LEVEL_WEIGHTS, then uniform within tier. No duplicate
-// names within a single draw.
-// excludeSet: names currently under rival-claim cooldown (Phase 26).
-function drawOffers(level, rng, n, excludeSet = null) {
+// Pick a single card name by level-weighted tier, uniform within tier.
+// Excludes any name already in `existing` (a Set or array of names).
+function drawOne(level, rng, existing = null) {
   const weights = LEVEL_WEIGHTS[Math.min(level, 9)] || LEVEL_WEIGHTS[9];
-  const offered = new Set();
-  const result = [];
-  const isExcluded = excludeSet ? (name) => excludeSet.has(name) : () => false;
+  const has = existing
+    ? (existing instanceof Set ? existing : new Set(existing))
+    : new Set();
 
-  for (let slot = 0; slot < n; slot++) {
-    const roll = rng();
-    let cumulative = 0;
-    let tier = 1;
-    for (let t = 1; t <= 3; t++) {
-      cumulative += weights[t - 1];
-      if (roll < cumulative) { tier = t; break; }
-    }
-
-    const available = getAvailableCards();
-    let candidates = available.filter(d => d.tier === tier && !offered.has(d.name) && !isExcluded(d.name));
-    if (candidates.length === 0) {
-      candidates = available.filter(d => !offered.has(d.name) && !isExcluded(d.name));
-    }
-    if (candidates.length === 0) { result.push(null); continue; }
-
-    const pick = candidates[Math.floor(rng() * candidates.length)];
-    offered.add(pick.name);
-    result.push(pick.name);
+  const roll = rng();
+  let cumulative = 0;
+  let tier = 1;
+  for (let t = 1; t <= 3; t++) {
+    cumulative += weights[t - 1];
+    if (roll < cumulative) { tier = t; break; }
   }
 
+  const available = getAvailableCards();
+  let candidates = available.filter(d => d.tier === tier && !has.has(d.name));
+  if (candidates.length === 0) {
+    candidates = available.filter(d => !has.has(d.name));
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(rng() * candidates.length)].name;
+}
+
+// Draw n distinct card names. Used for the initial shop fill.
+function drawOffers(level, rng, n) {
+  const offered = new Set();
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const pick = drawOne(level, rng, offered);
+    if (pick === null) { result.push(null); continue; }
+    offered.add(pick);
+    result.push(pick);
+  }
   return result;
 }
 
-// Per-player shop. Holds the current 5 offers and manages lock/reroll.
+// Per-player shop. Persistent slots — refresh() rotates ROTATE_PER_ROUND
+// of the existing offers, replacing them with fresh draws. Bought slots
+// are nulled by buy() and refilled on the next refresh.
 class Shop {
   constructor(player) {
-    this.player = player;
-    this.offers = [];   // array of card names or null (bought/empty slot)
-    this.rivalFlags = []; // parallel to offers; true = rival exhibitor wants this card
-    this.locked = false;
+    this.player  = player;
+    this.offers  = [];   // length SHOP_SIZE; null = bought/empty slot
+    this._inited = false;
   }
 
-  // Names currently under rival-claim cooldown — excluded from draws.
-  _excludeSet() {
-    const cd = this.player.rivalCooldowns || {};
-    return new Set(Object.keys(cd).filter(n => cd[n] > 0));
-  }
-
-  // Mark 1 random non-null offer as rival-claimed. Called after each draw.
-  _flagRival() {
-    const candidates = [];
-    for (let i = 0; i < this.offers.length; i++) {
-      if (this.offers[i]) candidates.push(i);
-    }
-    this.rivalFlags = this.offers.map(() => false);
-    if (!candidates.length) return;
-    const idx = candidates[Math.floor(this.player.rng() * candidates.length)];
-    this.rivalFlags[idx] = true;
-  }
-
-  // Base cost scales up at L6+; Midas Touch reduces by 1.
   rerollCost() {
     const augments = this.player.augments || [];
     const base = this.player.level >= 6 ? 3 : REROLL_COST;
     return augments.includes('MidasTouch') ? base - 1 : base;
   }
 
+  // Round-start refresh.
+  // First call: fills all SHOP_SIZE slots from empty.
+  // Subsequent calls: refills any null (bought) slots first, then rotates
+  // ROTATE_PER_ROUND of the remaining filled slots out.
   refresh() {
-    if (this.locked) { this.locked = false; return; }
-    this.offers = drawOffers(this.player.level, this.player.rng, SHOP_SIZE, this._excludeSet());
-    this._flagRival();
+    if (!this._inited) {
+      this.offers  = drawOffers(this.player.level, this.player.rng, SHOP_SIZE);
+      this._inited = true;
+      return;
+    }
+
+    // Refill empty slots first.
+    const filled = new Set(this.offers.filter(Boolean));
+    for (let i = 0; i < SHOP_SIZE; i++) {
+      if (!this.offers[i]) {
+        const pick = drawOne(this.player.level, this.player.rng, filled);
+        if (pick) { this.offers[i] = pick; filled.add(pick); }
+      }
+    }
+
+    // Rotate ROTATE_PER_ROUND of the remaining (originally filled) slots.
+    const rotateCount = Math.min(ROTATE_PER_ROUND, this.offers.filter(Boolean).length);
+    const rotateIdxs = [];
+    const candidates = [];
+    for (let i = 0; i < SHOP_SIZE; i++) if (this.offers[i]) candidates.push(i);
+    // pick rotateCount distinct indices using player rng
+    for (let k = 0; k < rotateCount; k++) {
+      if (!candidates.length) break;
+      const r = Math.floor(this.player.rng() * candidates.length);
+      rotateIdxs.push(candidates.splice(r, 1)[0]);
+    }
+    // Replace each rotated slot with a fresh non-duplicate draw.
+    const present = new Set(this.offers.filter(Boolean));
+    for (const idx of rotateIdxs) {
+      present.delete(this.offers[idx]);
+      const pick = drawOne(this.player.level, this.player.rng, present);
+      this.offers[idx] = pick;
+      if (pick) present.add(pick);
+    }
   }
 
-  lock()   { this.locked = true;  }
-  unlock() { this.locked = false; }
-
+  // Full reroll (paid). Replaces every slot with a fresh draw.
   reroll() {
     const cost = this.rerollCost();
     if (this.player.gold < cost) return false;
     this.player.gold -= cost;
-    this.offers = drawOffers(this.player.level, this.player.rng, SHOP_SIZE, this._excludeSet());
-    this._flagRival();
+    this.offers  = drawOffers(this.player.level, this.player.rng, SHOP_SIZE);
+    this._inited = true;
     return true;
   }
 
@@ -119,9 +142,17 @@ class Shop {
 
     this.player.gold -= cost;
     this.offers[slotIdx] = null;
-    this.rivalFlags[slotIdx] = false;
     return card;
+  }
+
+  // Direct removal — used by the rival's pick. No gold cost; the rival
+  // is bookkept as pure market pressure, not a competing economy.
+  removeSlot(slotIdx) {
+    const name = this.offers[slotIdx];
+    if (!name) return null;
+    this.offers[slotIdx] = null;
+    return name;
   }
 }
 
-module.exports = { Shop, drawOffers, SHOP_SIZE, REROLL_COST, LEVEL_WEIGHTS };
+module.exports = { Shop, drawOffers, drawOne, SHOP_SIZE, REROLL_COST, ROTATE_PER_ROUND, LEVEL_WEIGHTS };

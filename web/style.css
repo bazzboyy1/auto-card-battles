@@ -221,17 +221,52 @@ button:disabled { opacity: 0.4; cursor: default; }
 .card.unaffordable { opacity: 0.45; }
 .card.synergy-active { box-shadow: 0 0 0 2px rgba(255,200,50,0.6); }
 
-/* Phase 26: rival exhibitor wants this card. */
-.card.rival-claimed { box-shadow: 0 0 0 2px rgba(220,80,140,0.85); }
-.rival-tag {
-  position: absolute; top: 2px; right: 2px;
-  font-size: 9px; font-weight: 700;
-  padding: 2px 5px; border-radius: 3px;
-  background: rgba(180,40,90,0.92);
-  color: #fff;
-  letter-spacing: 0.3px;
-  pointer-events: auto;
+/* Phase 29: visible rival exhibitor panel */
+#rival-section {
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid rgba(220,80,140,0.32);
+  border-radius: 7px;
+  background: rgba(40,12,28,0.45);
 }
+.rival-header { gap: 10px; align-items: baseline; }
+.rival-tell { font-style: italic; opacity: 0.75; }
+.rival-gold { color: var(--gold, #e7c465); font-weight: 600; }
+.rival-aggro { font-weight: 600; font-size: 11px; }
+.card-row-mini { gap: 6px; flex-wrap: wrap; min-height: 56px; }
+.rival-empty { opacity: 0.55; font-style: italic; padding: 12px 6px; }
+.rival-card {
+  min-width: 92px;
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: rgba(20,22,28,0.92);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  position: relative;
+}
+.rival-card-name { font-weight: 600; color: #f4e8d8; line-height: 1.15; }
+.rival-card-meta { font-size: 10px; opacity: 0.75; margin-top: 2px; }
+.rival-count { color: #f0c060; font-weight: 700; }
+
+/* Run-start rival reveal */
+.rival-reveal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9000;
+}
+.rival-reveal-box {
+  background: #181820;
+  border: 1px solid rgba(220,80,140,0.6);
+  border-radius: 8px;
+  padding: 24px 28px;
+  max-width: 440px;
+  text-align: center;
+}
+.rival-reveal-title { font-size: 12px; letter-spacing: 0.16em; opacity: 0.65; text-transform: uppercase; }
+.rival-reveal-name  { font-size: 22px; font-weight: 700; margin: 8px 0 10px; color: #f0c2d0; }
+.rival-reveal-flavor { opacity: 0.85; margin-bottom: 10px; }
+.rival-reveal-tell  { opacity: 0.7; font-size: 12px; font-style: italic; margin-bottom: 18px; }
 
 /* ── Card tooltip ── */
 .card-tooltip {
