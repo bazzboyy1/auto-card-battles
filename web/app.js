@@ -134,12 +134,12 @@ function showRulesModal() {
         <p class="rules-subtitle">The galaxy's most discerning judges are watching. Don't embarrass yourself.</p>
       </div>
       <ul class="rules-list">
-        <li><strong>Buy</strong> specimens from the market · place them in your <strong>Exhibit</strong> · hit <strong>Ready</strong></li>
-        <li><strong>Each round</strong> your exhibit is judged against a target score — miss it and lose a Seal</li>
-        <li>Lose all 3 Seals and your run ends · Beat a <strong>Critique</strong> round by 25%+ to restore one</li>
+        <li><strong>Buy</strong> specimens from the market · place them in your <strong>Exhibit</strong> · click <strong>Open Showing</strong></li>
+        <li><strong>Each round</strong> your exhibit is appraised against a threshold — miss it and lose a Reputation seal</li>
+        <li>Lose all 3 seals and the salon dismisses you · Beat a <strong>Critique</strong> round by 25%+ to restore one</li>
         <li><strong>3 copies</strong> of the same specimen auto-combine into a higher ★ version</li>
         <li>Match <strong class="c-species">Species</strong> or <strong class="c-class">Class</strong> across exhibits for synergy bonuses</li>
-        <li>Save gold to earn <strong>interest</strong> · upgrade your exhibit for more slots and rarer specimens</li>
+        <li>Save lustres to earn <strong>interest</strong> · upgrade your exhibit for more slots and rarer specimens</li>
         <li>Every few rounds pick a permanent <strong class="c-aug">Augment</strong> or an <strong class="c-item">Item</strong> to attach to a specimen</li>
       </ul>
       <div class="rules-footer">
@@ -243,15 +243,17 @@ function showChapterReveal(chapter, judge) {
   const label = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
   const taste = judge && judge.taste && getTaste ? getTaste(judge.taste) : null;
   const tasteName = taste ? taste.name : '';
-  const flavor = (judge && judge.flavor) || (taste && taste.flavor) || '';
+  const opening = (judge && judge.quotes && judge.quotes.opening) || (judge && judge.flavor) || (taste && taste.flavor) || '';
   const hint = taste ? taste.hint : '';
+  const glyph = (judge && judge.glyph) || '';
+  const band = (judge && judge.band) || '';
   const el = document.createElement('div');
-  el.className = 'chapter-reveal';
+  el.className = 'chapter-reveal' + (band ? ` ${band}` : '');
   el.innerHTML = `
     <div class="chapter-reveal-label">Chapter ${chapter}</div>
     <div class="chapter-reveal-chapter">${label}</div>
-    <div class="chapter-reveal-judge">${judge.name}${tasteName ? ` <span class="chapter-reveal-taste">· ${tasteName}</span>` : ''}</div>
-    <div class="chapter-reveal-pref">"${flavor}"</div>
+    <div class="chapter-reveal-judge">${glyph ? `<span class="judge-glyph">${glyph}</span> ` : ''}${judge.name}${tasteName ? ` <span class="chapter-reveal-taste">· ${tasteName}</span>` : ''}</div>
+    <div class="chapter-reveal-pref">"${opening}"</div>
     ${hint ? `<div class="chapter-reveal-hint">${hint}</div>` : ''}
   `;
   document.body.appendChild(el);
@@ -272,10 +274,12 @@ function showJudgeSlateReveal() {
     if (!judge) return '';
     const taste = getTaste ? getTaste(judge.taste) : null;
     const chapterLabel = CHAPTER_LABELS[i] || `Chapter ${i + 1}`;
+    const glyph = judge.glyph || '';
+    const band = judge.band || '';
     return `
-      <div class="slate-row">
+      <div class="slate-row ${band}">
         <div class="slate-chapter">${chapterLabel}</div>
-        <div class="slate-judge">${judge.name}</div>
+        <div class="slate-judge">${glyph ? `<span class="judge-glyph">${glyph}</span> ` : ''}${judge.name}</div>
         <div class="slate-taste">${taste ? taste.name : ''}</div>
         <div class="slate-hint">${taste ? taste.hint : ''}</div>
       </div>
@@ -421,24 +425,24 @@ function showRefitModal(refit, onDone) {
                    <div class="refit-peek-hint">${nextTaste.hint}</div>
                  </div>`
               : ''}
-          <div class="refit-gold">Gold: <strong>${gold}g</strong></div>
+          <div class="refit-gold">Lustres: <strong>${gold} ✦</strong></div>
         </div>
 
         <div class="refit-actions">
           <button class="refit-action ${peekDisabled ? 'disabled' : ''}" data-act="peek" ${peekDisabled ? 'disabled' : ''}>
             <div class="refit-action-name">Peek</div>
             <div class="refit-action-desc">Reveal next judge's taste rule</div>
-            <div class="refit-action-cost">${refit.peeked ? 'revealed' : `${peekCost}g`}</div>
+            <div class="refit-action-cost">${refit.peeked ? 'revealed' : `${peekCost} ✦`}</div>
           </button>
           <button class="refit-action ${swapDisabled ? 'disabled' : ''} ${subView === 'swap' ? 'active' : ''}" data-act="swap" ${swapDisabled ? 'disabled' : ''}>
             <div class="refit-action-name">Swap</div>
             <div class="refit-action-desc">Acquire from a curated 3-card draft</div>
-            <div class="refit-action-cost">${swapCost}g</div>
+            <div class="refit-action-cost">${swapCost} ✦</div>
           </button>
           <button class="refit-action ${promoteDisabled ? 'disabled' : ''} ${subView === 'promote' ? 'active' : ''}" data-act="promote" ${promoteDisabled ? 'disabled' : ''}>
             <div class="refit-action-name">Promote</div>
             <div class="refit-action-desc">Upgrade a card by 1★ ${refit.promotedThisRefit ? '(used this refit)' : '(once per refit)'}</div>
-            <div class="refit-action-cost">${refit.promotedThisRefit ? '—' : '25g · 60g'}</div>
+            <div class="refit-action-cost">${refit.promotedThisRefit ? '—' : '25 ✦ · 60 ✦'}</div>
           </button>
         </div>
 
@@ -513,7 +517,7 @@ function showRefitModal(refit, onDone) {
         <div class="refit-swap-step">2. Choose a card to dismiss (refunds standard sell value)</div>
         <div class="refit-swap-dismiss">${dismissList}</div>
         <div class="refit-swap-confirm">
-          <button class="btn-primary refit-swap-go" disabled>Confirm Swap (${refit.swapCost()}g)</button>
+          <button class="btn-primary refit-swap-go" disabled>Confirm Swap (${refit.swapCost()} ✦)</button>
         </div>
       </div>
     `;
@@ -555,7 +559,7 @@ function showRefitModal(refit, onDone) {
       if (pendingCandIdx === null || pendingDismissId === null) return;
       const r = refit.commitSwap(pendingCandIdx, pendingDismissId);
       if (r) {
-        lastResult = `Swapped: dismissed ${r.dismissed} (+${r.refund}g) · acquired ${r.acquired}`;
+        lastResult = `Swapped: dismissed ${r.dismissed} (+${r.refund} ✦) · acquired ${r.acquired}`;
         rlog({ t: 'refit_swap', round: refit.round, acquired: r.acquired, refund: r.refund });
         pendingCandIdx = null;
         pendingDismissId = null;
@@ -587,7 +591,7 @@ function showRefitModal(refit, onDone) {
       return `
         <button class="refit-promote-card species-${c.species.toLowerCase()} ${can ? '' : 'disabled'}" data-promote-id="${c._id}" ${can ? '' : 'disabled'}>
           <div class="refit-promote-name">${c.name} <span class="refit-promote-stars">${stars}</span> → ${'★'.repeat(c.stars + 1)}</div>
-          <div class="refit-promote-meta">${c.species} · T${c.tier} · cost ${cost}g</div>
+          <div class="refit-promote-meta">${c.species} · T${c.tier} · cost ${cost} ✦</div>
         </button>
       `;
     }).join('');
@@ -621,7 +625,7 @@ function renderRivalPanel() {
   const p = rival.personality;
   qs('#rival-name').innerHTML = `${p.glyph || ''} <strong>${p.name}</strong>`;
   qs('#rival-tell').textContent = p.tell || p.flavor || '';
-  qs('#rival-gold').textContent = `${rival.gold}g`;
+  qs('#rival-gold').textContent = `${rival.gold} ✦`;
 
   // Aggro indicator — only show when non-zero so it stays sub-perception by default.
   const aggroEl = qs('#rival-aggro');
@@ -1344,13 +1348,13 @@ function updateHUD() {
   const inPreRound = ['augment', 'shapeshifter', 'item', 'curator', 'shop'].includes(S.phase);
   const round = S.run.round + (inPreRound ? 1 : 0);
   qs('#hud-round').textContent = `Round ${round} / 24`;
-  qs('#hud-phase').textContent = S.phase === 'shop' ? 'Market'
+  qs('#hud-phase').textContent = S.phase === 'shop' ? 'Curating'
     : S.phase === 'augment' || S.phase === 'shapeshifter' ? 'Augment'
     : S.phase === 'item' ? 'Item Pick'
     : S.phase === 'curator' ? "Curator's Gift"
-    : S.phase === 'scoring' ? 'Judging'
-    : 'Battle';
-  qs('#hud-phase').className   = 'phase-tag' + (!inPreRound ? ' battle' : '');
+    : S.phase === 'scoring' ? 'Appraising'
+    : 'Showing';
+  qs('#hud-phase').className   = 'phase-tag' + (!inPreRound ? ' showing' : '');
 
   const livesEl = qs('#hud-lives');
   if (livesEl) {
@@ -1367,7 +1371,7 @@ function updateHUD() {
 
   const goldEl  = qs('#hud-gold');
   const goldTip = goldEl.querySelector('.hud-tip');
-  goldEl.textContent = h.gold + 'g';
+  goldEl.textContent = h.gold + ' ✦';
   if (goldTip) goldEl.appendChild(goldTip);
 
   const levelEl  = qs('#hud-level');
@@ -1713,30 +1717,30 @@ function renderIncomePreview() {
     total = bd.total;
     // Interest is capped when raw base interest (gold / INTEREST_PER) >= 5.
     interestCapped = Math.floor(S.human.gold / INTEREST_PER) >= 5;
-    parts = [`Base ${bd.base}g`];
+    parts = [`Base ${bd.base} ✦`];
     if (bd.interest > 0) {
       const capMark = interestCapped ? ' <span class="income-cap">✓ max</span>' : '';
-      parts.push(`Interest +${bd.interest}g${bd.tycoon ? ' (×2)' : ''}${capMark}`);
+      parts.push(`Interest +${bd.interest} ✦${bd.tycoon ? ' (×2)' : ''}${capMark}`);
     }
-    if (bd.streak > 0) parts.push(`Streak +${bd.streak}g`);
+    if (bd.streak > 0) parts.push(`Streak +${bd.streak} ✦`);
   } else {
     const interest    = Math.min(5, Math.floor(S.human.gold / INTEREST_PER));
     const streakBonus = S.human._streakBonus ? S.human._streakBonus() : 0;
     interestCapped    = interest >= 5;
     total             = BASE_INCOME + interest + streakBonus;
-    parts = [`Base ${BASE_INCOME}g`];
+    parts = [`Base ${BASE_INCOME} ✦`];
     if (interest > 0) {
       const capMark = interestCapped ? ' <span class="income-cap">✓ max</span>' : '';
-      parts.push(`Interest +${interest}g${capMark}`);
+      parts.push(`Interest +${interest} ✦${capMark}`);
     }
-    if (streakBonus > 0) parts.push(`Streak +${streakBonus}g`);
+    if (streakBonus > 0) parts.push(`Streak +${streakBonus} ✦`);
   }
-  qs('#income-preview').innerHTML = `Next income: ${total}g  (${parts.join(' · ')})`;
+  qs('#income-preview').innerHTML = `Next income: ${total} ✦  (${parts.join(' · ')})`;
 }
 
 function updateShopControls() {
   const cost = S.human.shop.rerollCost ? S.human.shop.rerollCost() : 2;
-  qs('#btn-reroll').textContent  = `Re-roll (${cost}g)`;
+  qs('#btn-reroll').textContent  = `Re-roll (${cost} ✦)`;
   qs('#btn-reroll').disabled     = S.human.gold < cost;
   const plinthBtn = qs('#btn-plinth');
   const exhibitTip = qs('#exhibit-info-tooltip');
@@ -1745,7 +1749,7 @@ function updateShopControls() {
     plinthBtn.disabled    = true;
   } else {
     const pCost = S.human.plinthCost();
-    plinthBtn.textContent = `Upgrade Exhibit (${pCost}g)`;
+    plinthBtn.textContent = `Upgrade Exhibit (${pCost} ✦)`;
     plinthBtn.disabled    = S.human.gold < pCost;
   }
   if (exhibitTip) {
@@ -1963,9 +1967,9 @@ function showGameOverModal() {
   const newTierUnlock = (survived && RANKING) ? RANKING.tryUnlockNextTier(RANKING.getActiveTier().id) : null;
   const newUnlocks = run.newlyUnlocked || [];
 
-  let html = `<h2>${survived ? 'Run Complete' : 'Run Over'}</h2>`;
+  let html = `<h2>${survived ? 'The Salon Applauds' : 'Dismissed'}</h2>`;
   html += `<p style="margin-bottom:14px;color:var(--text-muted)">${
-    survived ? 'You completed all 24 rounds.' : `Eliminated after round ${run.round}.`
+    survived ? 'You completed all 24 rounds.' : `The salon dismissed you after round ${run.round}.`
   }</p>`;
 
   html += `<div class="final-stats">
@@ -2159,7 +2163,7 @@ function makeSynergyTooltip(card, bd) {
     html += `<div class="tt-flavor">${card.flavor}</div>`;
   }
   if (bd && bd.lines.length) {
-    html += `<div class="tt-head tt-bd">score breakdown</div>`;
+    html += `<div class="tt-head tt-bd">appraisal breakdown</div>`;
     for (const ln of bd.lines) {
       if (ln.add !== undefined) {
         html += `<div class="tt-bd-row"><span class="tt-bd-label">${ln.label}</span><span class="tt-bd-add">+${ln.add}</span></div>`;
@@ -2209,8 +2213,8 @@ function makeCard(card, context, shopCost, bd) {
     </div>
     <div class="card-score">${scoreHTML}</div>
     <div class="card-tier" title="Pool rarity — T1/T2/T3 affects shop odds after upgrading your Exhibit. Stars ★ = combine level (1–3).">T${card.tier}</div>
-    ${shopCost != null ? `<div class="card-cost">${shopCost}g</div>` : ''}
-    ${context !== 'shop' && S.sellMode ? `<div class="card-sell-val">sell ${sellVal}g</div>` : ''}
+    ${shopCost != null ? `<div class="card-cost">${shopCost} ✦</div>` : ''}
+    ${context !== 'shop' && S.sellMode ? `<div class="card-sell-val">sell ${sellVal} ✦</div>` : ''}
   `;
 
   // Item pip row — three slots, shown on board/bench cards (not shop or viewer).
@@ -2391,17 +2395,21 @@ function showScoringModal() {
     const passed = r.passed;
     Sound.play(passed ? 'win' : 'loss');
     winnerEl.className = 'scoring-winner ' + (passed ? 'win' : 'loss');
+    // Phase 32: judge verdict quote based on score / target ratio.
+    const ratio = r.target > 0 ? r.playerScore / r.target : 1;
+    const quoteKind = !passed ? 'failing' : (ratio >= 1.10 ? 'passing' : 'scraping');
+    const verdictQuote = (judge && judge.quotes && judge.quotes[quoteKind]) ? `<div class="scoring-judge-quote">${judgeName} says: "${judge.quotes[quoteKind]}"</div>` : '';
     if (passed) {
       if (r.lifeGained) {
         Sound.play('sealRestored');
-        winnerEl.innerHTML = `Target cleared! ${r.playerScore} \u2265 ${r.target} <span class="scoring-life-regain">\u25c6 Seal restored!</span>`;
+        winnerEl.innerHTML = `Threshold cleared! ${r.playerScore} \u2265 ${r.target} <span class="scoring-life-regain">\u25c6 Seal restored!</span>${verdictQuote}`;
       } else {
-        winnerEl.textContent = `Target met! ${r.playerScore} \u2265 ${r.target}`;
+        winnerEl.innerHTML = `Threshold met! ${r.playerScore} \u2265 ${r.target}${verdictQuote}`;
       }
     } else {
       const sealsLeft = r.livesAfter;
-      const sealText  = sealsLeft === 0 ? 'No seals left \u2014 run over' : `${sealsLeft} seal${sealsLeft === 1 ? '' : 's'} remain`;
-      winnerEl.textContent = `Target missed \u2014 ${r.playerScore} / ${r.target} \u00b7 Seal lost \u00b7 ${sealText}`;
+      const sealText  = sealsLeft === 0 ? 'No seals left \u2014 the salon dismisses you' : `${sealsLeft} seal${sealsLeft === 1 ? '' : 's'} remain`;
+      winnerEl.innerHTML = `Threshold missed \u2014 ${r.playerScore} / ${r.target} \u00b7 Seal lost \u00b7 ${sealText}${verdictQuote}`;
       Sound.play('sealLost');
     }
     updateHUD();

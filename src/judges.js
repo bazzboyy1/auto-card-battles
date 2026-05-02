@@ -20,11 +20,14 @@ function sumBase(baseScores) {
 
 // Phase 28 — aesthetic tag readout. Cards declare 1–2 tags from
 // {Grotesque, Elegant, Bizarre, Restrained, Ostentatious, Quaint}.
-// Items/augments may grant tags in later phases via the same shape;
-// for now only card.tags is checked.
+// Phase 31-B.3 — items with axis '5-tag' also grant tags (Aesthetic
+// items: Velvet Drape, Gilded Frame, etc.); cardHasTag OR-checks both.
+const { cardHasGrantedTag } = require('./items');
+
 function cardHasTag(card, tag) {
   if (!card || !tag) return false;
-  return Array.isArray(card.tags) && card.tags.includes(tag);
+  if (Array.isArray(card.tags) && card.tags.includes(tag)) return true;
+  return cardHasGrantedTag(card, tag);
 }
 
 const TASTES = {
@@ -232,31 +235,219 @@ const TASTES = {
       return Math.round(total);
     },
   },
+
+  // Phase 32 — Quaintness. Closes the dead-species gap: Sporal native tags
+  // load heavily on Quaint (5/6 cards), but no existing taste rewarded Quaint
+  // as a max-mult tag. Quaintness fixes that — Sporal-stack survival rises
+  // from 19% to ~30% under random-judge runs without any species/card edits.
+  // Mirrors the Refinement shape (max-mult ×2.2 on the home tag, secondary
+  // ×1.55 on a complementary tag, hard ×0.7 penalty on the opposite).
+  quaintness: {
+    name: 'Quaintness',
+    flavor: 'It\'s the small charms that linger.',
+    hint: 'Quaint ×2.2 · Restrained ×1.55 · Ostentatious ×0.7 · default ×1.4',
+    score(active, baseScores, ctx) {
+      if (!active.length) return 0;
+      const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
+      let total = 0;
+      for (let i = 0; i < active.length; i++) {
+        const c = active[i];
+        let m = 1.4;
+        if (cardHasTag(c, 'Quaint'))       m = Math.max(m, 2.2);
+        if (cardHasTag(c, 'Restrained'))   m = Math.max(m, 1.55);
+        if (cardHasTag(c, 'Ostentatious')) m = Math.min(m, 0.7);
+        const mAmp = 1 + (m - 1) * amp;
+        total += baseScores[i] * mAmp;
+      }
+      return Math.round(total);
+    },
+  },
 };
 
-// Twelve judges expressing the six tastes. Some tastes have multiple judges
+// Twenty judges expressing the eleven tastes. Some tastes have multiple judges
 // with different flavor; some are flagged 'finale' (eligible for R24 only)
 // so the Grand Finale always feels distinct.
+//
+// Phase 32 — each judge carries:
+//   glyph    — one unicode mark for slate/panel rendering
+//   band     — CSS class (one per taste, mapped in style.css)
+//   quotes   — { opening, passing, scraping, failing } prose lines
+//              opening   shown at chapter reveal
+//              passing   score >= 110% of threshold
+//              scraping  score 100-110% of threshold
+//              failing   score < 100% of threshold
 const JUDGES = [
-  { id: 'vex',        name: 'Madame Vex',        taste: 'spectacle',    chapter: 'any',    flavor: 'One brilliant specimen, or none at all.' },
-  { id: 'maelo',      name: 'Critic Mæló',       taste: 'spectacle',    chapter: 'finale', flavor: 'Show me what greatness looks like.' },
-  { id: 'thorne',     name: 'Curator Thorne',    taste: 'diversity',    chapter: 'any',    flavor: 'Variety is the soul of the salon.' },
-  { id: 'oblix',      name: 'Inspector Oblix',   taste: 'diversity',    chapter: 'any',    flavor: 'Repetition bores. Surprise me.' },
-  { id: 'umbra',      name: 'Sister Umbra',      taste: 'restraint',    chapter: 'any',    flavor: 'Empty space is a statement.' },
-  { id: 'vell',       name: 'Brother Vell',      taste: 'restraint',    chapter: 'finale', flavor: 'A sparse plinth speaks loudest.' },
-  { id: 'quark',      name: 'Cataloguer Quark',  taste: 'eccentricity', chapter: 'any',    flavor: 'I want to see them DO something.' },
-  { id: 'flux',       name: 'Engineer Flux',     taste: 'eccentricity', chapter: 'finale', flavor: 'Inert specimens insult me.' },
-  { id: 'ronix',      name: 'Archivist Ronix',   taste: 'narrative',    chapter: 'any',    flavor: 'I prefer specimens with history.' },
-  { id: 'praxis',     name: 'Curator Praxis',    taste: 'narrative',    chapter: 'any',    flavor: 'Time leaves its mark on the worthy.' },
-  { id: 'yorzal',     name: 'Judge Yorzal',      taste: 'harmony',      chapter: 'any',    flavor: 'Emotional coherence — nothing less.' },
-  { id: 'symphonia',  name: 'Maestra Symphonia', taste: 'harmony',      chapter: 'finale', flavor: 'A collection sings or it does not.' },
-  // Phase 28 — tag-reading judges.
-  { id: 'morgath',    name: 'Patron Morgath',    taste: 'grotesquerie', chapter: 'any',    flavor: 'Beauty is for cowards.' },
-  { id: 'vlasq',      name: 'Lord Vlasq',        taste: 'grotesquerie', chapter: 'finale', flavor: 'Show me what should not be.' },
-  { id: 'sereth',     name: 'Madame Sereth',     taste: 'refinement',   chapter: 'any',    flavor: 'Spare me the spectacle.' },
-  { id: 'ostrev',     name: 'Architect Ostrev',  taste: 'architecture', chapter: 'any',    flavor: 'A collection should hold its shape.' },
-  { id: 'glamora',    name: 'Baroness Glamora',  taste: 'ostentation',  chapter: 'any',    flavor: 'Modesty is a failure of nerve.' },
-  { id: 'rakthar',    name: 'Lord Rakthar',      taste: 'ostentation',  chapter: 'finale', flavor: 'Astonish me — or do not bother.' },
+  // — Spectacle —
+  { id: 'vex',  name: 'Madame Vex', taste: 'spectacle', chapter: 'any', glyph: '✦', band: 'judge-spectacle',
+    flavor: 'One brilliant specimen, or none at all.',
+    quotes: {
+      opening: 'I expect to be dazzled. Bring me one specimen worth remembering.',
+      passing: 'Yes. THAT is what an exhibition should feel like.',
+      scraping: 'A glimmer. I will allow it.',
+      failing: 'A wasted plinth. A wasted hour. A wasted seal.',
+    } },
+  { id: 'maelo', name: 'Critic Mæló', taste: 'spectacle', chapter: 'finale', glyph: '☄', band: 'judge-spectacle',
+    flavor: 'Show me what greatness looks like.',
+    quotes: {
+      opening: 'The finale. Either you have a centerpiece, or you have nothing.',
+      passing: 'A genuine moment. I will remember this.',
+      scraping: 'You scraped through. I scrape my approval.',
+      failing: 'No centerpiece. No legacy. Next.',
+    } },
+  // — Diversity —
+  { id: 'thorne', name: 'Curator Thorne', taste: 'diversity', chapter: 'any', glyph: '❀', band: 'judge-diversity',
+    flavor: 'Variety is the soul of the salon.',
+    quotes: {
+      opening: 'A salon needs breadth. Show me you can collect more than one note.',
+      passing: 'A garden of unlike things. Refreshing.',
+      scraping: 'Some variety, at least. Barely a salon.',
+      failing: 'A monoculture. I am unmoved.',
+    } },
+  { id: 'oblix', name: 'Inspector Oblix', taste: 'diversity', chapter: 'any', glyph: '👁', band: 'judge-diversity',
+    flavor: 'Repetition bores. Surprise me.',
+    quotes: {
+      opening: 'I have already seen one of those. Do not show me three.',
+      passing: 'Now THIS is an inventory worth inspecting.',
+      scraping: 'Acceptable spread. Just.',
+      failing: 'You have shown me the same specimen wearing different hats.',
+    } },
+  // — Restraint —
+  { id: 'umbra', name: 'Sister Umbra', taste: 'restraint', chapter: 'any', glyph: '◌', band: 'judge-restraint',
+    flavor: 'Empty space is a statement.',
+    quotes: {
+      opening: 'Less. Show me less. The eye needs room to breathe.',
+      passing: 'A devotional sparseness. The salon is hushed.',
+      scraping: 'A little crowded. The discipline is there.',
+      failing: 'A jumble. You have mistaken volume for value.',
+    } },
+  { id: 'vell', name: 'Brother Vell', taste: 'restraint', chapter: 'finale', glyph: '🕯', band: 'judge-restraint',
+    flavor: 'A sparse plinth speaks loudest.',
+    quotes: {
+      opening: 'For the finale: hold something back. Restraint at the climax is the rarest gift.',
+      passing: 'You understood the assignment. The empty plinths are the loudest.',
+      scraping: 'You hesitated. You should have hesitated more.',
+      failing: 'A finale should not be a parade. It should be a vow.',
+    } },
+  // — Eccentricity —
+  { id: 'quark', name: 'Cataloguer Quark', taste: 'eccentricity', chapter: 'any', glyph: '⚙', band: 'judge-eccentricity',
+    flavor: 'I want to see them DO something.',
+    quotes: {
+      opening: 'I am not here to admire taxidermy. I want to see them ACT.',
+      passing: 'Every plinth firing. The salon is alive.',
+      scraping: 'Some movement. I require more.',
+      failing: 'Inert. Inert. Inert. I came here for theatre.',
+    } },
+  { id: 'flux', name: 'Engineer Flux', taste: 'eccentricity', chapter: 'finale', glyph: '⚡', band: 'judge-eccentricity',
+    flavor: 'Inert specimens insult me.',
+    quotes: {
+      opening: 'A finale of mannequins is a betrayal. Make them move.',
+      passing: 'Now THIS is what apparatus is for.',
+      scraping: 'A few sparks. I expected fire.',
+      failing: 'Dead weights on plinths. Get them out of my sight.',
+    } },
+  // — Narrative —
+  { id: 'ronix', name: 'Archivist Ronix', taste: 'narrative', chapter: 'any', glyph: '📜', band: 'judge-narrative',
+    flavor: 'I prefer specimens with history.',
+    quotes: {
+      opening: 'Every specimen should have a provenance. New acquisitions bore me.',
+      passing: 'A rich archive. Every plinth has a story.',
+      scraping: 'A little new. A little old. A library half-shelved.',
+      failing: 'Just bought, all of it. The salon is not a market.',
+    } },
+  { id: 'praxis', name: 'Curator Praxis', taste: 'narrative', chapter: 'any', glyph: '⏳', band: 'judge-narrative',
+    flavor: 'Time leaves its mark on the worthy.',
+    quotes: {
+      opening: 'Show me the patina of long custodianship.',
+      passing: 'Time has weighed in on every plinth. I approve.',
+      scraping: 'Thin in places. The archive lacks depth.',
+      failing: 'Fresh from the market. The salon is not a stall.',
+    } },
+  // — Harmony —
+  { id: 'yorzal', name: 'Judge Yorzal', taste: 'harmony', chapter: 'any', glyph: '♪', band: 'judge-harmony',
+    flavor: 'Emotional coherence — nothing less.',
+    quotes: {
+      opening: 'Pick a mood. Commit to it. Anything else is noise.',
+      passing: 'A single chord, perfectly held. Bravo.',
+      scraping: 'The mood wavers. I can almost hear it.',
+      failing: 'Five contradictory feelings, all of them shrill.',
+    } },
+  { id: 'symphonia', name: 'Maestra Symphonia', taste: 'harmony', chapter: 'finale', glyph: '🎼', band: 'judge-harmony',
+    flavor: 'A collection sings or it does not.',
+    quotes: {
+      opening: 'The finale must be of one voice. Not a chorus — a soloist.',
+      passing: 'It SANG. Every plinth in the same key.',
+      scraping: 'A few off-notes. The melody survived.',
+      failing: 'A din. The finale collapsed into static.',
+    } },
+  // — Grotesquerie —
+  { id: 'morgath', name: 'Patron Morgath', taste: 'grotesquerie', chapter: 'any', glyph: '☠', band: 'judge-grotesquerie',
+    flavor: 'Beauty is for cowards.',
+    quotes: {
+      opening: 'I have no use for the pretty. Bring me what unsettles.',
+      passing: 'Magnificently repulsive. I will weep.',
+      scraping: 'A faint queasiness. It is something.',
+      failing: 'You have brought me decoration. I asked for dread.',
+    } },
+  { id: 'vlasq', name: 'Lord Vlasq', taste: 'grotesquerie', chapter: 'finale', glyph: '🦴', band: 'judge-grotesquerie',
+    flavor: 'Show me what should not be.',
+    quotes: {
+      opening: 'The finale: an offence to the taxonomies. Make it impossible.',
+      passing: 'A masterclass in transgression. I salute it.',
+      scraping: 'A small wrongness. Bigger next time.',
+      failing: 'Tasteful. The worst possible verdict.',
+    } },
+  // — Refinement —
+  { id: 'sereth', name: 'Madame Sereth', taste: 'refinement', chapter: 'any', glyph: '✧', band: 'judge-refinement',
+    flavor: 'Spare me the spectacle.',
+    quotes: {
+      opening: 'Polish. That is all I want. Polish over noise.',
+      passing: 'A polished case from end to end. Civilised.',
+      scraping: 'A little gauche in the corners.',
+      failing: 'A junk drawer with delusions. Take it away.',
+    } },
+  // — Architecture —
+  { id: 'ostrev', name: 'Architect Ostrev', taste: 'architecture', chapter: 'any', glyph: '▣', band: 'judge-architecture',
+    flavor: 'A collection should hold its shape.',
+    quotes: {
+      opening: 'A collection is a structure. Show me your load-bearing plinths.',
+      passing: 'Every element bearing weight. The whole stands.',
+      scraping: 'Wobbles, but holds. Reinforce next time.',
+      failing: 'A pile. Architecture is the opposite of a pile.',
+    } },
+  // — Ostentation —
+  { id: 'glamora', name: 'Baroness Glamora', taste: 'ostentation', chapter: 'any', glyph: '💎', band: 'judge-ostentation',
+    flavor: 'Modesty is a failure of nerve.',
+    quotes: {
+      opening: 'I want to be EMBARRASSED on your behalf. Go louder.',
+      passing: 'Vulgar. Lavish. Magnificent. I am gleaming.',
+      scraping: 'A little subdued. Risk something.',
+      failing: 'A whisper where I asked for a scream.',
+    } },
+  { id: 'rakthar', name: 'Lord Rakthar', taste: 'ostentation', chapter: 'finale', glyph: '👑', band: 'judge-ostentation',
+    flavor: 'Astonish me — or do not bother.',
+    quotes: {
+      opening: 'The finale should arrive in gold leaf. Anything less is an apology.',
+      passing: 'STAGGERING. I will be telling this story for years.',
+      scraping: 'A flicker of grandeur. Insufficient.',
+      failing: 'A finale fit for a side hall. I am insulted.',
+    } },
+  // — Quaintness — (Phase 32)
+  { id: 'mossfen', name: 'Auntie Mossfen', taste: 'quaintness', chapter: 'any', glyph: '🌿', band: 'judge-quaintness',
+    flavor: 'It\'s the small things that comfort the eye.',
+    quotes: {
+      opening: 'Don\'t fuss. Show me something cozy. Something with a face.',
+      passing: 'Oh, what a dear little salon. I should like to live in it.',
+      scraping: 'Sweet enough. A bit fancy in places, dear.',
+      failing: 'All glitter, no warmth. I shall have to pass.',
+    } },
+  { id: 'burrowick', name: 'Dame Burrowick', taste: 'quaintness', chapter: 'finale', glyph: '🪵', band: 'judge-quaintness',
+    flavor: 'Greatness need not roar to be felt.',
+    quotes: {
+      opening: 'The finale: I want to feel a hearth. Something to sit beside.',
+      passing: 'A hearth indeed. The whole hall warmed.',
+      scraping: 'A small ember. I will take it.',
+      failing: 'Cold. Bright, but cold.',
+    } },
 ];
 
 function getTaste(id)  { return TASTES[id] || null; }

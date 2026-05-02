@@ -19,6 +19,20 @@ const { isUnlocked } = require('./achievements');
 
 const SPECIES  = ['Plasmic', 'Sporal', 'Chitinous', 'Crystalline', 'Abyssal'];
 const CLASSES  = ['Shy', 'Livid', 'Giddy', 'Sullen', 'Pompous'];
+const TAGS     = ['Grotesque', 'Elegant', 'Bizarre', 'Restrained', 'Ostentatious', 'Quaint'];
+
+// Phase 31-B.3 tag-grant items: one per aesthetic tag. Sibling axis to
+// '5' (Taxonomy Badge) and '5-class' (Mood Tag). Pure tag-grant — no
+// secondary effect — so they remain legible (Hick's Law) and serve as
+// the "context-variable reward" lane for re-aiming wrong-taste cards.
+const TAG_ITEM_NAMES = {
+  Grotesque:    'Bone Reliquary',
+  Elegant:      'Crystal Locket',
+  Bizarre:      'Carnival Mask',
+  Restrained:   'Velvet Drape',
+  Ostentatious: 'Gilded Frame',
+  Quaint:       'Antique Doily',
+};
 
 const ITEM_DEFS = [
   { id: 'Claymore',            name: 'Exhibition Stand',     description: 'Unit base score +40',                                   axis: 1   },
@@ -26,7 +40,7 @@ const ITEM_DEFS = [
   { id: "Giant's Belt",        name: 'Rarity Certificate',   description: '×2 at 1★, ×1.5 at 2★, ×1.2 at 3★',                      axis: 4   },
   { id: "Warmog's Armor",      name: 'Stimulant Pod',        description: "Unit's conditional passive bonuses are doubled",       axis: '2-mod' },
   { id: "Zeke's Herald",       name: 'Pheromone Diffuser',   description: '+12% score to all other units on board',               axis: 8   },
-  { id: 'Hextech Gunblade',    name: 'Market Tag',           description: '+2g per round while fielded',                           axis: 7   },
+  { id: 'Hextech Gunblade',    name: 'Market Tag',           description: '+2 ✦ per round while fielded',                          axis: 7   },
   { id: 'Last Whisper',        name: 'Bloom Stimulant',      description: "Unit's round-timing passive activates 2 rounds earlier", axis: '6-mod' },
   { id: "Guinsoo's Rageblade", name: 'Acclimatisation Log',  description: '+18 score per round this unit has been on board',       axis: 3   },
   { id: 'Spear of Shojin',     name: 'Camouflage Gland',     description: 'Each round, counts as a random species you have ≥2 of', axis: 5   },
@@ -46,6 +60,13 @@ const ITEM_DEFS = [
     id: `Crest of ${cl}`, name: `Mood Tag: ${cl}`,
     description: `Unit counts as +1 ${cl} for class synergy`,
     axis: '5-class', class: cl,
+  })),
+  // Aesthetic tag-grant items — one per tag (Phase 31-B.3).
+  ...TAGS.map(tag => ({
+    id: `Aesthetic: ${tag}`,
+    name: TAG_ITEM_NAMES[tag],
+    description: `Equipped specimen also reads as ${tag} for judge tag-tastes`,
+    axis: '5-tag', tag,
   })),
 ];
 
@@ -134,7 +155,18 @@ function hasItem(card, itemId) {
   return !!(card.items && card.items.some(e => e.id === itemId));
 }
 
+// Phase 31-B.3 — does this card carry an item granting `tag`?
+function cardHasGrantedTag(card, tag) {
+  if (!card || !tag || !Array.isArray(card.items)) return false;
+  for (const entry of card.items) {
+    const it = getItem(entry.id);
+    if (it && it.axis === '5-tag' && it.tag === tag) return true;
+  }
+  return false;
+}
+
 module.exports = {
-  ITEM_DEFS, SPECIES, CLASSES,
+  ITEM_DEFS, SPECIES, CLASSES, TAGS, TAG_ITEM_NAMES,
   getAvailableItems, getItem, attachItem, detachItem, hasItem, giantsBeltMult,
+  cardHasGrantedTag,
 };

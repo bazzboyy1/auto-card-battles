@@ -108,7 +108,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 #hud-round { font-weight: 700; font-size: 15px; }
 .phase-tag { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.phase-tag.battle { background: #2d1b00; border-color: var(--gold); color: var(--gold); }
+.phase-tag.showing { background: #2d1b00; border-color: var(--gold); color: var(--gold); }
 
 /* ── Lives seals ── */
 #hud-lives { display: inline-flex; align-items: center; gap: 5px; }
@@ -503,6 +503,41 @@ button:disabled { opacity: 0.4; cursor: default; }
 .chapter-reveal-pref { font-size: 13px; color: var(--text-muted); font-style: italic; }
 .chapter-reveal-taste { color: #a78bfa; font-weight: 600; font-size: 14px; }
 .chapter-reveal-hint { font-size: 11px; color: var(--text-muted); opacity: 0.7; margin-top: 6px; letter-spacing: 0.04em; }
+
+/* Phase 32 — per-judge glyph + per-taste color band.
+   Bands tint chapter-reveal-judge text + slate-judge text + add a left
+   accent on slate-row. Subtle — should not overpower the prose. */
+.judge-glyph { font-size: 1.05em; opacity: 0.9; margin-right: 2px; }
+
+.chapter-reveal.judge-spectacle    .chapter-reveal-judge,
+.slate-row.judge-spectacle    .slate-judge { color: #f4d35e; }
+.chapter-reveal.judge-diversity    .chapter-reveal-judge,
+.slate-row.judge-diversity    .slate-judge { color: #c084fc; }
+.chapter-reveal.judge-restraint    .chapter-reveal-judge,
+.slate-row.judge-restraint    .slate-judge { color: #e8e6e1; }
+.chapter-reveal.judge-eccentricity .chapter-reveal-judge,
+.slate-row.judge-eccentricity .slate-judge { color: #5fd4f4; }
+.chapter-reveal.judge-narrative    .chapter-reveal-judge,
+.slate-row.judge-narrative    .slate-judge { color: #d4b483; }
+.chapter-reveal.judge-harmony      .chapter-reveal-judge,
+.slate-row.judge-harmony      .slate-judge { color: #5fd4ad; }
+.chapter-reveal.judge-grotesquerie .chapter-reveal-judge,
+.slate-row.judge-grotesquerie .slate-judge { color: #6b8f3a; }
+.chapter-reveal.judge-refinement   .chapter-reveal-judge,
+.slate-row.judge-refinement   .slate-judge { color: #a8d8f0; }
+.chapter-reveal.judge-architecture .chapter-reveal-judge,
+.slate-row.judge-architecture .slate-judge { color: #b0b8c2; }
+.chapter-reveal.judge-ostentation  .chapter-reveal-judge,
+.slate-row.judge-ostentation  .slate-judge { color: #f490d8; }
+.chapter-reveal.judge-quaintness   .chapter-reveal-judge,
+.slate-row.judge-quaintness   .slate-judge { color: #a8c97f; }
+
+/* Phase 32 — judge verdict quote in scoring modal. */
+.scoring-judge-quote {
+  margin-top: 10px; font-size: 12px; color: var(--text-muted);
+  font-style: italic; line-height: 1.4; max-width: 480px;
+  margin-left: auto; margin-right: auto;
+}
 
 /* Phase 27 — judge panel taste tag */
 .judge-taste-tag {

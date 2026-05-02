@@ -53,7 +53,7 @@ const MODIFIERS = [
   {
     id: 'brutal_curation',
     name: 'Brutal Curation',
-    description: 'After R6, R12, and R18, your lowest-scoring active specimen is dismissed for 0g.',
+    description: 'After R6, R12, and R18, your lowest-scoring active specimen is dismissed for 0 ✦.',
     flavor: 'The chief curator is a known sadist. Underperformers do not stay long.',
     autoSellRounds: [6, 12, 18],
   },
@@ -67,21 +67,21 @@ const MODIFIERS = [
   {
     id: 'cheap_plinths',
     name: 'Patron Subsidy',
-    description: 'Exhibit upgrades cost 4g less (min 1g).',
+    description: 'Exhibit upgrades cost 4 ✦ less (min 1 ✦).',
     flavor: 'A wealthy patron is footing the carpentry bill.',
     plinthDiscount: 4,
   },
   {
     id: 'generous_patron',
     name: 'Generous Patron',
-    description: '+2g extra income every round.',
+    description: '+2 ✦ extra income every round.',
     flavor: 'A reliable benefactor. Modest but constant.',
     incomePerRound: 2,
   },
   {
     id: 'patron_stipend',
     name: "Curator's Stipend",
-    description: '+6g at the start of each new chapter (R9, R17, R24).',
+    description: '+6 ✦ at the start of each new chapter (R9, R17, R24).',
     flavor: 'The Salon top-ups your account between exhibitions — spend it well.',
     chapterStipend: 6,
     chapterStipendRounds: [9, 17, 24],

@@ -65,7 +65,7 @@ const CARD_DEFS = [
     tags: ['Quaint'],
     flavor: 'Sporviks continuously weep a glistening amber fluid of significant pharmaceutical value. You pocket the proceeds. Sporviks don\'t notice.',
     passive: {
-      description: '+3 gold per round while on board',
+      description: '+3 ✦ per round while on board',
       axis: 7,
       eval() { return { tickGold: 3 }; },
     },
@@ -286,11 +286,14 @@ const CARD_DEFS = [
   {
     name: 'Sprangus', species: 'Sporal', class: 'Pompous', tier: 3, baseScore: 132,
     tags: ['Quaint', 'Grotesque'],
-    flavor: 'Spranguses release so many enhancement spores that they have nothing left for themselves. They stand on their pedestals looking frankly deflated while everything around them thrives.',
+    flavor: 'Spranguses release a continuous bouquet of enhancement spores that uplift every Sporal in the hall. They themselves remain modest, occasionally wilting in a dignified manner.',
     passive: {
-      description: 'All Sporals +30% score. Sprangus\'s own base score becomes 0.',
-      axis: 8,
-      eval() { return { baseOverride: 0, auraMult: 1.30, target: 'all-Sporal' }; },
+      description: '+30 per other Sporal on board',
+      axis: 2,
+      eval(card, ctx) {
+        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Sporal').length;
+        return { flat: 30 * n };
+      },
     },
   },
   {
@@ -353,7 +356,7 @@ const CARD_DEFS = [
     tags: ['Quaint', 'Ostentatious'],
     flavor: 'Zephrixae are natural sycophants who perform best in the presence of perceived wealth. Provide adequate funding and they will put on a show. Do not ask how they know about your finances.',
     passive: {
-      description: '+3g per round while on board; +40 flat score if holding 20+ gold at judging',
+      description: '+3 ✦ per round while on board; +40 flat score if holding 20+ ✦ at judging',
       axis: 2,
       eval(card, ctx) {
         const gold = ctx.player ? (ctx.player.gold || 0) : 0;
