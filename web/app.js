@@ -217,10 +217,22 @@ function newGame({ deferred = false } = {}) {
   S.archetypeOrder = [];
   S.seed           = seed;
   if (runLog.instance) {
+    const mod = S.run.modifier;
+    const modState = S.run.modifierState;
+    const rv = S.run.rival;
     runLog.instance.startGame({
       version:    GAME_VERSION,
       seed:       seed,
       difficulty: { id: tier.id || 'standard', label: tier.label || 'Standard', mult: tier.mult },
+      modifier:   mod ? {
+        id:    mod.id,
+        name:  mod.name,
+        state: modState || null,
+      } : null,
+      rival:      rv ? {
+        personalityId: rv.personality && rv.personality.id,
+        name:          rv.personality && rv.personality.name,
+      } : null,
     });
   }
   // Re-wire continue button (game-over handler overrides it).
@@ -885,6 +897,20 @@ function onReady() {
   }
   S.result = S.run.runBattle();
   S.phase  = 'scoring';
+  // Phase 33-B: rival snapshot — picks happen inside runBattle(), so read
+  // them off the just-pushed history entry.
+  if (runLog.instance && S.run.rival && S.result) {
+    const rv = S.run.rival;
+    rlog({
+      t:         'rival_round',
+      round:     S.result.round,
+      picks:     (S.result.rivalPicks || []).slice(),
+      gold:      rv.gold,
+      aggro:     rv.aggressiveness,
+      specSpec:  rv.specializedSpecies || null,
+      boardSize: rv.board.length,
+    });
+  }
   if (runLog.instance && S.result) {
     try {
       runLog.instance.setRoundResult({

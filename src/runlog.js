@@ -29,6 +29,8 @@ class RunLog {
       endedAt:     null,
       durationMs:  null,
       difficulty:  null,
+      modifier:    null,
+      rival:       null,
       finalResult: null,
       ua:          IS_BROWSER ? (navigator.userAgent || null) : null,
     };
@@ -37,13 +39,15 @@ class RunLog {
     this._startMs     = 0;
   }
 
-  startGame({ version, seed, difficulty }) {
+  startGame({ version, seed, difficulty, modifier, rival }) {
     this.reset();
     this._startMs       = Date.now();
     this.meta.version   = version || null;
     this.meta.seed      = (seed === 0 || seed) ? seed : null;
     this.meta.startedAt = new Date(this._startMs).toISOString();
     this.meta.difficulty = difficulty || null;
+    this.meta.modifier  = modifier || null;
+    this.meta.rival     = rival    || null;
   }
 
   // Begin a new round entry. Subsequent log() calls attach to this round.
@@ -152,6 +156,7 @@ function snapshotCard(card, scoreInfo) {
     tier:                card.tier,
     baseScore:           card.baseScore,
     roundsSinceBought:   card.roundsSinceBought || 0,
+    tags:                Array.isArray(card.tags) ? card.tags.slice() : [],
     items:               (card.items || []).map(e => e.id),
   };
   if (card.shapeshifterSpecies) out.shapeshifterSpecies = card.shapeshifterSpecies;
