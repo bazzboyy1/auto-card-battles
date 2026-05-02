@@ -372,6 +372,74 @@ button:disabled { opacity: 0.4; cursor: default; }
 .item-pip.dev-detach { cursor: pointer; }
 .item-pip.dev-detach:hover { background: var(--danger); border-color: var(--danger); }
 
+/* ── Aesthetic tags (Phase 33-B.1) ── */
+/* Palette aligns with Phase 32 per-taste color bands: each tag matches its
+   home taste's color so the player builds one mental color map across
+   judges + cards + HUD. */
+.tag-grotesque    { --tag-color: #6b8f3a; }  /* Grotesquerie band */
+.tag-elegant      { --tag-color: #a8d8f0; }  /* Refinement band   */
+.tag-bizarre      { --tag-color: #5fd4f4; }  /* Eccentricity band */
+.tag-restrained   { --tag-color: #b0b8c2; }  /* Architecture band */
+.tag-ostentatious { --tag-color: #f490d8; }  /* Ostentation band  */
+.tag-quaint       { --tag-color: #a8c97f; }  /* Quaintness band   */
+
+/* Tag chip — used in tooltip Aesthetic section + HUD aggregate pill. */
+.tag-chip {
+  display: inline-block;
+  font-size: 9px; font-weight: 600;
+  padding: 1px 6px; border-radius: 8px;
+  margin: 1px 3px 1px 0;
+  background: color-mix(in srgb, var(--tag-color, #888) 18%, transparent);
+  color: var(--tag-color, #ccc);
+  border: 1px solid color-mix(in srgb, var(--tag-color, #888) 55%, transparent);
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.tag-chip.tag-granted {
+  border-style: dashed;
+  opacity: 0.85;
+}
+.tt-tags { margin-bottom: 4px; line-height: 1.6; }
+
+/* Card bottom-edge tag stripe — peripheral cue. Native = solid; granted = striped. */
+.card-tag-stripe {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  display: flex;
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.card-tag-stripe .tag-seg {
+  flex: 1 1 0;
+  background: var(--tag-color, #888);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.25);
+}
+.card-tag-stripe .tag-seg.tag-granted {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--tag-color, #888) 0 3px,
+    rgba(0,0,0,0.25) 3px 6px
+  );
+}
+/* Item pip row sits at bottom: 3px — leave the bottom 3px for the stripe. */
+
+/* HUD aggregate tag-mix pill — at-a-glance board read. */
+.hud-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 0;
+}
+.hud-tags.hidden { display: none; }
+.hud-tags .tag-chip { margin: 0; }
+
 /* ── Dev panel (only with ?dev=1) ── */
 #dev-panel {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;

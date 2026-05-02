@@ -5,7 +5,7 @@ let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
 let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS;
 let TASTES, getTaste;
 let MODIFIERS;
-let ITEM_DEFS, attachItem, detachItem;
+let ITEM_DEFS, attachItem, detachItem, cardHasGrantedTag, TAGS;
 let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
@@ -41,7 +41,7 @@ document.addEventListener('acb-ready', () => {
   ({ TASTES, getTaste } = window.ACB.judges);
   ({ MODIFIERS } = window.ACB.modifiers);
   ({ POLICIES }                                    = window.ACB.sim);
-  ({ ITEM_DEFS, attachItem, detachItem }           = window.ACB.items);
+  ({ ITEM_DEFS, attachItem, detachItem, cardHasGrantedTag, TAGS } = window.ACB.items);
   ({ AUGMENT_DEFS }                                = window.ACB.augments);
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
@@ -327,6 +327,33 @@ function renderModifierBadge() {
   }
   el.textContent = `⚙ ${mod.name}${extra}`;
   el.title = mod.description;
+  el.classList.remove('hidden');
+}
+
+// Phase 33-B.1: aggregate tag-mix pill — at-a-glance read of the player's
+// active board's aesthetic tag spread, so on-taste alignment with tag-reading
+// judges (Refinement/Architecture/Grotesquerie/Ostentation/Quaintness) is
+// legible without inspecting every card. Reads native + item-granted tags.
+function renderTagMix() {
+  const el = qs('#hud-tags');
+  if (!el) return;
+  const active = (S.human && S.human.board && S.human.board.active) || [];
+  if (!active.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const counts = {};
+  for (const c of active) {
+    if (!c) continue;
+    for (const t of c.tags || []) counts[t] = (counts[t] || 0) + 1;
+    for (const t of (TAGS || [])) {
+      if (cardHasGrantedTag && cardHasGrantedTag(c, t) && !(c.tags || []).includes(t)) {
+        counts[t] = (counts[t] || 0) + 1;
+      }
+    }
+  }
+  const tags = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!tags.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.innerHTML = tags
+    .map(([t, n]) => `<span class="tag-chip tag-${t.toLowerCase()}">${t}·${n}</span>`)
+    .join('');
   el.classList.remove('hidden');
 }
 
@@ -1308,6 +1335,7 @@ function onCardClick(cardId) {
 function render() {
   updateHUD();
   renderModifierBadge();
+  renderTagMix();
 
   if (S.phase === 'augment') {
     qs('#modal').classList.add('hidden');
@@ -2185,6 +2213,24 @@ function makeSynergyTooltip(card, bd) {
   if (card.passive && card.passive.description) {
     html += `<div class="tt-head" style="color:var(--text-muted)">Effect</div><div class="tt-passive">${card.passive.description}</div>`;
   }
+  // Phase 33-B.1: aesthetic tags — native + item-granted, distinguished.
+  // Tags drive 5 of the 11 judge tastes (Refinement/Architecture/Grotesquerie/
+  // Ostentation/Quaintness + Bizarre on Eccentricity), so they need to be
+  // legible somewhere. Tooltip is the durable surface (survives the eventual
+  // art pass — see DESIGN_LOG Phase 33-B.1).
+  const nativeTags  = Array.isArray(card.tags) ? card.tags.slice() : [];
+  const grantedTags = (TAGS || []).filter(t => cardHasGrantedTag && cardHasGrantedTag(card, t));
+  if (nativeTags.length || grantedTags.length) {
+    html += `<div class="tt-head" style="color:var(--text-muted)">Aesthetic</div>`;
+    html += `<div class="tt-tags">`;
+    for (const t of nativeTags) {
+      html += `<span class="tag-chip tag-${t.toLowerCase()}">${t}</span>`;
+    }
+    for (const t of grantedTags) {
+      html += `<span class="tag-chip tag-${t.toLowerCase()} tag-granted" title="Granted by item">${t}</span>`;
+    }
+    html += `</div>`;
+  }
   if (card.flavor) {
     html += `<div class="tt-flavor">${card.flavor}</div>`;
   }
@@ -2229,6 +2275,20 @@ function makeCard(card, context, shopCost, bd) {
     scoreHTML = baseScore;
   }
 
+  // Phase 33-B.1: tag stripe — tiny color-coded segments at card bottom so
+  // tags have a peripheral cue without crowding the (placeholder) card face.
+  // Native + item-granted tags both surface here; full readout lives in the
+  // hover tooltip.
+  const nativeTagsCard  = Array.isArray(card.tags) ? card.tags : [];
+  const grantedTagsCard = (TAGS || []).filter(t => cardHasGrantedTag && cardHasGrantedTag(card, t));
+  let stripeHTML = '';
+  if (nativeTagsCard.length || grantedTagsCard.length) {
+    stripeHTML = '<div class="card-tag-stripe">';
+    for (const t of nativeTagsCard)  stripeHTML += `<span class="tag-seg tag-${t.toLowerCase()}"></span>`;
+    for (const t of grantedTagsCard) stripeHTML += `<span class="tag-seg tag-${t.toLowerCase()} tag-granted"></span>`;
+    stripeHTML += '</div>';
+  }
+
   el.innerHTML = `
     <div class="card-stars">${stars}</div>
     <div class="card-name">${card.name}</div>
@@ -2241,6 +2301,7 @@ function makeCard(card, context, shopCost, bd) {
     <div class="card-tier" title="Pool rarity — T1/T2/T3 affects shop odds after upgrading your Exhibit. Stars ★ = combine level (1–3).">T${card.tier}</div>
     ${shopCost != null ? `<div class="card-cost">${shopCost} ✦</div>` : ''}
     ${context !== 'shop' && S.sellMode ? `<div class="card-sell-val">sell ${sellVal} ✦</div>` : ''}
+    ${stripeHTML}
   `;
 
   // Item pip row — three slots, shown on board/bench cards (not shop or viewer).
