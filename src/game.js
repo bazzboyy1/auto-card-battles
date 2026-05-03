@@ -53,31 +53,41 @@ const CURATOR_SELECTIONS = {};
 // matching observed greedy score trajectory under Phase 30 plinth composition.
 // preferredTarget kept (×0.85) but unused under judge mode — Phase 27 retired
 // the qualify mechanic; the field is left in place for legacy ad-hoc Node A/B.
+// Phase 33-B.2.1 (2026-05-03): recalibrated against the post-overhaul sim that
+// models human-realistic economy (25g cap-park, sell to free space, deep
+// rerolls). Pre-fix sim targets were tuned against a sim under-banking
+// 80–100g/run, so greedy hit a 30–45% survival band against numbers that the
+// real player blew through at 150–300% margins (9/9 perfect playtest). New
+// curve scales R1–3 ×1.24, R4–7 ×1.34, R8–24 ×1.40 — early rounds keep their
+// "opening trust" easy ramp; the bulk of the bump lands on R8+ where the
+// banked-economy ceiling actually compounds. New greedy n=300: 47% survival,
+// R8 86% pass (first checkpoint), R11–12 80% pass (mid kill-zone), R17–19
+// 83% (second pressure window), R24 finale 65% pass.
 const ROUND_TARGETS = [
-  { target: 100,  preferredTarget:  85,  isCritique: false }, // R1
-  { target: 135,  preferredTarget: 115,  isCritique: false }, // R2
-  { target: 200,  preferredTarget: 170,  isCritique: false }, // R3
-  { target: 400,  preferredTarget: 340,  isCritique: false }, // R4
-  { target: 510,  preferredTarget: 434,  isCritique: false }, // R5
-  { target: 640,  preferredTarget: 544,  isCritique: false }, // R6
-  { target: 800,  preferredTarget: 680,  isCritique: false }, // R7
-  { target: 1000, preferredTarget: 850,  isCritique: true  }, // R8  — Critique 1
-  { target: 1100, preferredTarget: 935,  isCritique: false }, // R9
-  { target: 1280, preferredTarget: 1088, isCritique: false }, // R10
-  { target: 1480, preferredTarget: 1258, isCritique: false }, // R11
-  { target: 1700, preferredTarget: 1445, isCritique: false }, // R12
-  { target: 1850, preferredTarget: 1573, isCritique: false }, // R13
-  { target: 2050, preferredTarget: 1743, isCritique: false }, // R14
-  { target: 2250, preferredTarget: 1913, isCritique: false }, // R15
-  { target: 2400, preferredTarget: 2040, isCritique: true  }, // R16 — Critique 2
-  { target: 2600, preferredTarget: 2210, isCritique: false }, // R17
-  { target: 2800, preferredTarget: 2380, isCritique: false }, // R18
-  { target: 3000, preferredTarget: 2550, isCritique: false }, // R19
-  { target: 3300, preferredTarget: 2805, isCritique: false }, // R20
-  { target: 3500, preferredTarget: 2975, isCritique: false }, // R21
-  { target: 3700, preferredTarget: 3145, isCritique: false }, // R22
-  { target: 3900, preferredTarget: 3315, isCritique: false }, // R23
-  { target: 4200, preferredTarget: 3570, isCritique: true  }, // R24 — Grand Finale
+  { target:  124, preferredTarget:  105, isCritique: false }, // R1
+  { target:  167, preferredTarget:  143, isCritique: false }, // R2
+  { target:  248, preferredTarget:  211, isCritique: false }, // R3
+  { target:  536, preferredTarget:  456, isCritique: false }, // R4
+  { target:  683, preferredTarget:  582, isCritique: false }, // R5
+  { target:  858, preferredTarget:  729, isCritique: false }, // R6
+  { target: 1072, preferredTarget:  911, isCritique: false }, // R7
+  { target: 1400, preferredTarget: 1190, isCritique: true  }, // R8  — Critique 1
+  { target: 1540, preferredTarget: 1309, isCritique: false }, // R9
+  { target: 1792, preferredTarget: 1523, isCritique: false }, // R10
+  { target: 2072, preferredTarget: 1761, isCritique: false }, // R11
+  { target: 2380, preferredTarget: 2023, isCritique: false }, // R12
+  { target: 2590, preferredTarget: 2202, isCritique: false }, // R13
+  { target: 2870, preferredTarget: 2440, isCritique: false }, // R14
+  { target: 3150, preferredTarget: 2678, isCritique: false }, // R15
+  { target: 3360, preferredTarget: 2856, isCritique: true  }, // R16 — Critique 2
+  { target: 3640, preferredTarget: 3094, isCritique: false }, // R17
+  { target: 3920, preferredTarget: 3332, isCritique: false }, // R18
+  { target: 4200, preferredTarget: 3570, isCritique: false }, // R19
+  { target: 4620, preferredTarget: 3927, isCritique: false }, // R20
+  { target: 4900, preferredTarget: 4165, isCritique: false }, // R21
+  { target: 5180, preferredTarget: 4403, isCritique: false }, // R22
+  { target: 5460, preferredTarget: 4641, isCritique: false }, // R23
+  { target: 5880, preferredTarget: 4998, isCritique: true  }, // R24 — Grand Finale
 ];
 
 class Player {
