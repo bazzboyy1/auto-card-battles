@@ -1,12 +1,36 @@
 'use strict';
 
 const { CARD_DEFS, CARD_COSTS, STAR_MULT } = require('./cards');
-const { Run, ROUND_CAP, ROUND_TARGETS } = require('./game');
+const { Run, ROUND_CAP, ROUND_TARGETS, MAX_INTEREST, INTEREST_PER } = require('./game');
 const { attachItem } = require('./items');
 const { AUGMENT_DEFS } = require('./augments');
 const { mulberry32 } = require('./utils');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// When board is full (active+bench = 14 cards) and the player has significant
+// overflow gold, sell the lowest-EV bench card. Models the user's late-game
+// pattern of selling marginal bench fodder to make room for combine targets
+// pulled from rerolls. Only sells if the worst bench card is clearly inferior
+// to the active board's median — otherwise the bench is already curated.
+// Returns true if a sell happened (caller should retry the buy).
+function freeBenchIfStuck(player, bias) {
+  if (!player.board.isFull()) return false;
+  if (player.gold < INTEREST_CAP_GOLD + 5) return false;
+  const benchCards = player.board.bench
+    .map(c => ({ card: c, ev: c.baseScore * STAR_MULT[c.stars] }))
+    .filter(x => !(x.card.items && x.card.items.length))
+    .filter(x => !(bias && bias.species && x.card.species === bias.species && x.card.stars >= 2))
+    .sort((a, b) => a.ev - b.ev);
+  if (!benchCards.length) return false;
+  const worst = benchCards[0];
+  const activeMedian = player.board.active.length
+    ? [...player.board.active].map(c => c.baseScore * STAR_MULT[c.stars]).sort((a, b) => a - b)[Math.floor(player.board.active.length / 2)]
+    : 0;
+  if (worst.ev >= activeMedian * 0.7) return false;
+  const value = player.sell(worst.card._id);
+  return value > 0;
+}
 
 // Sort all cards by EV; protect item-bearing cards from bench eviction.
 // Carriers get a 500-pt bonus so they always fill active slots before bare units.
@@ -256,10 +280,14 @@ function scoreBuyCandidate(def, player, round, bias) {
   //   mixSpecies  — two-or-more-species commit (prefers any listed species)
   //   wide        — bonus for new species, penalty for over-stacking one species
   if (bias) {
-    if (bias.species && def.species === bias.species)                        score += 20;
+    // Species bias raised from +20 to +60 (Phase 33-B.2): the +20 was being
+    // overcome by sameSpecies (×10) on whatever species first established, so
+    // chitinous-stack drifted into mixed boards. +60 dominates the species/name
+    // terms and keeps the policy committed to its target species.
+    if (bias.species && def.species === bias.species)                        score += 60;
     if (bias.axis    && def.passive && def.passive.axis === bias.axis)       score += 15;
-    if (bias.cls     && def.class   === bias.cls)                            score += 20;
-    if (bias.mixSpecies && bias.mixSpecies.includes(def.species))            score += 18;
+    if (bias.cls     && def.class   === bias.cls)                            score += 60;
+    if (bias.mixSpecies && bias.mixSpecies.includes(def.species))            score += 40;
     if (bias.wide) {
       const uniqueSpecies = new Set(player.board.allCards.map(c => c.species));
       if (!uniqueSpecies.has(def.species)) score += 18;
@@ -273,20 +301,65 @@ function scoreBuyCandidate(def, player, round, bias) {
   return score;
 }
 
+// Interest cap: at >=25g the player earns max +5g/round (doubled passive income).
+// Skilled human play parks at this floor — it's the dominant economic strategy
+// observed in playtest runs (v0.56). The sim's old saveForInterest logic only
+// guarded the next 5-mark with a 2g gap, missing the 25g floor entirely and
+// under-collecting ~80-100g across a 24-round run.
+const INTEREST_CAP_GOLD = MAX_INTEREST * INTEREST_PER;
+
+// Decide if the player is "score-behind" — the upcoming round's target is
+// not comfortably cleared by the current board. When behind, cap protection
+// is bypassed: spending to survive beats banking interest.
+function isScoreBehind(player, round, run) {
+  if (!run || !ROUND_TARGETS.length) return false;
+  const idx = Math.min(round - 1, ROUND_TARGETS.length - 1);
+  const entry = ROUND_TARGETS[idx];
+  if (!entry) return false;
+  const target = Math.round(entry.target * (run.diffMult || 1));
+  // Match human "comfortable" threshold: 110% of the target leaves a small
+  // cushion for interest banking; below that, spend.
+  return boardScore(player, round, run) < target * 1.10;
+}
+
 // Attempt to buy the best available card from the current shop.
 // Returns true if a purchase was made (so callers can loop until dry).
-function buyBestCard(player, round, bias) {
+//
+// Interest-cap protection: if buying drops the player below 25g, the buy is
+// skipped UNLESS one of the following overrides applies — modelled on observed
+// human play:
+//   1. Score-behind: must spend to clear upcoming target.
+//   2. Strict combine: 3rd copy of an existing 1*/2* card (auto-promotes).
+//   3. Active board not yet at minimum baseline (3 cards): need to field
+//      something before banking is meaningful.
+//   4. T3 anchor: a T3 buy is a long-term anchor; the user explicitly pursues
+//      "T3s ASAP".
+function buyBestCard(player, round, bias, run) {
   if (player.board.isFull()) return false;
-  let bestSlot = -1, bestScore = -Infinity;
+  let bestSlot = -1, bestScore = -Infinity, bestDef = null;
   for (let i = 0; i < player.shop.offers.length; i++) {
     const name = player.shop.offers[i];
     if (!name) continue;
     const def = CARD_DEFS.find(d => d.name === name);
     if (!def || player.gold < CARD_COSTS[def.tier]) continue;
     const s = scoreBuyCandidate(def, player, round, bias);
-    if (s > bestScore) { bestScore = s; bestSlot = i; }
+    if (s > bestScore) { bestScore = s; bestSlot = i; bestDef = def; }
   }
-  if (bestSlot < 0) return false;
+  if (bestSlot < 0 || !bestDef) return false;
+
+  const cost = CARD_COSTS[bestDef.tier];
+  const wouldDipBelowCap = player.gold - cost < INTEREST_CAP_GOLD;
+  if (wouldDipBelowCap) {
+    const sameName = player.board.allCards.filter(c => c.name === bestDef.name).length;
+    const isCombine    = sameName >= 2;
+    const baselineThin = player.board.active.length < 3;
+    const isT3Anchor   = bestDef.tier === 3;
+    const scoreBehind  = isScoreBehind(player, round, run);
+    if (!isCombine && !baselineThin && !isT3Anchor && !scoreBehind) {
+      return false;
+    }
+  }
+
   const card = player.shop.buy(bestSlot);
   if (!card) return false;
   player.board.addCard(card);
@@ -298,52 +371,50 @@ function buyBestCard(player, round, bias) {
 
 // Shared economy + buy core used by all strategy variants.
 // `bias = { species?, axis? }` steers card scoring for proto-strategies; null = greedy.
-function greedyCore(player, round, bias) {
+function greedyCore(player, round, bias, run) {
   const augments  = player.augments || [];
-  const hasTycoon = augments.includes('Tycoon');
   const hasMidas  = augments.includes('MidasTouch');
-
-  const INTEREST_PER = 5;
   const rerollCost   = player.shop.rerollCost();
 
-  // Interest saving: Tycoon doubles interest, so its thresholds are doubly valuable.
-  // With Tycoon active, start saving earlier and for a wider gap.
-  const nextThreshold  = (Math.floor(player.gold / INTEREST_PER) + 1) * INTEREST_PER;
-  const gapToThreshold = nextThreshold - player.gold;
-  const saveMinGold    = hasTycoon ? 6 : 8;
-  const saveGap        = hasTycoon ? 3 : 2;
-  const saveForInterest = player.gold >= saveMinGold && gapToThreshold <= saveGap;
-
-  // Plinth investment: cap at level 7 (tier-3 unlock). Skip if saving for interest.
-  if (!saveForInterest) {
-    while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
-      if (!player.addPlinth()) break;
-    }
+  // Plinth investment: cap at level 7 (tier-3 unlock). Plinths compound shop
+  // quality and are part of the human "T3s ASAP" strategy — they bypass
+  // interest-cap protection.
+  while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
+    if (!player.addPlinth()) break;
   }
 
-  if (saveForInterest) {
-    optimizeBoard(player);
-    return;
-  }
-
-  // Buy everything we can from the current shop.
-  while (buyBestCard(player, round, bias)) { /* continue */ }
+  // Buy everything we can — buyBestCard internally enforces the 25g interest-cap
+  // floor (with combine / T3-anchor / score-behind / thin-baseline overrides).
+  while (buyBestCard(player, round, bias, run)) { /* continue */ }
 
   // Reroll: MidasTouch drops reroll cost to 1g, making more rerolls per round viable.
-  const rerollGoldFloor = hasMidas ? rerollCost + CARD_COSTS[1] : 6;
-  const maxRerolls      = hasMidas ? 3 : 1;
-  let   rerolls         = 0;
-  while (rerolls < maxRerolls && player.gold >= rerollGoldFloor && !player.board.isFull()) {
+  // Reroll guard: don't reroll if it would drop us below the interest cap unless
+  // we're behind on score (matches user rule: "I wouldn't roll with just >25-30g").
+  // No fixed rerolls cap — playtest digests show 9-23 rerolls in late-game banked
+  // rounds. The cap-floor / score-behind gate is the natural stop condition.
+  // ROLL_HARD_CAP is a sanity bound to prevent infinite loops if shop always
+  // re-offers a no-affordable state.
+  const ROLL_HARD_CAP = 30;
+  let rerolls = 0;
+  while (rerolls < ROLL_HARD_CAP) {
+    if (player.gold < rerollCost) break;
+    // Free a bench slot if stuck — late-game user pattern is to sell low-EV
+    // bench cards to make room for combine fodder pulled from rerolls.
+    while (freeBenchIfStuck(player, bias)) { /* continue */ }
+    const overflow = player.gold - rerollCost - INTEREST_CAP_GOLD;
+    const scoreBehind = isScoreBehind(player, round, run);
+    const canRollOverflow = overflow >= 0;
     const hasAffordable = player.shop.offers.some(name => {
       if (!name) return false;
       const def = CARD_DEFS.find(d => d.name === name);
       return def && player.gold >= CARD_COSTS[def.tier];
     });
-    if (hasAffordable) break;
-    if (player.gold < rerollCost) break;
+    if (hasAffordable && !canRollOverflow && !scoreBehind) break;
+    if (!canRollOverflow && !scoreBehind) break;
+    if (player.board.isFull()) break;
     player.shop.reroll();
     rerolls++;
-    while (buyBestCard(player, round, bias)) { /* continue */ }
+    while (buyBestCard(player, round, bias, run)) { /* continue */ }
   }
 
   optimizeBoard(player);
@@ -351,8 +422,8 @@ function greedyCore(player, round, bias) {
 
 // Greedy-synergy: context-aware scoring of passives, items, and augments.
 // Reuses greedyCore with no archetype bias.
-function greedyPolicy(player, round = 1) {
-  greedyCore(player, round, null);
+function greedyPolicy(player, round = 1, run = null) {
+  greedyCore(player, round, null, run);
 }
 
 // Smart greedy: score-aware saving, T3 timing, aggressive rerolling when behind.
@@ -363,37 +434,37 @@ function smartGreedyPolicy(player, round = 1, run = null) {
 
 // Wide: prefers cards that add new species over copies of existing ones.
 // Benefits from Varietal and Cross-Training augments.
-function widePolicy(player, round = 1) {
-  greedyCore(player, round, { wide: true });
+function widePolicy(player, round = 1, run = null) {
+  greedyCore(player, round, { wide: true }, run);
 }
 
 // Species-commitment policies: prioritise one species without axis bias so the
 // heuristic picks whichever axis the species's heroes actually use. Used by the
 // balance harness to measure per-species ceilings.
-function plasmicStackPolicy(player, round = 1)     { greedyCore(player, round, { species: 'Plasmic' }); }
-function sporalStackPolicy(player, round = 1)      { greedyCore(player, round, { species: 'Sporal' }); }
-function chitinousStackPolicy(player, round = 1)   { greedyCore(player, round, { species: 'Chitinous' }); }
-function crystallineStackPolicy(player, round = 1) { greedyCore(player, round, { species: 'Crystalline' }); }
-function abyssalStackPolicy(player, round = 1)     { greedyCore(player, round, { species: 'Abyssal' }); }
+function plasmicStackPolicy(player, round = 1, run = null)     { greedyCore(player, round, { species: 'Plasmic' }, run); }
+function sporalStackPolicy(player, round = 1, run = null)      { greedyCore(player, round, { species: 'Sporal' }, run); }
+function chitinousStackPolicy(player, round = 1, run = null)   { greedyCore(player, round, { species: 'Chitinous' }, run); }
+function crystallineStackPolicy(player, round = 1, run = null) { greedyCore(player, round, { species: 'Crystalline' }, run); }
+function abyssalStackPolicy(player, round = 1, run = null)     { greedyCore(player, round, { species: 'Abyssal' }, run); }
 
 // Class-commitment policies: prioritise one class (Shy/Livid/Giddy/Sullen/Pompous).
 // Since each class spans 3–4 species, class-stacks are naturally multi-species —
 // they measure class synergy ceilings independent of species synergies.
-function shyStackPolicy(player, round = 1)     { greedyCore(player, round, { cls: 'Shy' }); }
-function lividStackPolicy(player, round = 1)   { greedyCore(player, round, { cls: 'Livid' }); }
-function giddyStackPolicy(player, round = 1)   { greedyCore(player, round, { cls: 'Giddy' }); }
-function sullenStackPolicy(player, round = 1)  { greedyCore(player, round, { cls: 'Sullen' }); }
-function pompousStackPolicy(player, round = 1) { greedyCore(player, round, { cls: 'Pompous' }); }
+function shyStackPolicy(player, round = 1, run = null)     { greedyCore(player, round, { cls: 'Shy' }, run); }
+function lividStackPolicy(player, round = 1, run = null)   { greedyCore(player, round, { cls: 'Livid' }, run); }
+function giddyStackPolicy(player, round = 1, run = null)   { greedyCore(player, round, { cls: 'Giddy' }, run); }
+function sullenStackPolicy(player, round = 1, run = null)  { greedyCore(player, round, { cls: 'Sullen' }, run); }
+function pompousStackPolicy(player, round = 1, run = null) { greedyCore(player, round, { cls: 'Pompous' }, run); }
 
 // Two-species mix: test whether multiplicative species stacks compound into
 // a dominant build not caught by single-species commits.
-function abyssalSporalMixPolicy(player, round = 1) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }); }
+function abyssalSporalMixPolicy(player, round = 1, run = null) { greedyCore(player, round, { mixSpecies: ['Abyssal', 'Sporal'] }, run); }
 
 // Dead-species avoidance: validates the Phase 26 hypothesis that skipping
 // Chitinous/Crystalline is at-or-better than the greedy baseline.
-function avoidChitinousPolicy(player, round = 1)   { greedyCore(player, round, { avoidSpecies: ['Chitinous'] }); }
-function avoidCrystallinePolicy(player, round = 1) { greedyCore(player, round, { avoidSpecies: ['Crystalline'] }); }
-function avoidBothPolicy(player, round = 1)        { greedyCore(player, round, { avoidSpecies: ['Chitinous', 'Crystalline'] }); }
+function avoidChitinousPolicy(player, round = 1, run = null)   { greedyCore(player, round, { avoidSpecies: ['Chitinous'] }, run); }
+function avoidCrystallinePolicy(player, round = 1, run = null) { greedyCore(player, round, { avoidSpecies: ['Crystalline'] }, run); }
+function avoidBothPolicy(player, round = 1, run = null)        { greedyCore(player, round, { avoidSpecies: ['Chitinous', 'Crystalline'] }, run); }
 
 // Score of the current board in the context of an upcoming round.
 function boardScore(player, round, run) {
@@ -408,15 +479,11 @@ function boardScore(player, round, run) {
 // improves shop odds for future rounds). Card-buying resumes when score falls behind.
 function smartGreedyCore(player, round, bias, run) {
   const augments  = player.augments || [];
-  const hasTycoon = augments.includes('Tycoon');
   const hasMidas  = augments.includes('MidasTouch');
-  const INTEREST_PER = 5;
   const rerollCost   = player.shop.rerollCost();
 
-  // 1. Score awareness — compare to the next CRITIQUE target, not the next round.
-  // Early-round targets are intentionally easy; saving because you can clear round 2
-  // while neglecting to build for the round 8 critique is too myopic.
-  // "Comfortable" = current score already clears the chapter's final hard check.
+  // Comfortable = current score already clears the chapter's final hard check.
+  // When comfortable, only plinth investment runs — bank everything else.
   let comfortable = false;
   if (run && ROUND_TARGETS.length) {
     const CRITIQUE_ROUNDS = [8, 16, 24];
@@ -428,27 +495,18 @@ function smartGreedyCore(player, round, bias, run) {
     }
   }
 
-  // Interest saving (same logic as greedyCore).
-  const nextThreshold   = (Math.floor(player.gold / INTEREST_PER) + 1) * INTEREST_PER;
-  const gapToThreshold  = nextThreshold - player.gold;
-  const saveMinGold     = hasTycoon ? 6 : 8;
-  const saveGap         = hasTycoon ? 3 : 2;
-  const saveForInterest = player.gold >= saveMinGold && gapToThreshold <= saveGap;
-
-  // Plinth: always invest when affordable — leveling improves shop quality regardless
-  // of current score comfort. Skip only when near an interest threshold.
-  if (!saveForInterest) {
-    while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
-      if (!player.addPlinth()) break;
-    }
+  // Plinth: always invest when affordable — leveling improves shop quality
+  // regardless of current score comfort. Plinths bypass cap protection.
+  while (player.level < 7 && player.gold >= player.plinthCost() + 4) {
+    if (!player.addPlinth()) break;
   }
 
-  if (comfortable || saveForInterest) {
+  if (comfortable) {
     optimizeBoard(player);
     return;
   }
 
-  while (buyBestCard(player, round, bias)) { /* continue */ }
+  while (buyBestCard(player, round, bias, run)) { /* continue */ }
 
   const rerollGoldFloor = hasMidas ? rerollCost + CARD_COSTS[1] : 6;
   const maxRerolls      = hasMidas ? 3 : 1;
@@ -461,9 +519,10 @@ function smartGreedyCore(player, round, bias, run) {
     });
     if (hasAffordable) break;
     if (player.gold < rerollCost) break;
+    if (player.gold - rerollCost < INTEREST_CAP_GOLD && !isScoreBehind(player, round, run)) break;
     player.shop.reroll();
     rerolls++;
-    while (buyBestCard(player, round, bias)) { /* continue */ }
+    while (buyBestCard(player, round, bias, run)) { /* continue */ }
   }
 
   optimizeBoard(player);
@@ -472,9 +531,9 @@ function smartGreedyCore(player, round, bias, run) {
 // Economy-stack: prioritises Axis-7 gold-generating cards (Sporvik, Sharzak) and biases
 // augment scoring heavily toward Tycoon + MidasTouch. Tests the compound ceiling of
 // maximum gold snowball — used to detect broken economy interactions in Phase 20-B.
-function economyStackPolicy(player, round = 1) {
+function economyStackPolicy(player, round = 1, run = null) {
   player._augmentBias = ['Tycoon', 'MidasTouch'];
-  greedyCore(player, round, { axis: 7 });
+  greedyCore(player, round, { axis: 7 }, run);
 }
 
 // Random: buys random affordable cards without strategy. Kept as control baseline.
