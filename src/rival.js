@@ -1,14 +1,16 @@
 'use strict';
 
-// Phase 29 — Visible Rival.
+// Phase 29 — Visible Rival. Phase 33-B.3.A — threat layer.
 // A scripted AI exhibitor with a public board. Picks from the same shared
 // shop as the player, AFTER the player commits each round. The rival doesn't
 // score and never competes on appraisal — they are pure market pressure.
 // Their board exists so the player can predict their next pick.
 //
-// Buster-principle DDA: aggressiveness ∈ [-0.10, +0.10]. Applied as a
-// score-bias when the candidate's species matches the player's dominant
-// species. ≤10% rate change keeps it under the perception threshold.
+// Threat model (Phase 33-B.3.A): aggressiveness ∈ [-0.20, +0.50]. Applied
+// as a score-bias when the candidate's species matches the player's
+// dominant species. The Phase 29 ≤10% Buster-principle cap was reversed —
+// playtest read the rival as no-pressure precisely because the bias was
+// sub-perception. Threat is now overt and scales with player margin.
 
 const { CARD_DEFS, CARD_COSTS } = require('./cards');
 
@@ -45,8 +47,20 @@ const PERSONALITIES = {
 
 const STARTING_GOLD = 5;
 const ROUND_INCOME  = 5;
-const AGGRO_HIGH    = 0.10;
-const AGGRO_LOW     = -0.10;
+// Aggro buckets — overt, not sub-perception. The rival's HUD pill labels
+// each bucket so the player can read the threat at a glance.
+const AGGRO_DISTRACTED = -0.20; // chapter-end recovery: 2+ losses
+const AGGRO_WATCHING   = 0.00;  // baseline
+const AGGRO_HUNTING    = 0.25;  // 1+ strong rounds (>140% target) accumulating
+const AGGRO_PEAK       = 0.50;  // sustained dominance — rival actively contests
+// Per-round bump applied after a passing round; capped by AGGRO_PEAK.
+const AGGRO_BUMP_STRONG  = 0.10;  // scoreOverTarget >= 0.40
+const AGGRO_BUMP_PASS    = 0.04;  // scoreOverTarget >= 0.10
+const AGGRO_DECAY_FAIL   = 0.15;  // failed round — pulls aggro down toward distracted
+
+// Back-compat aliases — DESIGN_LOG and tests reference these names.
+const AGGRO_HIGH = AGGRO_HUNTING;
+const AGGRO_LOW  = AGGRO_DISTRACTED;
 
 class Rival {
   constructor(personalityId, rng) {
@@ -64,12 +78,23 @@ class Rival {
   earnIncome() { this.gold += ROUND_INCOME; }
 
   // Pick from the shop AFTER the player has committed.
-  // ctx = { playerLastSpecies: { Sporal: 2, ... } | null }
+  // ctx = {
+  //   playerLastSpecies: { Sporal: 2, ... } | null,   // dominant-species snapshot of player board
+  //   playerBoughtThisRound: ['Chitinous', 'Sporal']  // species of cards bought this round, in order
+  // }
   // Returns the slot indices the rival claimed (so the shop can null them).
   pickFromShop(shop, ctx) {
     const offers = shop.offers || [];
     const ctxLast = (ctx && ctx.playerLastSpecies) || {};
     const dominantSp = Object.keys(ctxLast).sort((a, b) => ctxLast[b] - ctxLast[a])[0] || null;
+    // Phase 33-B.3.A: Mimic now reads last-bought species *this round* rather
+    // than majority of last round. The old signal was stale — by the time the
+    // rival picked, the dominant-species heuristic just retraced what was
+    // already on the board.
+    const boughtThisRound = (ctx && ctx.playerBoughtThisRound) || [];
+    const lastBoughtSp    = boughtThisRound.length
+      ? boughtThisRound[boughtThisRound.length - 1]
+      : null;
 
     let candidates = [];
     for (let i = 0; i < offers.length; i++) {
@@ -95,6 +120,16 @@ class Rival {
     }
     const aggro = this.aggressiveness;
 
+    // Phase 33-B.3.A: Specialist first-pick bias. When aggro >= HUNTING and
+    // the player has a clear dominant species, push the Specialist's lock
+    // toward contest. Preserves the "lock and ignore" identity but creates
+    // friction when the player is winning.
+    const specialistContestsPlayer =
+      personalityId === 'specialist' &&
+      !this.specializedSpecies &&
+      aggro >= AGGRO_HUNTING &&
+      !!dominantSp;
+
     const scored = candidates.map(c => {
       const { def } = c;
       let s = 0;
@@ -117,14 +152,23 @@ class Rival {
           // pick (no specializedSpecies yet) or the candidate is on-species.
           if (!this.specializedSpecies) {
             s = def.baseScore + def.tier * 120; // first-pick: tier-weighted base
+            // Phase 33-B.3.A: when the player is winning, bias the lock toward
+            // their dominant species so Specialist becomes a real contest.
+            if (specialistContestsPlayer && def.species === dominantSp) {
+              s += 1500;
+            }
           } else {
             s = 1000 + def.baseScore + def.tier * 60;
           }
           break;
         }
         case 'mimic': {
-          if (dominantSp && def.species === dominantSp) {
-            s = 1000 + def.baseScore;
+          // Phase 33-B.3.A: prioritize last-bought species *this round*, then
+          // fall back to dominant species of player board. Direct shop contest.
+          if (lastBoughtSp && def.species === lastBoughtSp) {
+            s = 1500 + def.baseScore;
+          } else if (dominantSp && def.species === dominantSp) {
+            s = 800 + def.baseScore;
           } else {
             s = def.baseScore + def.tier * 80;
           }
@@ -183,15 +227,42 @@ class Rival {
     return picked.map(c => c.idx);
   }
 
-  // Buster-principle DDA. Called at chapter boundaries.
+  // Phase 33-B.3.A: per-round aggro update. Called after every battle.
+  // The chapter-end variant (updateAggression) still resets on bad chapters,
+  // but the per-round bumps let aggro climb during the long mid-game stretch
+  // where the chapter-end signal would otherwise just oscillate around 0.
+  // record: { passed: bool, scoreOverTarget: number }
+  updateAggressionPerRound(record) {
+    if (!record) return;
+    if (!record.passed) {
+      // Failure pulls aggro down — the rival "looks elsewhere."
+      this.aggressiveness = Math.max(AGGRO_DISTRACTED, this.aggressiveness - AGGRO_DECAY_FAIL);
+      return;
+    }
+    let bump = 0;
+    if (record.scoreOverTarget >= 0.40)      bump = AGGRO_BUMP_STRONG;
+    else if (record.scoreOverTarget >= 0.10) bump = AGGRO_BUMP_PASS;
+    if (bump > 0) {
+      this.aggressiveness = Math.min(AGGRO_PEAK, this.aggressiveness + bump);
+    }
+  }
+
+  // Chapter-boundary reset. Two losses still hard-resets to distracted (player
+  // is struggling — pull rival off them). Otherwise the per-round bumps carry.
   // chapterRecord: array of { passed, scoreOverTarget } for the chapter's rounds.
   updateAggression(chapterRecord) {
     if (!chapterRecord || !chapterRecord.length) return;
-    const losses    = chapterRecord.filter(r => !r.passed).length;
-    const blowouts  = chapterRecord.filter(r => r.passed && r.scoreOverTarget >= 0.20).length;
-    if (losses >= 2)        this.aggressiveness = AGGRO_LOW;
-    else if (blowouts >= 3) this.aggressiveness = AGGRO_HIGH;
-    else                    this.aggressiveness = 0;
+    const losses = chapterRecord.filter(r => !r.passed).length;
+    if (losses >= 2) this.aggressiveness = AGGRO_DISTRACTED;
+  }
+
+  // Bucket the current aggro for HUD display.
+  // Returns one of: 'distracted', 'watching', 'hunting', 'pouncing'.
+  threatLevel() {
+    if (this.aggressiveness <= -0.10)     return 'distracted';
+    if (this.aggressiveness >= AGGRO_PEAK - 0.001) return 'pouncing';
+    if (this.aggressiveness >= AGGRO_HUNTING - 0.001) return 'hunting';
+    return 'watching';
   }
 }
 
@@ -200,4 +271,8 @@ function pickPersonalityId(rng) {
   return ids[Math.floor(rng() * ids.length)];
 }
 
-module.exports = { Rival, PERSONALITIES, pickPersonalityId, AGGRO_HIGH, AGGRO_LOW, ROUND_INCOME };
+module.exports = {
+  Rival, PERSONALITIES, pickPersonalityId, ROUND_INCOME,
+  AGGRO_DISTRACTED, AGGRO_WATCHING, AGGRO_HUNTING, AGGRO_PEAK,
+  AGGRO_HIGH, AGGRO_LOW, // back-compat
+};

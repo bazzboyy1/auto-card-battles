@@ -293,6 +293,9 @@ class Run {
     this.rival            = new Rival(pickPersonalityId(this.rng), this.rng);
     // Track player buys per round for Mimic personality + DDA dominant-species lookup.
     this._playerLastSpeciesCounts = {};
+    // Phase 33-B.3.A: per-round buy log (cleared at runBattle entry). Shop.buy
+    // pushes species names; Mimic prioritizes the most recent entry.
+    this._playerBoughtThisRound = [];
     // Phase 31-B.1: draw run modifier. Player needs back-ref so income/plinth
     // hooks can read it. modifierState holds per-run randomized state (e.g.
     // Curator's Pet's favored/scorned species).
@@ -557,7 +560,10 @@ class Run {
       }
       this._playerLastSpeciesCounts = playerSpeciesCounts;
       this.rival.earnIncome();
-      const rivalCtx = { playerLastSpecies: playerSpeciesCounts };
+      const rivalCtx = {
+        playerLastSpecies:     playerSpeciesCounts,
+        playerBoughtThisRound: this._playerBoughtThisRound.slice(),
+      };
       const claimed  = this.rival.pickFromShop(this.player.shop, rivalCtx);
       for (const idx of claimed) this.player.shop.removeSlot(idx);
       entry.rivalPicks = claimed.map(idx => null).filter(() => false); // filled below
@@ -576,8 +582,16 @@ class Run {
       this._refitState = new RefitState(this);
     }
 
-    // Phase 29: Buster-principle DDA — update rival aggressiveness at each
-    // chapter boundary based on chapter performance.
+    // Phase 33-B.3.A: per-round aggro update first — lets aggro climb during
+    // the long mid-game stretch where chapter-end was the only signal under
+    // Phase 29 and was being read as no-pressure by playtest.
+    if (this.rival) {
+      const scoreOverTarget = target > 0 ? (playerScore - target) / target : 0;
+      this.rival.updateAggressionPerRound({ passed, scoreOverTarget });
+    }
+
+    // Chapter-boundary reset — only fires the "distracted" rule when the
+    // player is struggling (≥2 losses). Otherwise per-round bumps carry.
     const isChapterEnd = (this.round === 8 || this.round === 16 || this.round === 23 || this.round === 24);
     if (isChapterEnd && this.rival) {
       const chapterStart = this.round === 8  ? 1
@@ -592,6 +606,9 @@ class Run {
         }));
       this.rival.updateAggression(chapterRecord);
     }
+
+    // Clear the per-round buy log AFTER rival picks have read it.
+    this._playerBoughtThisRound = [];
 
     return entry;
   }

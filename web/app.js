@@ -666,21 +666,21 @@ function renderRivalPanel() {
   qs('#rival-tell').textContent = p.tell || p.flavor || '';
   qs('#rival-gold').textContent = `${rival.gold} ✦`;
 
-  // Aggro indicator — only show when non-zero so it stays sub-perception by default.
+  // Phase 33-B.3.A: threat pill — readable bucket label so the player can
+  // see the rival's hostility level shift after each round.
   const aggroEl = qs('#rival-aggro');
   if (aggroEl) {
-    if (rival.aggressiveness > 0.001) {
-      aggroEl.textContent = '↑ keen';
-      aggroEl.title = 'Reading you closely — biased toward your dominant species.';
-      aggroEl.style.color = '#cc6080';
-    } else if (rival.aggressiveness < -0.001) {
-      aggroEl.textContent = '↓ distracted';
-      aggroEl.title = 'Off your scent — slightly less aggressive on your species.';
-      aggroEl.style.color = '#6090cc';
-    } else {
-      aggroEl.textContent = '';
-      aggroEl.title = '';
-    }
+    const level = typeof rival.threatLevel === 'function' ? rival.threatLevel() : 'watching';
+    const PILL = {
+      distracted: { text: 'Distracted', tip: 'Off your scent — bidding away from your species.' },
+      watching:   { text: 'Watching',   tip: 'Idle interest. Picks are personality-driven.' },
+      hunting:    { text: 'Hunting',    tip: 'Bidding against your dominant species.' },
+      pouncing:   { text: 'Pouncing',   tip: 'Actively contesting every card in your build.' },
+    };
+    const meta = PILL[level] || PILL.watching;
+    aggroEl.textContent = meta.text;
+    aggroEl.title       = meta.tip;
+    aggroEl.className   = `area-dim rival-aggro threat-${level}`;
   }
 
   const boardEl = qs('#rival-board');

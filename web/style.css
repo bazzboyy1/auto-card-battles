@@ -253,7 +253,23 @@ button:disabled { opacity: 0.4; cursor: default; }
 .rival-header { gap: 10px; align-items: baseline; }
 .rival-tell { font-style: italic; opacity: 0.75; }
 .rival-gold { color: var(--gold, #e7c465); font-weight: 600; }
-.rival-aggro { font-weight: 600; font-size: 11px; }
+.rival-aggro {
+  font-weight: 600;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,0.05);
+}
+.rival-aggro.threat-distracted { color: #6da4d6; border-color: rgba(109,164,214,0.45); background: rgba(40,60,90,0.35); }
+.rival-aggro.threat-watching   { color: #b8b8b8; border-color: rgba(255,255,255,0.12); }
+.rival-aggro.threat-hunting    { color: #e08070; border-color: rgba(224,128,112,0.55); background: rgba(90,30,30,0.45); }
+.rival-aggro.threat-pouncing   {
+  color: #ffd070;
+  border-color: rgba(255,180,80,0.85);
+  background: rgba(140,50,30,0.65);
+  text-shadow: 0 0 8px rgba(255,180,80,0.55);
+}
 .card-row-mini { gap: 6px; flex-wrap: wrap; min-height: 56px; }
 .rival-empty { opacity: 0.55; font-style: italic; padding: 12px 6px; }
 .rival-card {

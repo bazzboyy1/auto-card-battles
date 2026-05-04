@@ -156,6 +156,11 @@ class Shop {
 
     this.player.gold -= cost;
     this.offers[slotIdx] = null;
+    // Phase 33-B.3.A: track per-round buys so the rival's Mimic personality
+    // can read last-bought species *this round* (not stale board majority).
+    if (this.player.run && Array.isArray(this.player.run._playerBoughtThisRound)) {
+      this.player.run._playerBoughtThisRound.push(card.species);
+    }
     return card;
   }
 
