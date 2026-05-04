@@ -109,11 +109,16 @@ class Player {
   }
 
   // Tycoon doubles the interest component only (not base or streak).
-  // Modifier hooks (Phase 31-B): noInterest, incomePerRound, chapterStipend.
+  // Modifier hooks (Phase 31-B / 33-B.3.B):
+  //   noInterest, interestCap, incomePerRound, benchTaxAbove/benchTaxPer,
+  //   chapterStipend.
+  // Bench tax is applied after positive income; total income can go negative
+  // (gold is allowed to drop below 0 only via the floor below — we cap at 0).
   earnIncome() {
     const mod = this.run && this.run.modifier;
+    const cap = (mod && typeof mod.interestCap === 'number') ? mod.interestCap : MAX_INTEREST;
     const interest    = (mod && mod.noInterest) ? 0
-                      : Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
+                      : Math.min(cap, Math.floor(this.gold / INTEREST_PER));
     const streakBonus = this._streakBonus();
     const interestMult = this.augments.includes('Tycoon') ? 2 : 1;
     let total = BASE_INCOME + interest * interestMult + streakBonus;
@@ -124,13 +129,22 @@ class Player {
             && mod.chapterStipendRounds.includes(this.run.round + 1)) {
       total += mod.chapterStipend;
     }
-    this.gold += total;
+    total -= this._benchTax(mod);
+    this.gold = Math.max(0, this.gold + total);
+  }
+
+  _benchTax(mod) {
+    if (!mod || typeof mod.benchTaxPer !== 'number' || mod.benchTaxPer <= 0) return 0;
+    const above = typeof mod.benchTaxAbove === 'number' ? mod.benchTaxAbove : 0;
+    const benchSize = (this.board && this.board.bench) ? this.board.bench.length : 0;
+    return Math.max(0, benchSize - above) * mod.benchTaxPer;
   }
 
   incomeBreakdown() {
     const mod = this.run && this.run.modifier;
+    const cap = (mod && typeof mod.interestCap === 'number') ? mod.interestCap : MAX_INTEREST;
     const interest     = (mod && mod.noInterest) ? 0
-                       : Math.min(MAX_INTEREST, Math.floor(this.gold / INTEREST_PER));
+                       : Math.min(cap, Math.floor(this.gold / INTEREST_PER));
     const streakBonus  = this._streakBonus();
     const interestMult = this.augments.includes('Tycoon') ? 2 : 1;
     const effectiveInterest = interest * interestMult;
@@ -140,13 +154,15 @@ class Player {
                               && this.run
                               && mod.chapterStipendRounds.includes(this.run.round + 1))
                          ? mod.chapterStipend : 0;
+    const benchTax     = this._benchTax(mod);
     return {
       base:     BASE_INCOME,
       interest: effectiveInterest,
       streak:   streakBonus,
-      total:    BASE_INCOME + effectiveInterest + streakBonus + flatBonus + stipend,
+      total:    BASE_INCOME + effectiveInterest + streakBonus + flatBonus + stipend - benchTax,
       tycoon:   interestMult === 2,
-      modBonus: flatBonus + stipend,
+      modBonus: flatBonus + stipend - benchTax,
+      benchTax,
     };
   }
 

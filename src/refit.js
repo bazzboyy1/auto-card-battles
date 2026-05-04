@@ -162,11 +162,17 @@ class RefitState {
     return id ? getJudge(id) : null;
   }
 
-  peekCost() { return REFIT_COSTS.peek; }
-  swapCost() { return REFIT_COSTS.swap; }
+  // Phase 33-B.3.B: Curator's Stipend modifier adds a flat refitPremium to
+  // every refit action so the +6 ✦/chapter benefit comes with friction.
+  _premium() {
+    const mod = this.run && this.run.modifier;
+    return (mod && typeof mod.refitPremium === 'number') ? mod.refitPremium : 0;
+  }
+  peekCost() { return REFIT_COSTS.peek + this._premium(); }
+  swapCost() { return REFIT_COSTS.swap + this._premium(); }
   promoteCost(stars) {
-    if (stars === 1) return REFIT_COSTS.promoteT1T2;
-    if (stars === 2) return REFIT_COSTS.promoteT2T3;
+    if (stars === 1) return REFIT_COSTS.promoteT1T2 + this._premium();
+    if (stars === 2) return REFIT_COSTS.promoteT2T3 + this._premium();
     return Infinity;
   }
 

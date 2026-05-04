@@ -11,8 +11,11 @@
 // Hook surface (all optional; absence = no-op):
 //   init(run)                      — return per-run state stored on run.modifierState
 //   noInterest                     — Player.earnIncome skips interest
+//   interestCap                    — overrides MAX_INTEREST for this run (Bull Market shrinks to 3)
 //   incomePerRound                 — Player.earnIncome adds this each round
+//   benchTaxAbove / benchTaxPer    — deducts benchTaxPer ✦ per bench card above benchTaxAbove
 //   chapterStipend / chapterStipendRounds — Player.earnIncome adds at listed round-starts
+//   refitPremium                   — refit.js peek/swap/promote costs add this many ✦
 //   plinthDiscount                 — Player.plinthCost subtracts this (min 1g)
 //   rerollFree                     — Shop.rerollCost returns 0
 //   shopSize                       — Shop initial fill + refresh respect this
@@ -60,9 +63,10 @@ const MODIFIERS = [
   {
     id: 'bull_market',
     name: 'Bull Market',
-    description: 'Re-rolling the Specimen Market is free.',
-    flavor: 'Brokers are flooding the market. Browse freely.',
+    description: 'Re-rolling the Specimen Market is free. Interest caps at 3 ✦/round (max 15 ✦ banked).',
+    flavor: 'Brokers are flooding the market. Browse freely — but money won\'t sit still.',
     rerollFree: true,
+    interestCap: 3,
   },
   {
     id: 'cheap_plinths',
@@ -74,17 +78,20 @@ const MODIFIERS = [
   {
     id: 'generous_patron',
     name: 'Generous Patron',
-    description: '+2 ✦ extra income every round.',
-    flavor: 'A reliable benefactor. Modest but constant.',
+    description: '+2 ✦ each round. The patron deducts 2 ✦/round per bench specimen above 5.',
+    flavor: 'A reliable benefactor — and a tidy one. Hoarding the menagerie costs.',
     incomePerRound: 2,
+    benchTaxAbove: 5,
+    benchTaxPer:   2,
   },
   {
     id: 'patron_stipend',
     name: "Curator's Stipend",
-    description: '+6 ✦ at the start of each new chapter (R9, R17, R24).',
-    flavor: 'The Salon top-ups your account between exhibitions — spend it well.',
+    description: '+6 ✦ at the start of each new chapter (R9, R17, R24). Refit actions cost +3 ✦ each.',
+    flavor: 'The Salon top-ups your account between exhibitions — and bills you back through the carpenters.',
     chapterStipend: 6,
     chapterStipendRounds: [9, 17, 24],
+    refitPremium: 3,
   },
   {
     id: 'blind_tasting',
@@ -110,7 +117,7 @@ const MODIFIERS = [
   {
     id: 'curators_pet',
     name: "Curator's Pet",
-    description: 'One species favored ×1.4; another scorned ×0.7 (revealed at run start).',
+    description: 'One species favored ×1.25; another scorned ×0.7 (revealed at run start).',
     flavor: 'The chief curator has feelings. Strong, peculiar feelings.',
     init(run) {
       const pool = SPECIES.slice();
@@ -122,7 +129,7 @@ const MODIFIERS = [
     },
     cardScoreMult(card, state) {
       if (!state) return 1.0;
-      if (card.species === state.favored) return 1.4;
+      if (card.species === state.favored) return 1.25;
       if (card.species === state.scorned) return 0.7;
       return 1.0;
     },

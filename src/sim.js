@@ -8,15 +8,23 @@ const { mulberry32 } = require('./utils');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Effective interest-cap floor in gold — respects per-run modifier.interestCap
+// (Phase 33-B.3.B Bull Market shrinks cap from 5 to 3 → 15g not 25g).
+function capFloor(run) {
+  const mod = run && run.modifier;
+  const cap = (mod && typeof mod.interestCap === 'number') ? mod.interestCap : MAX_INTEREST;
+  return cap * INTEREST_PER;
+}
+
 // When board is full (active+bench = 14 cards) and the player has significant
 // overflow gold, sell the lowest-EV bench card. Models the user's late-game
 // pattern of selling marginal bench fodder to make room for combine targets
 // pulled from rerolls. Only sells if the worst bench card is clearly inferior
 // to the active board's median — otherwise the bench is already curated.
 // Returns true if a sell happened (caller should retry the buy).
-function freeBenchIfStuck(player, bias) {
+function freeBenchIfStuck(player, bias, run) {
   if (!player.board.isFull()) return false;
-  if (player.gold < INTEREST_CAP_GOLD + 5) return false;
+  if (player.gold < capFloor(run) + 5) return false;
   const benchCards = player.board.bench
     .map(c => ({ card: c, ev: c.baseScore * STAR_MULT[c.stars] }))
     .filter(x => !(x.card.items && x.card.items.length))
@@ -306,6 +314,9 @@ function scoreBuyCandidate(def, player, round, bias) {
 // observed in playtest runs (v0.56). The sim's old saveForInterest logic only
 // guarded the next 5-mark with a 2g gap, missing the 25g floor entirely and
 // under-collecting ~80-100g across a 24-round run.
+//
+// Phase 33-B.3.B: Bull Market shrinks the per-run interest cap to 3 (15g floor).
+// Use capFloor(run) at every cap-aware site so the modifier is honored.
 const INTEREST_CAP_GOLD = MAX_INTEREST * INTEREST_PER;
 
 // Decide if the player is "score-behind" — the upcoming round's target is
@@ -348,7 +359,7 @@ function buyBestCard(player, round, bias, run) {
   if (bestSlot < 0 || !bestDef) return false;
 
   const cost = CARD_COSTS[bestDef.tier];
-  const wouldDipBelowCap = player.gold - cost < INTEREST_CAP_GOLD;
+  const wouldDipBelowCap = player.gold - cost < capFloor(run);
   if (wouldDipBelowCap) {
     const sameName = player.board.allCards.filter(c => c.name === bestDef.name).length;
     const isCombine    = sameName >= 2;
@@ -400,8 +411,8 @@ function greedyCore(player, round, bias, run) {
     if (player.gold < rerollCost) break;
     // Free a bench slot if stuck — late-game user pattern is to sell low-EV
     // bench cards to make room for combine fodder pulled from rerolls.
-    while (freeBenchIfStuck(player, bias)) { /* continue */ }
-    const overflow = player.gold - rerollCost - INTEREST_CAP_GOLD;
+    while (freeBenchIfStuck(player, bias, run)) { /* continue */ }
+    const overflow = player.gold - rerollCost - capFloor(run);
     const scoreBehind = isScoreBehind(player, round, run);
     const canRollOverflow = overflow >= 0;
     const hasAffordable = player.shop.offers.some(name => {
@@ -519,7 +530,7 @@ function smartGreedyCore(player, round, bias, run) {
     });
     if (hasAffordable) break;
     if (player.gold < rerollCost) break;
-    if (player.gold - rerollCost < INTEREST_CAP_GOLD && !isScoreBehind(player, round, run)) break;
+    if (player.gold - rerollCost < capFloor(run) && !isScoreBehind(player, round, run)) break;
     player.shop.reroll();
     rerolls++;
     while (buyBestCard(player, round, bias, run)) { /* continue */ }

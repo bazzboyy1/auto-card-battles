@@ -80,7 +80,7 @@ A is biggest impact (most evidence). B is the cheapest big win. C–F are smalle
 - `src/modifiers.js` — defs + onRound/onShop hooks
 - `web/app.js` — modifier description rendering (if the bite needs new copy)
 
-**Status:** 🟡 not started.
+**Status:** ✅ shipped 2026-05-04 as v0.59. Bull Market: free rerolls + interest cap 5→3 (banking ceiling 25g→15g). Generous Patron: +2/round + bench tax 2 ✦/round per bench above 5. Stipend: +6/chapter + Refit-action premium +3 ✦ (peek 10→13, swap 20→23, promoteT1 25→28, promoteT2 60→63). Curator's Pet: favored 1.4→1.25 (scorned 0.7 unchanged). Sim greedy n=200: bull 57→62 (sim adapts; bite is human-feel only — banking ceiling), generous 77.5→53 (-24.5pp ✓), stipend 51→51 (sim doesn't run refit; human-only bite), pet 48.5→45 (-3.5pp baseline shift; sim doesn't lean into favored). Punishing mods untouched.
 
 ---
 
@@ -204,5 +204,7 @@ If a bucket grows past one commit, sub-step it (33-B.3.A.1, 33-B.3.A.2) and upda
 ---
 
 ## Outcome (post-ship)
+
+**Bucket B — v0.59 (2026-05-04):** Each generous modifier paired with a downside that keeps the headline benefit feeling generous. Bull Market: free rerolls + interest cap 5→3 (banking ceiling 25g→15g; sim adapts via more aggressive spending — bite is human-feel). Generous Patron: +2/round + bench tax 2 ✦/round per bench above 5 (sim 77.5→53%, -24.5pp ✓). Curator's Stipend: +6 ✦/chapter + Refit-action premium +3 ✦ (sim doesn't run refits — human-only bite). Curator's Pet: favored 1.4→1.25, scorned unchanged (sim doesn't lean into favored — playtest will validate the ceiling drop). Punishing modifiers untouched. Patron Subsidy at 61% greedy flagged for next playtest read.
 
 **Bucket A — v0.58 (2026-05-04):** Reversed Phase 29's ≤10% Buster-principle aggro cap (playtest read it as no-pressure because the bias was sub-perception). New aggro range [-0.20, +0.50] with per-round bumps (+0.10 strong / +0.04 pass / -0.15 fail). HUD threat pill: Distracted / Watching / Hunting / Pouncing. Mimic contests last-bought species *this round*; Specialist first-pick biases toward player's dominant species when aggro ≥ Hunting. Sim deltas (n=200 each, no modifier): greedy 50.5%→46.0% (-4.5pp, in band), chitinous-stack 40.0%→30.5% (-9.5pp, bite landed where playtest pointed), sporal/wide unchanged or up (don't lean on a single species), abyssal -3.0pp, crystalline 20.5%→14.0% (-6.5pp), plasmic 23.5%→16.5% (-7.0pp). Crystalline/Plasmic now meaningfully out of band — flagged for targeted playtest before species buffs. Aggro ramp trace (greedy seed=7): R1 Watching → R3 Hunting → R7 Pouncing.
