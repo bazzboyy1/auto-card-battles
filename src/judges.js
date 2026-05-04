@@ -450,6 +450,164 @@ const JUDGES = [
     } },
 ];
 
+// Phase 33-B.3.C — per-card breakdown surface.
+//
+// `tasteLineBreakdown(tasteId, active, baseScores, ctx)` returns
+//   { perCard: [{ final, lines }], extraLines: { i: [...] } }
+// where `final` is the post-taste score for that card (un-rounded) and
+// `lines` is an array of { label, mult } / { label, add } entries describing
+// the taste's contribution. Consumers append these onto the existing
+// per-card lines emitted by Board.calcBaseBreakdown so the scoring modal
+// can show a fully-attributed breakdown.
+//
+// Sum of Math.round(final) may differ from taste.score(...) by 1–3 due to
+// taste.score rounding once at the end. The total returned by .score remains
+// authoritative for round outcomes.
+function tasteLineBreakdown(tasteId, active, baseScores, ctx) {
+  const empty = { perCard: active.map(() => ({ final: 0, lines: [] })) };
+  if (!active.length) return empty;
+  const amp = (ctx && typeof ctx.tagAmplify === 'number') ? ctx.tagAmplify : 1.0;
+  const ampSuffix = amp !== 1.0 ? ` ×amp${amp}` : '';
+  const taste = TASTES[tasteId];
+  const tasteName = taste ? taste.name : tasteId;
+  const perCard = active.map(() => ({ final: 0, lines: [] }));
+
+  if (tasteId === 'spectacle') {
+    let topIdx = 0;
+    for (let i = 1; i < baseScores.length; i++) if (baseScores[i] > baseScores[topIdx]) topIdx = i;
+    for (let i = 0; i < active.length; i++) {
+      const m = i === topIdx ? 3 : 0.9;
+      perCard[i].final = baseScores[i] * m;
+      perCard[i].lines.push({ label: i === topIdx ? `${tasteName}: top exhibit` : `${tasteName}: off-piece`, mult: m });
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'diversity') {
+    const sp = new Set(), cl = new Set();
+    for (const c of active) { if (c.species) sp.add(c.species); if (c.class) cl.add(c.class); }
+    const unique = sp.size + cl.size;
+    const globalMult = 1 + 0.18 * unique;
+    const seenSp = new Set(), seenCl = new Set();
+    for (let i = 0; i < active.length; i++) {
+      const c = active[i];
+      const newSp = !seenSp.has(c.species);
+      const newCl = c.class && !seenCl.has(c.class);
+      const factor = (newSp || newCl) ? 1.0 : 0.6;
+      perCard[i].final = baseScores[i] * factor * globalMult;
+      if (factor !== 1.0) perCard[i].lines.push({ label: `${tasteName}: duplicate`, mult: factor });
+      perCard[i].lines.push({ label: `${tasteName}: ${unique} unique`, mult: globalMult });
+      if (newSp) seenSp.add(c.species);
+      if (newCl) seenCl.add(c.class);
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'restraint') {
+    const n = active.length;
+    let mult;
+    if (n <= 3)       mult = 2.5;
+    else if (n === 4) mult = 1.9;
+    else if (n === 5) mult = 1.5;
+    else if (n === 6) mult = 1.2;
+    else              mult = 1.0;
+    const maxActive = (ctx && ctx.maxActive) || n;
+    const empty = Math.max(0, maxActive - n);
+    const flatTotal = empty * 60;
+    const perCardFlat = active.length > 0 ? flatTotal / active.length : 0;
+    for (let i = 0; i < active.length; i++) {
+      perCard[i].final = baseScores[i] * mult + perCardFlat;
+      perCard[i].lines.push({ label: `${tasteName}: ${n} active`, mult });
+      if (empty > 0 && i === 0) {
+        perCard[0].lines.push({ label: `${tasteName}: ${empty} empty plinth${empty === 1 ? '' : 's'}`, add: flatTotal });
+      }
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'eccentricity') {
+    const fired = (ctx && ctx.firedPassives) || new Array(active.length).fill(false);
+    for (let i = 0; i < active.length; i++) {
+      const m = fired[i] ? 1.6 : 1.0;
+      perCard[i].final = baseScores[i] * m;
+      if (fired[i]) perCard[i].lines.push({ label: `${tasteName}: passive fired`, mult: 1.6 });
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'narrative') {
+    for (let i = 0; i < active.length; i++) {
+      const r = Math.min(20, active[i].roundsSinceBought || 0);
+      const m = 1 + 0.08 * r;
+      perCard[i].final = baseScores[i] * m;
+      if (r > 0) perCard[i].lines.push({ label: `${tasteName}: held ${r} round${r === 1 ? '' : 's'}`, mult: m });
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'harmony') {
+    const counts = {};
+    for (const c of active) if (c.class) counts[c.class] = (counts[c.class] || 0) + 1;
+    let maxCount = 0;
+    for (const k in counts) if (counts[k] > maxCount) maxCount = counts[k];
+    const m = 1 + 0.45 * Math.max(0, maxCount - 1);
+    for (let i = 0; i < active.length; i++) {
+      perCard[i].final = baseScores[i] * m;
+      if (m !== 1) perCard[i].lines.push({ label: `${tasteName}: largest class ${maxCount}`, mult: m });
+    }
+    return { perCard };
+  }
+
+  // Tag-mult tastes — each computes a per-card mult and (optionally) amplifies it.
+  const tagTasteRules = {
+    grotesquerie: { base: 1.4, max: [['Grotesque', 1.85], ['Bizarre', 1.55]],   min: [['Elegant', 0.75]] },
+    refinement:   { base: 1.55, max: [['Elegant', 2.2], ['Restrained', 1.9]],   min: [['Grotesque', 0.75]] },
+    architecture: { base: 1.45, max: [['Restrained', 2.4], ['Quaint', 1.7]],    min: [['Bizarre', 0.85]] },
+    quaintness:   { base: 1.4,  max: [['Quaint', 2.2], ['Restrained', 1.55]],   min: [['Ostentatious', 0.7]] },
+  };
+
+  if (tagTasteRules[tasteId]) {
+    const rules = tagTasteRules[tasteId];
+    for (let i = 0; i < active.length; i++) {
+      const c = active[i];
+      let m = rules.base;
+      let trigger = `default`;
+      let triggerM = m;
+      for (const [tag, mm] of rules.max) {
+        if (cardHasTag(c, tag) && mm > m) { m = mm; trigger = tag; triggerM = mm; }
+      }
+      for (const [tag, mm] of rules.min) {
+        if (cardHasTag(c, tag) && mm < m) { m = mm; trigger = tag; triggerM = mm; }
+      }
+      const mAmp = 1 + (m - 1) * amp;
+      perCard[i].final = baseScores[i] * mAmp;
+      perCard[i].lines.push({ label: `${tasteName}: ${trigger}${ampSuffix}`, mult: mAmp });
+    }
+    return { perCard };
+  }
+
+  if (tasteId === 'ostentation') {
+    for (let i = 0; i < active.length; i++) {
+      const c = active[i];
+      const tier = c.tier || 1;
+      const tierMult = tier === 3 ? 1.6 : tier === 2 ? 1.3 : 1.05;
+      let tagMult = 1.2;
+      let trigger = 'default';
+      if (cardHasTag(c, 'Ostentatious') && 1.5 > tagMult) { tagMult = 1.5; trigger = 'Ostentatious'; }
+      if (cardHasTag(c, 'Quaint') && 0.7 < tagMult)        { tagMult = 0.7; trigger = 'Quaint'; }
+      const tagMultAmp = 1 + (tagMult - 1) * amp;
+      perCard[i].final = baseScores[i] * tierMult * tagMultAmp;
+      perCard[i].lines.push({ label: `${tasteName}: T${tier}`, mult: tierMult });
+      perCard[i].lines.push({ label: `${tasteName}: ${trigger}${ampSuffix}`, mult: tagMultAmp });
+    }
+    return { perCard };
+  }
+
+  // Unknown taste — return empty breakdown with each card unchanged.
+  for (let i = 0; i < active.length; i++) perCard[i].final = baseScores[i];
+  return { perCard };
+}
+
 function getTaste(id)  { return TASTES[id] || null; }
 function getJudge(id)  { return JUDGES.find(j => j.id === id) || null; }
 
@@ -490,4 +648,4 @@ function drawJudgeSlate(rng) {
   return [chapters[0].id, chapters[1].id, chapters[2].id, finale.id];
 }
 
-module.exports = { TASTES, JUDGES, getTaste, getJudge, drawJudgeSlate, cardHasTag };
+module.exports = { TASTES, JUDGES, getTaste, getJudge, drawJudgeSlate, cardHasTag, tasteLineBreakdown };

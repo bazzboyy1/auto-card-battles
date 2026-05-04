@@ -111,7 +111,7 @@ Notes call out 4–5 of these together. Make it one cohesive pass.
 - Judge-reveal modal has Continue; pointer-events disabled on the rest of the UI while it's up.
 - Browser smoke: a 6-card board with 1 augment + 2 attached items produces a breakdown where every line is attributable.
 
-**Status:** 🟡 not started.
+**Status:** ✅ shipped 2026-05-04 as v0.60. (1) Judge-reveal modal `showChapterReveal` + `showGrandFinaleReveal` now have a Continue button + backdrop-click dismiss; CSS `pointer-events: none` removed so the overlay blocks input. (2) Per-card `.sc-breakdown` hover tooltip on each scoring card lists every contribution — base ×stars, augments, items, modifier mult, judge taste line. (3) New `tasteLineBreakdown(tasteId, ...)` in `src/judges.js` returns per-card `{ final, lines }` for all 11 tastes; `src/game.js` folds those lines into `scoreBreakdown.perCard`. Held-rounds reads as `Narrative: held N round(s) ×M`. Sim greedy n=200 unchanged (45.5% vs 46% baseline; scoring math untouched, only labels added).
 
 ---
 
@@ -204,6 +204,8 @@ If a bucket grows past one commit, sub-step it (33-B.3.A.1, 33-B.3.A.2) and upda
 ---
 
 ## Outcome (post-ship)
+
+**Bucket C — v0.60 (2026-05-04):** Three opacities closed. (1) `showChapterReveal` + `showGrandFinaleReveal` lose their auto-dismiss; both now append a Continue button and bind backdrop-click dismissal — `pointer-events: none` removed from `.chapter-reveal` so clicks no longer pass through. (2) New `tasteLineBreakdown(tasteId, active, baseScores, ctx)` in `src/judges.js` mirrors each of the 11 tastes' per-card logic and returns `[{ final, lines }]`; `game.js` folds those lines into `scoreBreakdown.perCard[i].lines` and uses `Math.round(final)` as the per-card display value. (3) `makeScoringCard(card, breakdownEntry)` appends a `.sc-breakdown` hover popover listing every contribution with attribution — base ×stars, augments (Claymore/Heroic Resolve/Time Dilation/etc), items (Guinsoo's, Prestige Tag, Collector's Mark, etc), modifier (Curator's Pet × N), held-rounds (`Narrative: held N rounds ×M`), tag-mult (`Refinement: Restrained ×1.9`). Browser-verified: 3-card R1 board sum of finals (176+55+33=264) matched authoritative total. Sim greedy 45.5% vs v0.59 46% — within noise.
 
 **Bucket B — v0.59 (2026-05-04):** Each generous modifier paired with a downside that keeps the headline benefit feeling generous. Bull Market: free rerolls + interest cap 5→3 (banking ceiling 25g→15g; sim adapts via more aggressive spending — bite is human-feel). Generous Patron: +2/round + bench tax 2 ✦/round per bench above 5 (sim 77.5→53%, -24.5pp ✓). Curator's Stipend: +6 ✦/chapter + Refit-action premium +3 ✦ (sim doesn't run refits — human-only bite). Curator's Pet: favored 1.4→1.25, scorned unchanged (sim doesn't lean into favored — playtest will validate the ceiling drop). Punishing modifiers untouched. Patron Subsidy at 61% greedy flagged for next playtest read.
 

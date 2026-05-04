@@ -251,6 +251,8 @@ function showAttentionToast(msg) {
   setTimeout(() => el.remove(), 2500);
 }
 
+// Phase 33-B.3.C: judge-reveal blocks input until Continue is clicked. Prior
+// auto-dismiss let players click through it before reading the taste rule.
 function showChapterReveal(chapter, judge) {
   const label = CHAPTER_LABELS[chapter - 1] || `Chapter ${chapter}`;
   const taste = judge && judge.taste && getTaste ? getTaste(judge.taste) : null;
@@ -267,13 +269,12 @@ function showChapterReveal(chapter, judge) {
     <div class="chapter-reveal-judge">${glyph ? `<span class="judge-glyph">${glyph}</span> ` : ''}${judge.name}${tasteName ? ` <span class="chapter-reveal-taste">· ${tasteName}</span>` : ''}</div>
     <div class="chapter-reveal-pref">"${opening}"</div>
     ${hint ? `<div class="chapter-reveal-hint">${hint}</div>` : ''}
+    <button class="btn-primary chapter-reveal-continue">Continue →</button>
   `;
   document.body.appendChild(el);
-  setTimeout(() => {
-    el.style.transition = 'opacity 0.4s';
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 420);
-  }, 2400);
+  const dismiss = () => el.remove();
+  el.querySelector('.chapter-reveal-continue').onclick = dismiss;
+  el.addEventListener('click', e => { if (e.target === el) dismiss(); });
 }
 
 // Phase 27: run-start judge slate reveal — shows the full 4-judge lineup so
@@ -831,13 +832,12 @@ function showGrandFinaleReveal() {
     <div class="chapter-reveal-label">Round 24</div>
     <div class="chapter-reveal-chapter">Grand Finale</div>
     <div class="chapter-reveal-pref">The final judge takes their seat</div>
+    <button class="btn-primary chapter-reveal-continue">Continue →</button>
   `;
   document.body.appendChild(el);
-  setTimeout(() => {
-    el.style.transition = 'opacity 0.4s';
-    el.style.opacity = '0';
-    setTimeout(() => el.remove(), 420);
-  }, 2200);
+  const dismiss = () => el.remove();
+  el.querySelector('.chapter-reveal-continue').onclick = dismiss;
+  el.addEventListener('click', e => { if (e.target === el) dismiss(); });
 }
 
 function startRound() {
@@ -2403,7 +2403,7 @@ function makeItemTooltip(item) {
 
 // ── Scoring modal (Phase 11) ──────────────────────────────────────────────────
 
-function makeScoringCard(card) {
+function makeScoringCard(card, breakdownEntry) {
   const el = document.createElement('div');
   el.className = `scoring-card species-${card.species.toLowerCase()}`;
   const stars = '★'.repeat(card.stars) + '☆'.repeat(3 - card.stars);
@@ -2413,6 +2413,37 @@ function makeScoringCard(card) {
     <div class="sc-species">${card.species}</div>
     <div class="sc-score"></div>
   `;
+  // Phase 33-B.3.C: per-card breakdown hover. Renders the line items captured
+  // in scoreBreakdown.perCard[i].lines so augments / items / held-rounds /
+  // judge mults each show up as a labeled, attributable line.
+  if (breakdownEntry && Array.isArray(breakdownEntry.lines) && breakdownEntry.lines.length) {
+    const tt = document.createElement('div');
+    tt.className = 'sc-breakdown';
+    const header = document.createElement('div');
+    header.className = 'sc-bd-header';
+    header.textContent = `${card.name} · ${breakdownEntry.final}`;
+    tt.appendChild(header);
+    for (const line of breakdownEntry.lines) {
+      const row = document.createElement('div');
+      row.className = 'sc-bd-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'sc-bd-label';
+      lbl.textContent = line.label;
+      const val = document.createElement('span');
+      val.className = 'sc-bd-val';
+      if (typeof line.mult === 'number') {
+        val.textContent = `×${(+line.mult.toFixed(3))}`;
+      } else if (typeof line.add === 'number') {
+        val.textContent = (line.add >= 0 ? '+' : '') + Math.round(line.add);
+      } else {
+        val.textContent = '';
+      }
+      row.appendChild(lbl);
+      row.appendChild(val);
+      tt.appendChild(row);
+    }
+    el.appendChild(tt);
+  }
   return el;
 }
 
@@ -2467,8 +2498,12 @@ function showScoringModal() {
   qs('#modal').classList.remove('hidden');
 
   const playerCardsEl = qs('#scoring-player-cards');
+  // Map card -> breakdown entry so the hover tooltip lines up even though
+  // allocateByWeight may reorder to fix rounding remainders.
+  const bdByCard = new Map();
+  breakdown.perCard.forEach(e => bdByCard.set(e.card, e));
   const playerCardEls = playerEntries.map(e => {
-    const el = makeScoringCard(e.card);
+    const el = makeScoringCard(e.card, bdByCard.get(e.card));
     playerCardsEl.appendChild(el);
     return el;
   });

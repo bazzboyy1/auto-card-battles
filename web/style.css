@@ -569,13 +569,17 @@ button:disabled { opacity: 0.4; cursor: default; }
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Chapter reveal overlay */
+/* Chapter reveal overlay — Phase 33-B.3.C: blocks input via pointer-events
+   so the player can't dismiss-by-clicking-through before reading the taste. */
 .chapter-reveal {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: rgba(13,17,23,0.88); z-index: 1000;
   animation: chapter-reveal-in 0.4s ease;
-  pointer-events: none;
+  cursor: pointer;
+}
+.chapter-reveal-continue {
+  margin-top: 22px; font-size: 13px; padding: 8px 18px;
 }
 @keyframes chapter-reveal-in {
   from { opacity: 0; transform: translateY(-12px); }
@@ -939,6 +943,7 @@ button:disabled { opacity: 0.4; cursor: default; }
 }
 
 .scoring-card {
+  position: relative;
   width: 78px;
   border-radius: 8px;
   padding: 5px;
@@ -951,6 +956,43 @@ button:disabled { opacity: 0.4; cursor: default; }
   color: #fff;
   user-select: none;
 }
+
+/* Phase 33-B.3.C — per-card scoring breakdown hover. Lists every contribution
+   (base/star, augments, items, held-rounds, judge mults) with labels. */
+.sc-breakdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 180px;
+  max-width: 260px;
+  padding: 8px 10px;
+  background: rgba(13,17,23,0.96);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  font-size: 11px;
+  color: var(--text);
+  text-shadow: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 50;
+  white-space: normal;
+  line-height: 1.35;
+}
+.scoring-card:hover .sc-breakdown { opacity: 1; }
+.sc-bd-header {
+  font-weight: 700; color: var(--gold);
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
+}
+.sc-bd-row {
+  display: flex; justify-content: space-between; gap: 8px;
+}
+.sc-bd-label { color: var(--text-muted); }
+.sc-bd-val   { color: var(--text); font-weight: 600; }
 
 .scoring-card.species-plasmic     { background: linear-gradient(160deg, #8b1a1a 0%, #5c0f0f 100%); }
 .scoring-card.species-sporal      { background: linear-gradient(160deg, #4a2c8a 0%, #2d1a5e 100%); }

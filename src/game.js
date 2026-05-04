@@ -6,7 +6,7 @@ const { CARD_COSTS, CARD_DEFS, createCard, CLASS_SYNERGIES } = require('./cards'
 const { attachItem, ITEM_DEFS, getAvailableItems } = require('./items');
 const { AUGMENT_DEFS, getAvailableAugments, pickN } = require('./augments');
 const { isUnlocked, incrementAchievementCounters } = require('./achievements');
-const { JUDGES, getJudge, getTaste, drawJudgeSlate } = require('./judges');
+const { JUDGES, getJudge, getTaste, drawJudgeSlate, tasteLineBreakdown } = require('./judges');
 const { Rival, pickPersonalityId } = require('./rival');
 const { pickModifier } = require('./modifiers');
 const { RefitState, REFIT_ROUNDS } = require('./refit');
@@ -451,15 +451,27 @@ class Run {
       playerScore = taste
         ? taste.score(this.player.board.active, baseScores, tasteCtx)
         : baseScores.reduce((s, v) => s + v, 0);
-      // Reshape into the legacy { total, perCard } the scoring modal expects.
+      // Phase 33-B.3.C: per-card breakdown surface — append the taste's
+      // per-card mult/flat lines so the scoring modal can show held-rounds,
+      // tag mults, and other judge contributions as labeled lines. The
+      // playerScore total above remains authoritative; per-card finals are
+      // a display approximation (sum may differ by 1–3 due to rounding).
+      const tasteBd = taste
+        ? tasteLineBreakdown(judge.taste, this.player.board.active, baseScores, tasteCtx)
+        : null;
       scoreBreakdown = {
         total:   playerScore,
-        perCard: baseBd.perCard.map(e => ({
-          card:    e.card,
-          rawBase: e.card.baseScore,
-          final:   e.baseScore,
-          lines:   e.lines,
-        })),
+        perCard: baseBd.perCard.map((e, i) => {
+          const tasteEntry = tasteBd ? tasteBd.perCard[i] : null;
+          const finalScore = tasteEntry ? Math.round(tasteEntry.final) : e.baseScore;
+          const tasteLines = tasteEntry ? tasteEntry.lines : [];
+          return {
+            card:    e.card,
+            rawBase: e.card.baseScore,
+            final:   finalScore,
+            lines:   [...e.lines, ...tasteLines],
+          };
+        }),
       };
     } else {
       scoreBreakdown = this.player.board.calcScoreBreakdown(ctx);
