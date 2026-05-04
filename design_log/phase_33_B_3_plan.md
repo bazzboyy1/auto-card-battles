@@ -135,7 +135,7 @@ Notes call out 4–5 of these together. Make it one cohesive pass.
 - Pair-combo strings are stative ("+X when paired with Y"), not imperative.
 - Augment tooltip explicitly states "Applies for the rest of the run" (or equivalent persistence wording).
 
-**Status:** 🟡 not started. Decision pending on whether the "passives activate" taste survives — flag for next conversation.
+**Status:** ✅ shipped 2026-05-04 as v0.61. (1) All 7 imperative pair-combo descriptions converted to stative form. (2) Vexborg + Clattorb pair-combo (Carapace Lattice +50) now exposed in both card descriptions — was completely invisible before. (3) New `ARCHETYPE_INFO` map + `makeArchetypeTooltip` factory in `web/app.js`; `updateArchetypeDisplay` rebuilt with DOM construction so each of the 8 archetype chips gets a tooltip stating trigger requirement + flavor-label disclaimer; new `.archetype-chip` + `.arch-tooltip` CSS with `!important` override of inherited bottom-positioning. (4) Augment-badge tooltip now appends "Applies for the rest of the run." meta line with new `.aug-tt-desc/.aug-tt-meta` styles. (5) Eccentricity hint rewritten: "×1.6 to specimens whose adjacency, pair-combo, round-timing, or aura passive fires this round" — concrete categories naming all four trigger paths. (6) Mastery Protocol description "(Axis 4, 6, 6+4)" jargon stripped. Eccentricity taste: kept; hint was the bug. Jargon audit clean. Browser-verified.
 
 ---
 

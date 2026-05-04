@@ -763,6 +763,33 @@ function renderJudgePanel() {
 
 // ── Archetype detection ───────────────────────────────────────────────────────
 
+// Phase 33-B.3.D — every archetype name shown in the HUD gets a tooltip.
+// `req` describes what triggered the chip; `note` clarifies that archetypes are
+// flavor labels, not stand-alone bonuses (the actual bonuses come from the
+// species/class/star synergies the chip implies).
+const ARCHETYPE_INFO = {
+  'Plasma Cascade':     { req: '4+ Plasmic specimens active' },
+  'Void Assembly':      { req: '4+ Abyssal specimens active' },
+  'Spore Engine':       { req: 'Sprangus + 2 other Sporal active' },
+  'Crystal Lattice':    { req: '4+ Crystalline specimens active' },
+  'Chitin Wall':        { req: '3+ Chitinous specimens active' },
+  'Emotional Spectrum': { req: '3+ class synergies active at once' },
+  'Patient Collection': { req: '3+ specimens held for 10+ rounds' },
+  'Star Collector':     { req: '2+ 3★ specimens active' },
+};
+
+function makeArchetypeTooltip(name) {
+  const info = ARCHETYPE_INFO[name];
+  if (!info) return null;
+  const tt = document.createElement('span');
+  tt.className = 'aug-tooltip arch-tooltip';
+  tt.innerHTML =
+    `<div class="arch-tt-name">${name}</div>` +
+    `<div class="arch-tt-req">Triggered: ${info.req}</div>` +
+    `<div class="arch-tt-note">A label for your build pattern, not a stand-alone bonus — the points come from the species, class, and star synergies above.</div>`;
+  return tt;
+}
+
 function detectArchetypes() {
   const board  = S.human.board;
   const active = board.active;
@@ -814,11 +841,36 @@ function updateArchetypeDisplay() {
   }
 
   const [primary, ...others] = S.archetypeOrder;
-  el.innerHTML = `
-    <span class="archetype-label">Build</span>
-    <span class="archetype-primary${newlyActive.includes(primary) ? ' archetype-new' : ''}">${primary}</span>
-    ${others.map(a => `<span class="archetype-secondary">${a}</span>`).join('')}
-  `;
+  el.innerHTML = '';
+
+  const label = document.createElement('span');
+  label.className = 'archetype-label';
+  label.textContent = 'Build';
+  el.appendChild(label);
+
+  const primaryEl = document.createElement('span');
+  primaryEl.className = 'archetype-primary archetype-chip' +
+    (newlyActive.includes(primary) ? ' archetype-new' : '');
+  primaryEl.textContent = primary;
+  const primaryTT = makeArchetypeTooltip(primary);
+  if (primaryTT) {
+    primaryEl.appendChild(primaryTT);
+    primaryEl.addEventListener('mouseenter', () => clampTooltipH(primaryEl, 260));
+  }
+  el.appendChild(primaryEl);
+
+  for (const a of others) {
+    const sec = document.createElement('span');
+    sec.className = 'archetype-secondary archetype-chip';
+    sec.textContent = a;
+    const tt = makeArchetypeTooltip(a);
+    if (tt) {
+      sec.appendChild(tt);
+      sec.addEventListener('mouseenter', () => clampTooltipH(sec, 260));
+    }
+    el.appendChild(sec);
+  }
+
   el.classList.remove('hidden');
 }
 
@@ -1710,7 +1762,9 @@ function renderAugmentBadges() {
     badge.textContent = aug.name;
     const tt = document.createElement('span');
     tt.className = 'aug-tooltip';
-    tt.textContent = aug.description;
+    tt.innerHTML =
+      `<div class="aug-tt-desc">${aug.description}</div>` +
+      `<div class="aug-tt-meta">Applies for the rest of the run.</div>`;
     badge.appendChild(tt);
     badge.addEventListener('mouseenter', () => clampTooltipH(badge, 240));
     row.appendChild(badge);

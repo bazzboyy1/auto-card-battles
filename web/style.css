@@ -563,6 +563,20 @@ button:disabled { opacity: 0.4; cursor: default; }
   border-radius: 8px; border: 1px solid rgba(167,139,250,0.18);
   white-space: nowrap;
 }
+.archetype-chip { position: relative; cursor: default; }
+.archetype-chip:hover .arch-tooltip { display: block; }
+.arch-tooltip {
+  position: absolute;
+  bottom: auto !important;
+  top: calc(100% + 6px) !important;
+  left: 50%; transform: translateX(-50%);
+  max-width: 260px; min-width: 180px;
+}
+.archetype-chip.tooltip-left  .arch-tooltip { left: auto; right: 0; transform: none; }
+.archetype-chip.tooltip-right .arch-tooltip { left: 0; transform: none; }
+.arch-tt-name { font-size: 11px; font-weight: 700; color: #c4b5fd; margin-bottom: 3px; }
+.arch-tt-req  { font-size: 10px; color: #c8d1d9; margin-bottom: 4px; }
+.arch-tt-note { font-size: 9.5px; color: var(--text-muted); line-height: 1.4; font-style: italic; }
 @keyframes archetype-appear {
   0%   { transform: scale(0.8); opacity: 0; }
   60%  { transform: scale(1.08); }
@@ -846,6 +860,12 @@ button:disabled { opacity: 0.4; cursor: default; }
 .augment-badge:hover .aug-tooltip { display: block; }
 .augment-badge.tooltip-left .aug-tooltip { left: auto; right: 0; transform: none; }
 .augment-badge.tooltip-right .aug-tooltip { left: 0; transform: none; }
+.aug-tt-desc { color: #c8d1d9; }
+.aug-tt-meta {
+  margin-top: 5px; padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  color: #9dcc50; font-size: 9.5px; font-style: italic;
+}
 
 /* ── Card tooltip viewport flip ── */
 .tooltip-below .card-tooltip { bottom: auto; top: calc(100% + 7px); }

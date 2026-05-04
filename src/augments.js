@@ -119,7 +119,7 @@ const AUGMENT_DEFS = [
   },
   {
     id: 'mastery_protocol', name: 'Mastery Protocol',
-    description: 'All multiplicative passives (Axis 4, 6, 6+4) gain +0.1 to their multiplier',
+    description: 'All multiplier passives gain +0.1 to their multiplier',
     axis: 4,
     locked: true,
   },

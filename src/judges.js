@@ -99,7 +99,7 @@ const TASTES = {
   eccentricity: {
     name: 'Eccentricity',
     flavor: 'Strange devices delight me — show me they DO something.',
-    hint: 'Cards whose passive activated this round score ×1.6',
+    hint: '×1.6 to specimens whose adjacency, pair-combo, round-timing, or aura passive fires this round',
     score(active, baseScores, ctx) {
       if (!active.length) return 0;
       const fired = ctx.firedPassives || new Array(active.length).fill(false);
