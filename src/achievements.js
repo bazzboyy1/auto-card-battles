@@ -265,6 +265,13 @@ const ACHIEVEMENTS = [
 // Called from runBattle() after each round resolves. Only increments on passed rounds.
 // Returns array of achievement objects newly unlocked by this call.
 // In Node.js (no localStorage), always returns [] — no side effects.
+//
+// Phase 33-B.3.F: counter writes still persist mid-run (so progress isn't lost
+// on game-over), but the unlock-list write (addUnlock) is deferred to run-end.
+// Caller passes ctx.sessionUnlocked — an array of reward ids already unlocked
+// within this run — so the same achievement doesn't re-fire across rounds.
+// Caller is responsible for calling addUnlock(id) for each newly-unlocked reward
+// once the run terminates (e.g. in showGameOverModal).
 function incrementAchievementCounters(board, classCounts, passed, ctx = {}) {
   if (!passed) return [];
   const s = _store();
@@ -277,21 +284,22 @@ function incrementAchievementCounters(board, classCounts, passed, ctx = {}) {
   }
 
   const counters        = getCounters();
-  const alreadyUnlocked = getUnlocks();
-  const newlyUnlocked   = [];
+  const persistedUnlocked = getUnlocks();
+  const sessionUnlocked   = ctx.sessionUnlocked || [];
+  const newlyUnlocked     = [];
 
   for (const ach of ACHIEVEMENTS) {
-    if (alreadyUnlocked.includes(ach.reward.id)) continue;
+    if (persistedUnlocked.includes(ach.reward.id)) continue;
+    if (sessionUnlocked.includes(ach.reward.id))   continue;
     if (!ach.conditionMet(board, classCounts, speciesCounts, ctx)) continue;
     counters[ach.id] = (counters[ach.id] || 0) + 1;
     if (counters[ach.id] >= ach.target) {
       newlyUnlocked.push(ach);
-      alreadyUnlocked.push(ach.reward.id); // prevent double-fire within same call
+      sessionUnlocked.push(ach.reward.id);
     }
   }
 
   _setCounters(counters);
-  for (const ach of newlyUnlocked) addUnlock(ach.reward.id);
   return newlyUnlocked;
 }
 

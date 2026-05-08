@@ -10,7 +10,7 @@ let AUGMENT_DEFS;
 let LEVEL_WEIGHTS;
 let effectiveSpeciesCounts, effectiveClassCounts;
 let RANKING;
-let ACHIEVEMENTS_LIST, isUnlocked, getCounter;
+let ACHIEVEMENTS_LIST, isUnlocked, getCounter, addUnlock;
 let RunLog, snapshotBoard;
 const GAME_VERSION = (document.getElementById('game-version')?.textContent || 'v0.43').replace(/^v/, '');
 const runLog = { instance: null }; // lazy-init after modules load
@@ -46,7 +46,7 @@ document.addEventListener('acb-ready', () => {
   ({ effectiveSpeciesCounts, effectiveClassCounts } = window.ACB.board);
   ({ LEVEL_WEIGHTS }                               = window.ACB.shop);
   RANKING = window.ACB.ranking;
-  ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, isUnlocked, getCounter } = window.ACB.achievements);
+  ({ ACHIEVEMENTS: ACHIEVEMENTS_LIST, isUnlocked, getCounter, addUnlock } = window.ACB.achievements);
   ({ RunLog, snapshotBoard } = window.ACB.runlog);
   runLog.instance = new RunLog();
 
@@ -2053,6 +2053,14 @@ function showGameOverModal() {
   const h        = S.human;
   const survived = run.round >= 24;
   Sound.play(survived ? 'gameWin' : 'gameLoss');
+
+  // Phase 33-B.3.F: flush deferred unlocks to localStorage now that the run is
+  // over. incrementAchievementCounters accumulates newlyUnlocked across rounds
+  // without persisting, so newly-unlocked content can't appear in shop pools
+  // mid-run. Game-over modal is the canonical "run is finalised" hook.
+  if (typeof addUnlock === 'function') {
+    for (const a of (run.newlyUnlocked || [])) addUnlock(a.reward.id);
+  }
 
   const ratingRes = RANKING ? RANKING.recordRun(run.round, run.lives, run.peakScore) : null;
 

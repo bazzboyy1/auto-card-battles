@@ -511,10 +511,15 @@ class Run {
     const activeClassSynergyCount = Object.keys(CLASS_SYNERGIES).filter(cls =>
       CLASS_SYNERGIES[cls].getBonus((classCounts[cls] || 0))
     ).length;
+    // Phase 33-B.3.F: pass sessionUnlocked so achievements don't re-fire across
+    // rounds within the same run. addUnlock (localStorage write) is deferred to
+    // game-over so newly-unlocked content can't appear in shop pools mid-run.
+    if (!this._sessionUnlocked) this._sessionUnlocked = [];
     const newAchs = incrementAchievementCounters(this.player.board, classCounts, passed, {
       round: this.round,
       diffMult: this.diffMult || 1,
       activeClassSynergyCount,
+      sessionUnlocked: this._sessionUnlocked,
     });
     for (const a of newAchs) this.newlyUnlocked.push(a);
 

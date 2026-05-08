@@ -136,13 +136,16 @@ function cardHasClassTag(card, className) {
 //   'self'        — only the source
 //   'all-<Sp>'    — every card of species Sp (including source)
 //   'other-<Sp>'  — every card of species Sp except source
-function auraMatches(target, srcIdx, tgtIdx, active) {
+// Phase 33-B.3.F: species-targeted auras read via cardHasSpeciesTag so
+// Taxonomy Badges (Emblem of <Sp>), Geodorb's morph, Spear of Shojin, and
+// Shapeshifter all propagate the badge-bearing card into the aura's target set.
+function auraMatches(target, srcIdx, tgtIdx, active, morphChoices, spearChoices) {
   const c = active[tgtIdx];
   if (target === 'all') return true;
   if (target === 'self') return srcIdx === tgtIdx;
   if (target === 'other') return srcIdx !== tgtIdx;
-  if (target.startsWith('all-'))   return c.species === target.slice(4);
-  if (target.startsWith('other-')) return srcIdx !== tgtIdx && c.species === target.slice(6);
+  if (target.startsWith('all-'))   return cardHasSpeciesTag(c, target.slice(4), morphChoices, spearChoices);
+  if (target.startsWith('other-')) return srcIdx !== tgtIdx && cardHasSpeciesTag(c, target.slice(6), morphChoices, spearChoices);
   return false;
 }
 
@@ -225,6 +228,13 @@ class Board {
       effectiveSpeciesCounts(this, { ...ctx, augments });
     const { counts: classCounts } = effectiveClassCounts(this);
 
+    // Phase 33-B.3.F: closure for card-internal species reads. Card passives
+    // that filter `c.species === 'X'` should honor Taxonomy Badges and other
+    // species-tag grants so a Sporal-Badge Plasmic card is seen as Sporal by
+    // Sprangus's "+30 per other Sporal", Phlorbex/Puffzak auras, etc.
+    const hasSpeciesTag = (c, sp) => cardHasSpeciesTag(c, sp, morphChoices, spearChoices);
+    const hasClassTag   = (c, cl) => cardHasClassTag(c, cl);
+
     // Precomputed board-state values used by new augments and items.
     const tripleStarActive  = this.active.filter(c => c.stars === 3).length;
     const combinedActive    = this.active.filter(c => c.stars > 1).length;
@@ -245,7 +255,7 @@ class Board {
         evalFn    = origP.eval;
         evalRound = round + 3;
       }
-      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments };
+      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments, hasSpeciesTag, hasClassTag };
       try { return evalFn(card, selfCtx) || {}; } catch (_) { return {}; }
     });
 
@@ -317,7 +327,7 @@ class Board {
     }
 
     // Stage 2.5 — Phase 30: adjacency + pair-combos. See src/combos.js.
-    applyAdjacencyStage(this.active, scores, lines, null, { round, player, augments });
+    applyAdjacencyStage(this.active, scores, lines, null, { round, player, augments, hasSpeciesTag, hasClassTag });
 
     // Stage 3 — synergy flats
     for (const [species, count] of Object.entries(speciesCounts)) {
@@ -465,7 +475,7 @@ class Board {
       const r    = results[i];
       if (card.passive && card.passive.axis === 8 && r && r.target) {
         for (let j = 0; j < this.active.length; j++) {
-          if (!auraMatches(r.target, i, j, this.active)) continue;
+          if (!auraMatches(r.target, i, j, this.active, morphChoices, spearChoices)) continue;
           if (typeof r.auraMult === 'number') {
             cardMults[j] *= r.auraMult;
             lines[j].push({ label: `${card.name} aura`, mult: r.auraMult });
@@ -521,8 +531,11 @@ class Board {
     const augments = ctx.augments || (player && player.augments) || [];
     const hasAug   = id => hasAugment(augments, id);
 
-    const { counts: speciesCounts } = effectiveSpeciesCounts(this, { ...ctx, augments });
+    const { counts: speciesCounts, morphChoices, spearChoices } =
+      effectiveSpeciesCounts(this, { ...ctx, augments });
     const { counts: classCounts }   = effectiveClassCounts(this);
+    const hasSpeciesTag = (c, sp) => cardHasSpeciesTag(c, sp, morphChoices, spearChoices);
+    const hasClassTag   = (c, cl) => cardHasClassTag(c, cl);
     const combinedActive    = this.active.filter(c => c.stars > 1).length;
     const activeClassSynCount = Object.keys(classCounts).filter(cls => {
       const syn = CLASS_SYNERGIES[cls];
@@ -540,7 +553,7 @@ class Board {
         evalFn    = origP.eval;
         evalRound = round + 3;
       }
-      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments };
+      const selfCtx = { round: evalRound, boardState: this, speciesCounts, classCounts, self: card, player, augments, hasSpeciesTag, hasClassTag };
       try { return evalFn(card, selfCtx) || {}; } catch (_) { return {}; }
     });
 
@@ -616,7 +629,7 @@ class Board {
     // Stage 2.5 — Phase 30: adjacency + pair-combos. Sets fired[i] for both
     // adjacency-axis passives that pay out and pair-combo participants, so
     // the Eccentricity taste reads them.
-    applyAdjacencyStage(this.active, scores, lines, fired, { round, player, augments });
+    applyAdjacencyStage(this.active, scores, lines, fired, { round, player, augments, hasSpeciesTag, hasClassTag });
 
     // Mark "fired" for any other axis (4/6/8) whose passive returned a non-trivial result.
     // Used by the Eccentricity taste; bonuses themselves are bypassed under judge mode.

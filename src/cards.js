@@ -40,7 +40,8 @@ const CARD_DEFS = [
       description: '+20 per other Plasmic on board',
       axis: 2,
       eval(card, ctx) {
-        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Plasmic').length;
+        const has = ctx.hasSpeciesTag || ((c, sp) => c.species === sp);
+        const n = ctx.boardState.active.filter(c => c !== card && has(c, 'Plasmic')).length;
         return { flat: 20 * n };
       },
     },
@@ -88,7 +89,8 @@ const CARD_DEFS = [
       description: '+18 per other Chitinous on board. +50 each when paired with Clattorb.',
       axis: 2,
       eval(card, ctx) {
-        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Chitinous').length;
+        const has = ctx.hasSpeciesTag || ((c, sp) => c.species === sp);
+        const n = ctx.boardState.active.filter(c => c !== card && has(c, 'Chitinous')).length;
         return { flat: 18 * n };
       },
     },
@@ -123,8 +125,9 @@ const CARD_DEFS = [
     passive: {
       description: '+40 each when paired with Slurvin. Else +20 if no adjacent Abyssal (solo menace).',
       axis: 'adjacency',
-      evalAdjacent(self, left, right) {
-        const adjAbyssal = (left && left.species === 'Abyssal') || (right && right.species === 'Abyssal');
+      evalAdjacent(self, left, right, ctx) {
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
+        const adjAbyssal = (left && has(left, 'Abyssal')) || (right && has(right, 'Abyssal'));
         return adjAbyssal ? {} : { flat: 20, label: 'solo menace' };
       },
     },
@@ -160,7 +163,8 @@ const CARD_DEFS = [
       description: '+80 if highest-scoring Plasmic on board',
       axis: 2,
       eval(card, ctx) {
-        const plasmics = ctx.boardState.active.filter(c => c.species === 'Plasmic');
+        const has = ctx.hasSpeciesTag || ((c, sp) => c.species === sp);
+        const plasmics = ctx.boardState.active.filter(c => has(c, 'Plasmic'));
         const scoreOf = c => Math.round(c.baseScore * STAR_MULT[c.stars]);
         const myScore = scoreOf(card);
         const maxScore = Math.max(...plasmics.map(scoreOf));
@@ -185,8 +189,9 @@ const CARD_DEFS = [
     passive: {
       description: '+50 each when paired with Sporvik. Else +20 if any adjacent Sporal.',
       axis: 'adjacency',
-      evalAdjacent(self, left, right) {
-        const adj = (left && left.species === 'Sporal') || (right && right.species === 'Sporal');
+      evalAdjacent(self, left, right, ctx) {
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
+        const adj = (left && has(left, 'Sporal')) || (right && has(right, 'Sporal'));
         return adj ? { flat: 20, label: 'spore feast' } : {};
       },
     },
@@ -211,10 +216,11 @@ const CARD_DEFS = [
     passive: {
       description: '+60 each when paired with Geodorb. Else +25 per adjacent Crystalline.',
       axis: 'adjacency',
-      evalAdjacent(self, left, right) {
+      evalAdjacent(self, left, right, ctx) {
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
         let bonus = 0;
-        if (left  && left.species  === 'Crystalline') bonus += 25;
-        if (right && right.species === 'Crystalline') bonus += 25;
+        if (left  && has(left, 'Crystalline'))  bonus += 25;
+        if (right && has(right, 'Crystalline')) bonus += 25;
         return { flat: bonus, label: 'crystal harmonics' };
       },
     },
@@ -291,7 +297,8 @@ const CARD_DEFS = [
       description: '+30 per other Sporal on board',
       axis: 2,
       eval(card, ctx) {
-        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Sporal').length;
+        const has = ctx.hasSpeciesTag || ((c, sp) => c.species === sp);
+        const n = ctx.boardState.active.filter(c => c !== card && has(c, 'Sporal')).length;
         return { flat: 30 * n };
       },
     },
@@ -327,9 +334,10 @@ const CARD_DEFS = [
       description: 'R1–9: −30 (dormant). R10+: +120 each when paired with Stellorb, else +50 if any adjacent Abyssal.',
       axis: 'adjacency',
       evalAdjacent(self, left, right, ctx) {
-        const round = ctx.round || 0;
+        const round = (ctx && ctx.round) || 0;
         if (round < 10) return { flat: -30, label: 'dormant' };
-        const adj = (left && left.species === 'Abyssal') || (right && right.species === 'Abyssal');
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
+        const adj = (left && has(left, 'Abyssal')) || (right && has(right, 'Abyssal'));
         return adj ? { flat: 50, label: 'awakened' } : {};
       },
     },
@@ -345,7 +353,8 @@ const CARD_DEFS = [
       description: '+24 per other Abyssal on board',
       axis: 2,
       eval(card, ctx) {
-        const n = ctx.boardState.active.filter(c => c !== card && c.species === 'Abyssal').length;
+        const has = ctx.hasSpeciesTag || ((c, sp) => c.species === sp);
+        const n = ctx.boardState.active.filter(c => c !== card && has(c, 'Abyssal')).length;
         return { flat: 24 * n };
       },
     },
@@ -399,11 +408,12 @@ const CARD_DEFS = [
       description: 'R10+: +120 each when paired with Squorble. Else from R16+: +30 per adjacent Abyssal.',
       axis: 'adjacency',
       evalAdjacent(self, left, right, ctx) {
-        const round = ctx.round || 0;
+        const round = (ctx && ctx.round) || 0;
         if (round < 16) return {};
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
         let bonus = 0;
-        if (left  && left.species  === 'Abyssal') bonus += 30;
-        if (right && right.species === 'Abyssal') bonus += 30;
+        if (left  && has(left, 'Abyssal'))  bonus += 30;
+        if (right && has(right, 'Abyssal')) bonus += 30;
         return { flat: bonus, label: 'inevitability' };
       },
     },
@@ -418,8 +428,9 @@ const CARD_DEFS = [
     passive: {
       description: '+35 each when paired with Blorpax. Else +18 if both neighbors are Plasmic.',
       axis: 'adjacency',
-      evalAdjacent(self, left, right) {
-        const both = left && right && left.species === 'Plasmic' && right.species === 'Plasmic';
+      evalAdjacent(self, left, right, ctx) {
+        const has = (ctx && ctx.hasSpeciesTag) || ((c, sp) => c.species === sp);
+        const both = left && right && has(left, 'Plasmic') && has(right, 'Plasmic');
         return both ? { flat: 18, label: 'plasma confluence' } : {};
       },
     },

@@ -173,7 +173,7 @@ Notes call out 4–5 of these together. Make it one cohesive pass.
 - Sporal Taxonomy Badge attached to a non-Sporal card causes Sporal-aligned synergies to register that card.
 - Unlock toasts surface only at run-end (or at chapter boundaries at most).
 
-**Status:** 🟡 not started.
+**Status:** ✅ shipped v0.63 (2026-05-09). Plan description had it inverted — synergy reads (via `cardHasSpeciesTag`) already honored the badge; what didn't were axis-8 auras + card-internal species filters. Fix: extend `cardHasSpeciesTag` to all species reads (auras + Sprangus/Phlorbex/Vexborg/Vornix/Murborg/Blorpax filters + Molborg/Lithvorn/Squorble/Stellorb/Vorbex/Vorzak adjacency). Diversity/Harmony tastes left raw-species per game-design call (badge "for synergy" ≠ "for tastes"; badge-as-+1-unique would be a 1-card +18% diversity exploit). Unlock deferral: removed inline `addUnlock` from `incrementAchievementCounters`; added `sessionUnlocked` ctx array for in-run dedupe; flush via `showGameOverModal` at run-end. Browser-verified end-to-end. Sim greedy n=200 survival 47.5% (within ±2pp baseline seed noise).
 
 ---
 
