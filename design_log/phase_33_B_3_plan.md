@@ -153,7 +153,7 @@ Notes call out 4–5 of these together. Make it one cohesive pass.
 - At L6, plinth-add button is hidden or shows "Maxed" — never $0.
 - Tier-odds tooltip describes the actual current system (no "based on rounds" copy).
 
-**Status:** 🟡 not started.
+**Status:** ✅ shipped 2026-05-08 as v0.62. (1) `updateShopControls` gating now reads `plinthCost() === 0` instead of `level >= 9` — was never firing because the actual cap is `MAX_BOARD = 6`, so at L6 the button showed "Upgrade Exhibit (0 ✦)" and was clickable but the click was a no-op. New behavior: at L6 button reads "Exhibit Maxed" and is disabled. (2) `buildExhibitInfoTooltip` now caps the level table at `min(MAX_LEVEL, MAX_BOARD)` (= 6) instead of looping to 9 — the unreachable rows for L7-L9 were the "stale" copy the playtest flagged (no literal "based on rounds" text existed). Subhead refined to "Adds one display slot · shifts shop tier odds". (3) Exported `MAX_BOARD` from `src/game.js` and pulled it into `web/app.js` so the cap is sourced from one place.
 
 ---
 
@@ -204,6 +204,8 @@ If a bucket grows past one commit, sub-step it (33-B.3.A.1, 33-B.3.A.2) and upda
 ---
 
 ## Outcome (post-ship)
+
+**Bucket E — v0.62 (2026-05-08):** Plinth-add gating fixed and tier-odds tooltip honest. (1) `updateShopControls` now reads `plinthCost() === 0` instead of `S.human.level >= 9` — the old check never fired because the actual cap is `MAX_BOARD = 6`, not `MAX_LEVEL = 9`. At L6 the button used to display "Upgrade Exhibit (0 ✦)" enabled but the click was a no-op; now it reads "Exhibit Maxed" and is disabled. (2) `buildExhibitInfoTooltip` caps the level table at `min(MAX_LEVEL, MAX_BOARD) = 6` instead of looping to 9 — the rows for L7-9 were the "stale" copy the playtest flagged (no literal "based on rounds" text was in the codebase; the unreachable levels were the misleading element). Subhead tightened: "Adds one display slot · shifts shop tier odds". (3) `MAX_BOARD` exported from `src/game.js` and pulled into `web/app.js` so the cap reads from one source. Browser-verified: tooltip live-renders 4 rows (L3-6) with L3 highlighted; synthetic plinthCost test confirms 8/8/12/0/0 at L3-7; no console errors.
 
 **Bucket C — v0.60 (2026-05-04):** Three opacities closed. (1) `showChapterReveal` + `showGrandFinaleReveal` lose their auto-dismiss; both now append a Continue button and bind backdrop-click dismissal — `pointer-events: none` removed from `.chapter-reveal` so clicks no longer pass through. (2) New `tasteLineBreakdown(tasteId, active, baseScores, ctx)` in `src/judges.js` mirrors each of the 11 tastes' per-card logic and returns `[{ final, lines }]`; `game.js` folds those lines into `scoreBreakdown.perCard[i].lines` and uses `Math.round(final)` as the per-card display value. (3) `makeScoringCard(card, breakdownEntry)` appends a `.sc-breakdown` hover popover listing every contribution with attribution — base ×stars, augments (Claymore/Heroic Resolve/Time Dilation/etc), items (Guinsoo's, Prestige Tag, Collector's Mark, etc), modifier (Curator's Pet × N), held-rounds (`Narrative: held N rounds ×M`), tag-mult (`Refinement: Restrained ×1.9`). Browser-verified: 3-card R1 board sum of finals (176+55+33=264) matched authoritative total. Sim greedy 45.5% vs v0.59 46% — within noise.
 

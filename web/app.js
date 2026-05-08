@@ -2,7 +2,7 @@
 
 // ── Module refs ───────────────────────────────────────────────────────────────
 let mulberry32, CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT;
-let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS;
+let Run, POLICIES, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS, MAX_BOARD, MAX_LEVEL;
 let TASTES, getTaste;
 let MODIFIERS;
 let ITEM_DEFS, attachItem, detachItem, cardHasGrantedTag, TAGS;
@@ -37,7 +37,7 @@ const S = {
 document.addEventListener('acb-ready', () => {
   ({ mulberry32 }                                  = window.ACB.utils);
   ({ CARD_DEFS, CARD_COSTS, SYNERGIES, CLASS_SYNERGIES, STAR_MULT } = window.ACB.cards);
-  ({ Run, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS } = window.ACB.game);
+  ({ Run, BASE_INCOME, INTEREST_PER, HEAD_JUDGES, CHAPTER_LABELS, ROUND_TARGETS, CURATOR_SELECTIONS, MAX_BOARD, MAX_LEVEL } = window.ACB.game);
   ({ TASTES, getTaste } = window.ACB.judges);
   ({ MODIFIERS } = window.ACB.modifiers);
   ({ POLICIES }                                    = window.ACB.sim);
@@ -1852,11 +1852,11 @@ function updateShopControls() {
   qs('#btn-reroll').disabled     = S.human.gold < cost;
   const plinthBtn = qs('#btn-plinth');
   const exhibitTip = qs('#exhibit-info-tooltip');
-  if (S.human.level >= 9) {
+  const pCost = S.human.plinthCost();
+  if (pCost === 0) {
     plinthBtn.textContent = 'Exhibit Maxed';
     plinthBtn.disabled    = true;
   } else {
-    const pCost = S.human.plinthCost();
     plinthBtn.textContent = `Upgrade Exhibit (${pCost} ✦)`;
     plinthBtn.disabled    = S.human.gold < pCost;
   }
@@ -2203,10 +2203,11 @@ function showCollectionModal() {
 
 // ── Card element factory ──────────────────────────────────────────────────────
 function buildExhibitInfoTooltip(currentLevel) {
+  const maxLvl = Math.min(MAX_LEVEL || 9, MAX_BOARD || 6);
   let html = '<div class="ei-head">Upgrade Exhibit</div>' +
-    '<div class="ei-subhead">Adds one display slot · improves shop odds</div>';
+    '<div class="ei-subhead">Adds one display slot · shifts shop tier odds</div>';
   html += '<div class="ei-row ei-hdr"><span>Lvl</span><span>T1</span><span>T2</span><span>T3</span></div>';
-  for (let lvl = 3; lvl <= 9; lvl++) {
+  for (let lvl = 3; lvl <= maxLvl; lvl++) {
     const w = LEVEL_WEIGHTS[lvl];
     const cls = lvl === currentLevel ? ' ei-current' : '';
     html += `<div class="ei-row${cls}">` +
